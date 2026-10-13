@@ -1,0 +1,58 @@
+<a class="skip-link" href="#main-content">{{ 'shell.skipToContent' | translate }}</a>
+
+<mat-toolbar class="header" role="banner">
+  @if (narrow()) {
+    <button
+      matButton
+      type="button"
+      class="menu-button"
+      [attr.aria-label]="'shell.toggleNavigation' | translate"
+      [attr.aria-expanded]="drawer.opened"
+      aria-controls="main-navigation"
+      (click)="drawer.toggle()"
+    >
+      ☰
+    </button>
+  }
+  <span class="station-name">{{ 'shell.stationName' | translate }}</span>
+  <span class="spacer"></span>
+  <app-language-switch />
+</mat-toolbar>
+
+<mat-sidenav-container class="body">
+  <mat-sidenav
+    #drawer
+    id="main-navigation"
+    class="navigation"
+    [mode]="narrow() ? 'over' : 'side'"
+    [opened]="!narrow()"
+  >
+    <nav [attr.aria-label]="'shell.navigation' | translate">
+      @if (navigation.length > 0) {
+        <mat-nav-list>
+          @for (item of navigation; track item.path) {
+            <a
+              mat-list-item
+              [routerLink]="item.path"
+              routerLinkActive
+              #link="routerLinkActive"
+              [activated]="link.isActive"
+              [attr.aria-current]="link.isActive ? 'page' : null"
+              (click)="narrow() && drawer.close()"
+            >
+              {{ item.label | translate }}
+            </a>
+          }
+        </mat-nav-list>
+      } @else {
+        <p class="empty-navigation">{{ 'shell.noPages' | translate }}</p>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <main id="main-content" class="content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

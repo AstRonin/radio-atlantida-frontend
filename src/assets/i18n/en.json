@@ -1,0 +1,16 @@
+{
+  "shell": {
+    "stationName": "Radio Atlantida",
+    "navigation": "Main navigation",
+    "toggleNavigation": "Show or hide navigation",
+    "noPages": "No pages are available yet.",
+    "skipToContent": "Skip to content"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "home": {
+    "title": "Radio Atlantida",
+    "intro": "This is the station management panel. Pages for the library, playlists, play rules, and settings will appear in the navigation as they are added."
+  }
+}

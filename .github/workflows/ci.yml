@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Development is on macOS and runtime on Windows, so CRLF must never reach the repository.
+      - name: Check line endings
+        run: |
+          if git ls-files --eol | grep 'i/crlf'; then
+            echo "Files above are committed with CRLF line endings."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=high
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t radio-atlantida-frontend:ci .
+      - name: Serve the shell
+        run: |
+          docker run -d --name panel -p 8080:8080 radio-atlantida-frontend:ci
+          for i in $(seq 1 20); do
+            if curl -fsS -o /dev/null http://127.0.0.1:8080/; then exit 0; fi
+            sleep 1
+          done
+          docker logs panel
+          exit 1

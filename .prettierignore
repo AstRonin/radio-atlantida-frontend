@@ -1,0 +1,11 @@
+# Context documents are copied from the Claude project and kept verbatim.
+/docs/
+
+# Generated or third-party content
+/dist/
+/.angular/
+/coverage/
+/node_modules/
+/src/app/core/api/generated/
+/api/openapi.json
+package-lock.json
