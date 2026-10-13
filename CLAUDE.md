@@ -36,7 +36,8 @@ streams it, and PostgreSQL stores the data.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
-Phase status: F1 (skeleton) done. Next: F2 (API client and contract pipeline).
+Phase status: F1 (skeleton) and F2 (API client and contract pipeline) done. Next: F3 (realtime,
+operations, alerts, settings core).
 
 ## Ground rules
 
@@ -45,6 +46,11 @@ Phase status: F1 (skeleton) done. Next: F2 (API client and contract pipeline).
 - **The backend is the authority.** Never write REST or WebSocket payload types by hand. Types are
   generated from the backend OpenAPI snapshot (`api/openapi.json`) with `openapi-typescript`, and
   requests go through Angular `HttpClient` (no `openapi-fetch`, no other HTTP library).
+  Use `ApiClient` (`core/api`) with spec paths (`api.get('/api/tracks/{id}', { path: { id } })`)
+  and `ApiSchema<'Track'>` for DTO types. Errors arrive as `ApiProblem`; show them with
+  `problemMessage()` and put field errors on forms with `applyServerErrors()` (`shared/forms`).
+  Form control names match the DTO's JSON names. Format API times with the `stationTime` pipe or
+  `StationTimeService`, never `DatePipe` or `toLocaleString` without the station zone.
 - **No secrets in the frontend.** The panel only shows whether a secret is set.
 - **Times.** The API sends ISO 8601 UTC (`...Z`). Display them in the station timezone from settings
   (IANA name, default `Asia/Yerevan`), never in the browser's zone.
@@ -95,11 +101,11 @@ Phase status: F1 (skeleton) done. Next: F2 (API client and contract pipeline).
 
 ```
 .github/workflows/ci.yml     lint, format, typecheck, tests, build, audit, Docker smoke test
-api/openapi.json             backend specification snapshot (from F2)
+api/openapi.json             backend specification snapshot (committed, never edited by hand)
 docker/Dockerfile            Node build -> unprivileged nginx on port 8080
 docker/nginx.conf            static files, SPA fallback, /api and /api/ws proxy, security headers
 docs/                        context documents (kept verbatim, not formatted by Prettier)
-scripts/sync-api.mjs         copies the backend specification into api/ (from F2)
+scripts/sync-api.mjs         copies the backend specification into api/
 src/app/core/                app-wide services: api, realtime, operations, alerts, settings, time,
                              player, help, i18n, shell
 src/app/shared/              ui, forms, pickers (presentational only)
@@ -115,15 +121,25 @@ Empty folders are not committed. Register a route only in the phase that builds 
 
 ## npm scripts
 
-| Script                 | Purpose                                                    |
-| ---------------------- | ---------------------------------------------------------- |
-| `npm run dev`          | Dev server on http://localhost:4200 with the `/api` proxy  |
-| `npm run lint`         | ESLint (`angular-eslint`, `typescript-eslint`)             |
-| `npm run format`       | Prettier write; `format:check` verifies                    |
-| `npm run typecheck`    | TypeScript check of app and spec sources                   |
-| `npm test`             | Unit tests, single run (`test:watch` for watch mode)       |
-| `npm run build`        | Production build into `dist/radio-atlantida-frontend/`     |
-| `npm run api:sync`     | Copy the backend OpenAPI specification (implemented in F2) |
-| `npm run api:generate` | Generate TypeScript types from it (implemented in F2)      |
+| Script                 | Purpose                                                   |
+| ---------------------- | --------------------------------------------------------- |
+| `npm run dev`          | Dev server on http://localhost:4200 with the `/api` proxy |
+| `npm run lint`         | ESLint (`angular-eslint`, `typescript-eslint`)            |
+| `npm run format`       | Prettier write; `format:check` verifies                   |
+| `npm run typecheck`    | TypeScript check of app and spec sources                  |
+| `npm test`             | Unit tests, single run (`test:watch` for watch mode)      |
+| `npm run build`        | Production build into `dist/radio-atlantida-frontend/`    |
+| `npm run api:sync`     | Copy the backend OpenAPI specification into `api/`        |
+| `npm run api:generate` | Generate types into `core/api/generated/` (git-ignored)   |
+
+`dev`, `build`, `test`, `test:watch`, and `typecheck` run `api:generate` first, so they always start
+from fresh types.
+
+After a backend DTO or endpoint change: `make openapi` in the backend, then `npm run api:sync`
+(default source `../radio-atlantida-backend/api/openapi.json`, or `npm run api:sync -- <path>`), and
+commit `api/openapi.json` with the frontend change that uses it. The compiler shows what must change.
+
+`openapi-typescript` declares a peer of TypeScript 5; the `overrides` entry in `package.json` makes
+it use the project's TypeScript. Remove the override once a release supports TypeScript 6.
 
 Before finishing any change: `npm run lint`, `npm run format:check`, `npm test`, `npm run build`.

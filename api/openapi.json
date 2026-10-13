@@ -1,0 +1,4080 @@
+{
+  "components": {
+    "schemas": {
+      "Artist": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "track_count": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "track_count"
+        ],
+        "type": "object"
+      },
+      "ArtistBody": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Unique: artist separation counts plays per artist.",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ArtistList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Artist"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "ArtistRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreatePlaylistType": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Unique slug, for example promo. Cannot be changed later.",
+            "pattern": "^[a-z][a-z0-9_-]{0,62}$",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name.",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "type": "object"
+      },
+      "EntityRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "Entity kind, for example playlist, track, clock.",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "ErrorAlertData": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "description": "Component that logged the error.",
+            "type": "string"
+          },
+          "error": {
+            "description": "Error text.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Log message.",
+            "type": "string"
+          },
+          "request_id": {
+            "description": "Request ID, for errors raised by an API request.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorAlertEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ErrorAlertData"
+          },
+          "time": {
+            "description": "UTC time of the log entry.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always error.alert.",
+            "enum": [
+              "error.alert"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "Event": {
+        "description": "Any event sent over the WebSocket at GET /api/ws.",
+        "discriminator": {
+          "mapping": {
+            "error.alert": "#/components/schemas/ErrorAlertEvent",
+            "retention.completed": "#/components/schemas/OperationCompletedEvent",
+            "retention.failed": "#/components/schemas/OperationFailedEvent",
+            "retention.progress": "#/components/schemas/OperationProgressEvent"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ErrorAlertEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OperationCompletedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OperationFailedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OperationProgressEvent"
+          }
+        ]
+      },
+      "FieldError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/FieldErrorCode"
+          },
+          "field": {
+            "description": "Path of the field, for example elements[2].fixed_minute. Query and path parameters are prefixed with query. or path.",
+            "type": "string"
+          },
+          "message": {
+            "description": "English message for developers.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "FieldErrorCode": {
+        "description": "Stable code of a field error. Never renamed once released.",
+        "enum": [
+          "required",
+          "unknown_field",
+          "type",
+          "range",
+          "length",
+          "pattern",
+          "format",
+          "enum",
+          "unique",
+          "invalid",
+          "taken",
+          "unknown_id"
+        ],
+        "type": "string"
+      },
+      "LiveStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "current_clock": {
+            "description": "Name of the clock playing this hour. Null means unknown.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "on_air": {
+            "description": "Whether a broadcast is on air. Null means unknown; treat it as on air.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "open_outage_id": {
+            "description": "ID of the open outage, if any. Null means none or unknown.",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "time": {
+            "description": "Server time (UTC) of this answer.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "on_air",
+          "open_outage_id",
+          "current_clock",
+          "time"
+        ],
+        "type": "object"
+      },
+      "LogEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "additionalProperties": {},
+            "description": "Other fields of the entry.",
+            "type": "object"
+          },
+          "component": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "level": {
+            "examples": [
+              "ERROR"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "level",
+          "message"
+        ],
+        "type": "object"
+      },
+      "LogEntryPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LogEntry"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Number of entries in the file that match the filters.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "LogFile": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "description": "UTC date of the file.",
+            "format": "date",
+            "type": "string"
+          },
+          "name": {
+            "examples": [
+              "app-2026-10-13.log"
+            ],
+            "type": "string"
+          },
+          "size_bytes": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "date",
+          "size_bytes"
+        ],
+        "type": "object"
+      },
+      "LogFileList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LogFile"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "Operation": {
+        "additionalProperties": false,
+        "properties": {
+          "error_message": {
+            "description": "Set for failed operations.",
+            "type": "string"
+          },
+          "finished_at": {
+            "description": "Set when the operation is no longer running.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "Operation kind; its events are \u003ckind\u003e.completed, \u003ckind\u003e.failed, \u003ckind\u003e.progress.",
+            "type": "string"
+          },
+          "result_summary": {
+            "description": "Set for completed operations.",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "started_at"
+        ],
+        "type": "object"
+      },
+      "OperationCompletedData": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "description": "Operation kind.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Short result summary.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "OperationCompletedEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OperationCompletedData"
+          },
+          "operation_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "time": {
+            "description": "UTC time the operation finished.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "\u003ckind\u003e.completed",
+            "enum": [
+              "retention.completed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "operation_id",
+          "data"
+        ],
+        "type": "object"
+      },
+      "OperationFailedData": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "description": "Component that failed (log component).",
+            "type": "string"
+          },
+          "error": {
+            "description": "Short error message.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Operation kind.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "component",
+          "error"
+        ],
+        "type": "object"
+      },
+      "OperationFailedEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OperationFailedData"
+          },
+          "operation_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "time": {
+            "description": "UTC time the operation failed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "\u003ckind\u003e.failed",
+            "enum": [
+              "retention.failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "operation_id",
+          "data"
+        ],
+        "type": "object"
+      },
+      "OperationList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "OperationProgressData": {
+        "additionalProperties": false,
+        "properties": {
+          "done": {
+            "description": "Units of work done.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "Operation kind.",
+            "type": "string"
+          },
+          "message": {
+            "description": "For example: 12 of 40 files analysed.",
+            "type": "string"
+          },
+          "total": {
+            "description": "Units of work in total; 0 if unknown.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "done",
+          "total"
+        ],
+        "type": "object"
+      },
+      "OperationProgressEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OperationProgressData"
+          },
+          "operation_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "\u003ckind\u003e.progress",
+            "enum": [
+              "retention.progress"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "operation_id",
+          "data"
+        ],
+        "type": "object"
+      },
+      "PlayRule": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_per_hour": {
+            "description": "Starts of the same track within one clock hour.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "min_interval_minutes": {
+            "description": "Minutes between two starts of the same track.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "playlist_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "playlist_ids": {
+            "description": "Playlists the rule is applied to, in ID order; it applies to each of their tracks.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "track_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "track_ids": {
+            "description": "Tracks the rule is applied to, in ID order.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "weekdays": {
+            "description": "Allowed days, 1 = Monday ... 7 = Sunday; absent means every day. With a window that crosses midnight, the day on which the window starts.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "window_from": {
+            "description": "Start of the allowed window, HH:MM.",
+            "type": "string"
+          },
+          "window_to": {
+            "description": "End of the allowed window, HH:MM; earlier than window_from when the window crosses midnight.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "notes",
+          "track_ids",
+          "playlist_ids",
+          "track_count",
+          "playlist_count",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "PlayRuleBody": {
+        "additionalProperties": false,
+        "properties": {
+          "max_per_hour": {
+            "format": "int64",
+            "maximum": 60,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_interval_minutes": {
+            "description": "At most 7 days.",
+            "format": "int64",
+            "maximum": 10080,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "weekdays": {
+            "description": "1 = Monday ... 7 = Sunday; leave out for every day.",
+            "items": {
+              "format": "int64",
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "maxItems": 7,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "window_from": {
+            "description": "HH:MM, station local time.",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "window_to": {
+            "description": "HH:MM; earlier than window_from for a window that crosses midnight (22:00 to 02:00).",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PlayRuleIDs": {
+        "additionalProperties": false,
+        "properties": {
+          "rule_ids": {
+            "description": "In ID order.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rule_ids"
+        ],
+        "type": "object"
+      },
+      "PlayRuleList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlayRule"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "Playlist": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "play_rule_ids": {
+            "description": "Play rules applied to every track of the playlist, in ID order.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "track_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypeRef"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "track_count",
+          "play_rule_ids",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "PlaylistBody": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type_id": {
+            "description": "Playlist type (GET /api/playlist-types).",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "type_id"
+        ],
+        "type": "object"
+      },
+      "PlaylistList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Playlist"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "PlaylistType": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Unique slug; never changes after creation.",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "is_system": {
+            "description": "True for music, jingle, news, and segment: renamable, never deletable.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Display name.",
+            "type": "string"
+          },
+          "playlist_count": {
+            "description": "Playlists of this type.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "track_count": {
+            "description": "Tracks of this type.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "is_system",
+          "playlist_count",
+          "track_count",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "PlaylistTypeList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaylistType"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ProblemCode"
+          },
+          "detail": {
+            "description": "English explanation of this occurrence.",
+            "type": "string"
+          },
+          "errors": {
+            "description": "Per-field errors (validation).",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "type": "array"
+          },
+          "request_id": {
+            "description": "ID of the request in the logs.",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "description": "Short English summary of the problem type.",
+            "type": "string"
+          },
+          "used_by": {
+            "description": "Entities that block a refused request, for example the playlists that use a type.",
+            "items": {
+              "$ref": "#/components/schemas/EntityRef"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "code"
+        ],
+        "type": "object"
+      },
+      "ProblemCode": {
+        "description": "Stable code of a problem response. Never renamed once released.",
+        "enum": [
+          "bad_request",
+          "validation_failed",
+          "not_found",
+          "method_not_allowed",
+          "body_too_large",
+          "unsupported_media_type",
+          "not_acceptable",
+          "internal_error",
+          "operation_not_found",
+          "log_file_not_found",
+          "setting_not_found",
+          "setting_not_editable",
+          "playlist_type_not_found",
+          "system_type_not_deletable",
+          "playlist_type_in_use",
+          "playlist_not_found",
+          "playlist_in_use",
+          "artist_not_found",
+          "artist_in_use",
+          "artist_has_history",
+          "track_not_found",
+          "track_in_use",
+          "track_has_history",
+          "track_file_not_found",
+          "play_rule_not_found",
+          "play_rule_in_use",
+          "separation_rule_not_found"
+        ],
+        "type": "string"
+      },
+      "RenamePlaylistType": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "New display name. The code does not change.",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "SecretList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SecretStatus"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "SecretStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "station",
+              "stream",
+              "liquidsoap",
+              "rotation",
+              "filler",
+              "outage",
+              "retention",
+              "playout"
+            ],
+            "type": "string"
+          },
+          "is_set": {
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Environment variable that holds the secret.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "group",
+          "description",
+          "is_set"
+        ],
+        "type": "object"
+      },
+      "SeparationRule": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "min_interval_hours": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "track",
+              "artist"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "min_interval_hours",
+          "notes"
+        ],
+        "type": "object"
+      },
+      "SeparationRuleList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SeparationRule"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "SetPlayRuleTargets": {
+        "additionalProperties": false,
+        "properties": {
+          "playlist_ids": {
+            "description": "Every playlist the rule applies to; playlists not listed lose it.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "track_ids": {
+            "description": "Every track the rule applies to; tracks not listed lose it.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 100000,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids",
+          "playlist_ids"
+        ],
+        "type": "object"
+      },
+      "SetPlayRules": {
+        "additionalProperties": false,
+        "properties": {
+          "rule_ids": {
+            "description": "Every play rule of the target; rules not listed are removed from it.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "rule_ids"
+        ],
+        "type": "object"
+      },
+      "SetPlaylistTracks": {
+        "additionalProperties": false,
+        "properties": {
+          "track_ids": {
+            "description": "Every track of the playlist; tracks not listed are removed from it. The order is not stored.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 100000,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids"
+        ],
+        "type": "object"
+      },
+      "SetSetting": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "description": "New value; its type and limits are those of the setting (GET /api/settings)."
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "type": "object"
+      },
+      "Setting": {
+        "additionalProperties": false,
+        "properties": {
+          "affects_air": {
+            "description": "True when a change affects what goes to air; such changes are logged with their UTC time.",
+            "type": "boolean"
+          },
+          "apply": {
+            "description": "When a saved value takes effect. reconnect: when the connection it configures is opened again; changing the stream server briefly interrupts the stream.",
+            "enum": [
+              "immediate",
+              "reconnect"
+            ],
+            "type": "string"
+          },
+          "default": {
+            "description": "Value used until one is saved."
+          },
+          "description": {
+            "description": "English description for developers; the panel shows its own help texts.",
+            "type": "string"
+          },
+          "enum": {
+            "description": "Allowed values, when limited.",
+            "items": {},
+            "type": "array"
+          },
+          "group": {
+            "description": "Settings page the key belongs to.",
+            "enum": [
+              "station",
+              "stream",
+              "liquidsoap",
+              "rotation",
+              "filler",
+              "outage",
+              "retention",
+              "playout"
+            ],
+            "type": "string"
+          },
+          "is_default": {
+            "description": "True when no value is saved.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Setting key, for example liquidsoap.fade_out_ms. The part before the first dot is the group.",
+            "type": "string"
+          },
+          "maximum": {
+            "description": "Largest allowed number, or longest string length.",
+            "format": "double",
+            "type": "number"
+          },
+          "minimum": {
+            "description": "Smallest allowed number, or shortest string length.",
+            "format": "double",
+            "type": "number"
+          },
+          "nullable": {
+            "description": "True when null is a valid value.",
+            "type": "boolean"
+          },
+          "type": {
+            "description": "JSON type of value.",
+            "enum": [
+              "integer",
+              "number",
+              "string",
+              "boolean",
+              "object"
+            ],
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit of a number, for example ms, seconds, kbps.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the value was saved; absent for a default.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "description": "Current value: the saved value, or the default when is_default is true."
+          }
+        },
+        "required": [
+          "key",
+          "group",
+          "description",
+          "type",
+          "value",
+          "default",
+          "is_default",
+          "nullable",
+          "apply",
+          "affects_air"
+        ],
+        "type": "object"
+      },
+      "SettingList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Setting"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "Track": {
+        "additionalProperties": false,
+        "properties": {
+          "artist": {
+            "$ref": "#/components/schemas/ArtistRef",
+            "description": "Absent for material without an artist (jingles, station IDs)."
+          },
+          "bitrate": {
+            "description": "Bits per second.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "duration_ms": {
+            "description": "Absent until entered or read from the file; such a track cannot be planned.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "file_checksum": {
+            "type": "string"
+          },
+          "file_path": {
+            "description": "Relative to the media root, with forward slashes.",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "mp3",
+              "aac",
+              "m4a",
+              "ogg",
+              "flac",
+              "wav"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "play_rule_ids": {
+            "description": "Rules of the track itself, in ID order. The rules of its playlists apply too.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "playlist_ids": {
+            "description": "In ID order.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "quality_notes": {
+            "type": "string"
+          },
+          "quality_ok": {
+            "description": "Absent until the file is analysed.",
+            "type": "boolean"
+          },
+          "sample_rate": {
+            "description": "Hz.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypeRef"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "file_path",
+          "quality_notes",
+          "type",
+          "playlist_ids",
+          "play_rule_ids",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "TrackBody": {
+        "additionalProperties": false,
+        "properties": {
+          "artist_id": {
+            "format": "int64",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bitrate": {
+            "description": "Bits per second.",
+            "format": "int64",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "duration_ms": {
+            "description": "At most 6 hours.",
+            "format": "int64",
+            "maximum": 21600000,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "file_path": {
+            "description": "Relative to the media root, with forward slashes, for example music/song.mp3. No absolute paths, backslashes, or .. elements.",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "mp3",
+              "aac",
+              "m4a",
+              "ogg",
+              "flac",
+              "wav"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "playlist_ids": {
+            "description": "Every playlist of the track; playlists not listed lose it.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "quality_notes": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "quality_ok": {
+            "description": "Manual override of the quality check.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "sample_rate": {
+            "description": "Hz.",
+            "format": "int64",
+            "maximum": 768000,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type_id": {
+            "description": "Playlist type of the track (GET /api/playlist-types).",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "file_path",
+          "type_id",
+          "playlist_ids"
+        ],
+        "type": "object"
+      },
+      "TrackPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Track"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Pass as cursor to read the next page; absent on the last page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "TypeRef": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "type": "object"
+      },
+      "UpdateSeparationRule": {
+        "additionalProperties": false,
+        "properties": {
+          "min_interval_hours": {
+            "description": "At most the play log retention (setting retention.play_log_days) in hours: separation is checked against aired history.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "notes": {
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "min_interval_hours"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "REST API of the Radio Atlantida backend. No authentication: the API is reachable only from localhost or a private network. All times are ISO 8601 UTC. Errors are RFC 9457 problem details with stable codes. UI events are sent over the WebSocket at GET /api/ws; their payloads are the schemas Event, ErrorAlertEvent, and Operation*Event.",
+    "title": "Radio Atlantida API",
+    "version": "dev"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/artists": {
+      "get": {
+        "description": "Artists with their track count, in name order.",
+        "operationId": "list-artists",
+        "parameters": [
+          {
+            "description": "Only artists whose name contains this text (case-insensitive).",
+            "explode": false,
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "description": "Only artists whose name contains this text (case-insensitive).",
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtistList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List artists",
+        "tags": [
+          "Artists"
+        ]
+      },
+      "post": {
+        "operationId": "create-artist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtistBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Artist"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create an artist",
+        "tags": [
+          "Artists"
+        ]
+      }
+    },
+    "/api/artists/{id}": {
+      "delete": {
+        "description": "Refused while tracks or clocks (as filler) refer to the artist (artist_in_use, with used_by), and for an artist with play history (artist_has_history).",
+        "operationId": "delete-artist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete an artist",
+        "tags": [
+          "Artists"
+        ]
+      },
+      "get": {
+        "operationId": "get-artist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Artist"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get an artist",
+        "tags": [
+          "Artists"
+        ]
+      },
+      "put": {
+        "operationId": "rename-artist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtistBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Artist"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Rename an artist",
+        "tags": [
+          "Artists"
+        ]
+      }
+    },
+    "/api/logs/files": {
+      "get": {
+        "description": "Daily log files (one per UTC date), newest first.",
+        "operationId": "list-log-files",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogFileList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List log files",
+        "tags": [
+          "Logs"
+        ]
+      }
+    },
+    "/api/logs/files/{name}": {
+      "get": {
+        "description": "Entries of one daily log file, newest first, with optional filters.",
+        "operationId": "read-log-file",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "examples": [
+                "app-2026-10-13.log"
+              ],
+              "pattern": "^app-\\d{4}-\\d{2}-\\d{2}\\.log$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum level: WARN returns WARN and ERROR entries.",
+            "explode": false,
+            "in": "query",
+            "name": "level",
+            "schema": {
+              "description": "Minimum level: WARN returns WARN and ERROR entries.",
+              "enum": [
+                "DEBUG",
+                "INFO",
+                "WARN",
+                "ERROR"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "component",
+            "schema": {
+              "enum": [
+                "api",
+                "db",
+                "rotation",
+                "filler",
+                "liquidsoap",
+                "icecast",
+                "webrtc",
+                "retention",
+                "outage",
+                "reconcile"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "format": "int64",
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "format": "int64",
+              "maximum": 100000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntryPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Read a log file",
+        "tags": [
+          "Logs"
+        ]
+      }
+    },
+    "/api/operations": {
+      "get": {
+        "description": "Operations in ID order, for a panel that reconnects and catches up on events it missed. Page with after_id.",
+        "operationId": "list-operations",
+        "parameters": [
+          {
+            "description": "Only operations started or finished at or after this UTC time.",
+            "explode": false,
+            "in": "query",
+            "name": "since",
+            "schema": {
+              "description": "Only operations started or finished at or after this UTC time.",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Continue after this operation ID (the last ID of the previous page).",
+            "explode": false,
+            "in": "query",
+            "name": "after_id",
+            "schema": {
+              "description": "Continue after this operation ID (the last ID of the previous page).",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "format": "int64",
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List operations",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
+    "/api/operations/{id}": {
+      "get": {
+        "description": "State of one asynchronous operation. A panel that missed the terminal WebSocket event reads the stored outcome here.",
+        "operationId": "get-operation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Operation"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get an operation",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
+    "/api/play-rules": {
+      "get": {
+        "description": "Every rule with its targets and usage counts, in name order.",
+        "operationId": "list-play-rules",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayRuleList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List play rules",
+        "tags": [
+          "Play rules"
+        ]
+      },
+      "post": {
+        "description": "At least one limit is set; window_from and window_to are set together and may cross midnight.",
+        "operationId": "create-play-rule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayRuleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayRule"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create a play rule",
+        "tags": [
+          "Play rules"
+        ]
+      }
+    },
+    "/api/play-rules/{id}": {
+      "delete": {
+        "description": "Refused while the rule is applied to tracks or playlists (play_rule_in_use, with used_by listing them).",
+        "operationId": "delete-play-rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete a play rule",
+        "tags": [
+          "Play rules"
+        ]
+      },
+      "get": {
+        "operationId": "get-play-rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayRule"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get a play rule",
+        "tags": [
+          "Play rules"
+        ]
+      },
+      "put": {
+        "description": "Replaces the limits of the rule; a limit left out is removed. The targets stay.",
+        "operationId": "update-play-rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayRuleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayRule"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update a play rule",
+        "tags": [
+          "Play rules"
+        ]
+      }
+    },
+    "/api/play-rules/{id}/targets": {
+      "put": {
+        "description": "Replaces the tracks and playlists the rule is applied to.",
+        "operationId": "set-play-rule-targets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPlayRuleTargets"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayRule"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Set the targets of a play rule",
+        "tags": [
+          "Play rules"
+        ]
+      }
+    },
+    "/api/playlist-types": {
+      "get": {
+        "description": "System and custom types with their usage counts, in name order.",
+        "operationId": "list-playlist-types",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistTypeList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List playlist types",
+        "tags": [
+          "Playlist types"
+        ]
+      },
+      "post": {
+        "description": "Adds a custom type. The code is a unique slug and cannot be changed later. A taken code or name is a field error (taken).",
+        "operationId": "create-playlist-type",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlaylistType"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistType"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create a playlist type",
+        "tags": [
+          "Playlist types"
+        ]
+      }
+    },
+    "/api/playlist-types/{id}": {
+      "delete": {
+        "description": "Deletes a custom type. Refused for a system type (system_type_not_deletable) and for a type that playlists or tracks have (playlist_type_in_use, with used_by listing them).",
+        "operationId": "delete-playlist-type",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete a playlist type",
+        "tags": [
+          "Playlist types"
+        ]
+      },
+      "get": {
+        "operationId": "get-playlist-type",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistType"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get a playlist type",
+        "tags": [
+          "Playlist types"
+        ]
+      },
+      "put": {
+        "description": "Changes the display name; system types can be renamed too. The code does not change.",
+        "operationId": "rename-playlist-type",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenamePlaylistType"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistType"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Rename a playlist type",
+        "tags": [
+          "Playlist types"
+        ]
+      }
+    },
+    "/api/playlists": {
+      "get": {
+        "description": "Playlists with their type and track count, in name order.",
+        "operationId": "list-playlists",
+        "parameters": [
+          {
+            "description": "Only playlists of this type.",
+            "explode": false,
+            "in": "query",
+            "name": "type_id",
+            "schema": {
+              "description": "Only playlists of this type.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List playlists",
+        "tags": [
+          "Playlists"
+        ]
+      },
+      "post": {
+        "operationId": "create-playlist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create a playlist",
+        "tags": [
+          "Playlists"
+        ]
+      }
+    },
+    "/api/playlists/{id}": {
+      "delete": {
+        "description": "Its tracks stay in the library. Refused while a clock uses the playlist in an element or as filler (playlist_in_use, with used_by naming the clocks).",
+        "operationId": "delete-playlist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete a playlist",
+        "tags": [
+          "Playlists"
+        ]
+      },
+      "get": {
+        "description": "The tracks of a playlist are listed by GET /api/tracks?playlist_id=.",
+        "operationId": "get-playlist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get a playlist",
+        "tags": [
+          "Playlists"
+        ]
+      },
+      "put": {
+        "description": "Renames the playlist or changes its type.",
+        "operationId": "update-playlist",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update a playlist",
+        "tags": [
+          "Playlists"
+        ]
+      }
+    },
+    "/api/playlists/{id}/play-rules": {
+      "put": {
+        "description": "The rules apply to every track of the playlist, each track checked on its own.",
+        "operationId": "set-playlist-play-rules",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPlayRules"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayRuleIDs"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Set the play rules of a playlist",
+        "tags": [
+          "Playlists"
+        ]
+      }
+    },
+    "/api/playlists/{id}/tracks": {
+      "put": {
+        "description": "Replaces the membership: listed tracks are in the playlist, others are removed from it. A playlist is a pool, so the order is not stored.",
+        "operationId": "set-playlist-tracks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPlaylistTracks"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Set the tracks of a playlist",
+        "tags": [
+          "Playlists"
+        ]
+      }
+    },
+    "/api/separation-rules": {
+      "get": {
+        "description": "The rules are seeded by the database; their values are copied from the reference software and edited here.",
+        "operationId": "list-separation-rules",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeparationRuleList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List separation rules",
+        "tags": [
+          "Separation rules"
+        ]
+      }
+    },
+    "/api/separation-rules/{id}": {
+      "put": {
+        "description": "Changes the interval and the notes. The interval is at most the play log retention in hours.",
+        "operationId": "update-separation-rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSeparationRule"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeparationRule"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update a separation rule",
+        "tags": [
+          "Separation rules"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "description": "Every admin setting with its value, default, limits, and apply mode. A setting that was never saved has its code default and is_default true. Secrets are not listed (see GET /api/settings/secrets).",
+        "operationId": "list-settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List settings",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/secrets": {
+      "get": {
+        "description": "Whether each secret is set in the environment. Values are never returned; a secret is changed in the environment and takes effect after a restart.",
+        "operationId": "list-secrets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List secrets",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{key}": {
+      "put": {
+        "description": "Validates and saves one value. A refused value returns a field error on value. Secrets cannot be set here (setting_not_editable): they live in the environment.",
+        "operationId": "set-setting",
+        "parameters": [
+          {
+            "description": "Setting key, for example liquidsoap.fade_out_ms.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "description": "Setting key, for example liquidsoap.fade_out_ms.",
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSetting"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Setting"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Save a setting",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/status/live": {
+      "get": {
+        "description": "Whether the station is on air and whether an outage is open. The update script checks it before restarting services. A null field means unknown and must be treated as on air. Until playout and outage detection exist, on_air, open_outage_id and current_clock are always null.",
+        "operationId": "get-live-status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the live status",
+        "tags": [
+          "Status"
+        ]
+      }
+    },
+    "/api/tracks": {
+      "get": {
+        "description": "Tracks in title order, a page at a time: pass next_cursor as cursor for the next page. The filters combine.",
+        "operationId": "list-tracks",
+        "parameters": [
+          {
+            "description": "Only tracks of this type.",
+            "explode": false,
+            "in": "query",
+            "name": "type_id",
+            "schema": {
+              "description": "Only tracks of this type.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only tracks of this artist.",
+            "explode": false,
+            "in": "query",
+            "name": "artist_id",
+            "schema": {
+              "description": "Only tracks of this artist.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only tracks in this playlist.",
+            "explode": false,
+            "in": "query",
+            "name": "playlist_id",
+            "schema": {
+              "description": "Only tracks in this playlist.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only tracks whose title or artist name contains this text (case-insensitive).",
+            "explode": false,
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "description": "Only tracks whose title or artist name contains this text (case-insensitive).",
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "description": "next_cursor of the previous page.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "next_cursor of the previous page.",
+              "maxLength": 2000,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "format": "int64",
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List tracks",
+        "tags": [
+          "Tracks"
+        ]
+      },
+      "post": {
+        "description": "Registers a file by its path under the media root; the file may arrive later. When it exists, metadata left out is read from it with ffprobe. A path used by another track is a field error (taken).",
+        "operationId": "create-track",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Register a track",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/{id}": {
+      "delete": {
+        "description": "Removes the track from the library (the file is not touched). Refused while a clock filler pool holds it (track_in_use, with used_by), and for a track with play history or in the track plan (track_has_history).",
+        "operationId": "delete-track",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete a track",
+        "tags": [
+          "Tracks"
+        ]
+      },
+      "get": {
+        "operationId": "get-track",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get a track",
+        "tags": [
+          "Tracks"
+        ]
+      },
+      "put": {
+        "description": "Replaces the metadata and the playlists of a track. Optional fields left out are cleared, then metadata is read from the file where it exists.",
+        "operationId": "update-track",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update a track",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/{id}/audio": {
+      "get": {
+        "description": "Streams the file of the track for the preview player in the panel (§6.6). Supports Range requests, so seeking works. The preview plays in the browser only: it never reaches the air or the play log. A missing file is track_file_not_found.",
+        "operationId": "get-track-audio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "audio/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The audio file, or the requested range of it."
+          },
+          "206": {
+            "content": {
+              "audio/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Partial content: the requested range."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "416": {
+            "description": "The requested range is outside the file."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Stream a track for preview",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/{id}/play-rules": {
+      "put": {
+        "description": "Rules of the track itself. The rules of its playlists apply too; all of them must pass.",
+        "operationId": "set-track-play-rules",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPlayRules"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayRuleIDs"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Set the play rules of a track",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/ws": {
+      "get": {
+        "description": "Upgrades to a WebSocket. The server sends one JSON text message per event (schema Event); the panel sends nothing. A client that falls behind is disconnected and should reconnect and catch up through GET /api/operations.",
+        "operationId": "events-websocket",
+        "responses": {
+          "101": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Switching Protocols: the connection is a WebSocket. Each message is one Event."
+          },
+          "403": {
+            "description": "Cross-origin request from an origin that is not allowed."
+          }
+        },
+        "summary": "UI event stream (WebSocket)",
+        "tags": [
+          "Events"
+        ]
+      }
+    }
+  }
+}

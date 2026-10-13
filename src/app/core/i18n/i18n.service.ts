@@ -90,6 +90,11 @@ export class I18nService {
     return params ? interpolate(text, params) : text;
   }
 
+  /** True when the key has a text in the active language or in English. */
+  has(key: string): boolean {
+    return Object.hasOwn(this.active(), key) || Object.hasOwn(this.fallback(), key);
+  }
+
   private isKnown(code: string): boolean {
     return this.languages().some((language) => language.code === code);
   }

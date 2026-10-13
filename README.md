@@ -20,6 +20,21 @@ npm test
 npm run build
 ```
 
+## API contract
+
+The backend is the authority for the API. `api/openapi.json` is a committed snapshot of its OpenAPI
+specification, and the TypeScript types are generated from it before every build and test run (they
+are not committed).
+
+```sh
+# after a DTO or endpoint change in the backend (run `make openapi` there first)
+npm run api:sync                 # copies ../radio-atlantida-backend/api/openapi.json
+npm run api:sync -- <path>       # or from another file, such as a release artifact
+npm run api:generate             # regenerates src/app/core/api/generated/
+```
+
+Commit the changed `api/openapi.json` together with the frontend changes it requires.
+
 ## Container
 
 ```sh

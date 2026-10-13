@@ -12,5 +12,37 @@
   "home": {
     "title": "Radio Atlantida",
     "intro": "This is the station management panel. Pages for the library, playlists, play rules, and settings will appear in the navigation as they are added."
+  },
+  "problems": {
+    "bad_request": "The request could not be read.",
+    "validation_failed": "Some fields are not valid. Check the highlighted fields.",
+    "not_found": "The requested item was not found.",
+    "method_not_allowed": "This action is not supported here.",
+    "body_too_large": "The data sent is too large.",
+    "unsupported_media_type": "The data was sent in a format the server does not accept.",
+    "not_acceptable": "The server cannot answer in the requested format.",
+    "internal_error": "The server had an internal error. The error is in the logs.",
+    "operation_not_found": "The operation was not found.",
+    "log_file_not_found": "The log file was not found.",
+    "setting_not_found": "The setting was not found.",
+    "setting_not_editable": "This setting cannot be changed in the panel.",
+    "playlist_type_not_found": "The playlist type was not found.",
+    "system_type_not_deletable": "A system playlist type cannot be deleted.",
+    "playlist_type_in_use": "The playlist type is in use and cannot be deleted.",
+    "playlist_not_found": "The playlist was not found.",
+    "playlist_in_use": "The playlist is used by clocks and cannot be deleted.",
+    "artist_not_found": "The artist was not found.",
+    "artist_in_use": "The artist is in use and cannot be deleted.",
+    "artist_has_history": "The artist has play history and cannot be deleted.",
+    "track_not_found": "The track was not found.",
+    "track_in_use": "The track is in use and cannot be deleted.",
+    "track_has_history": "The track has play history and cannot be deleted.",
+    "track_file_not_found": "The audio file of the track was not found.",
+    "play_rule_not_found": "The play rule was not found.",
+    "play_rule_in_use": "The play rule is in use and cannot be deleted.",
+    "separation_rule_not_found": "The separation rule was not found.",
+    "network_error": "The server cannot be reached. Check that the backend is running.",
+    "timeout": "The server did not answer in time. Try again.",
+    "unexpected_response": "The server sent an unexpected answer. Try again in a moment."
   }
 }
