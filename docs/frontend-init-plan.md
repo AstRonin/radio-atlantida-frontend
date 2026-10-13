@@ -184,7 +184,7 @@ Tasks:
 
 Tasks:
 
-1. `scripts/sync-api.mjs` and `npm run api:sync`: copies the backend specification into `api/openapi.json` for the chosen release tag. The source is the backend release artifact, or a local backend checkout during development (see 9.2). The file is committed, so the frontend build is reproducible without network access to the backend.
+1. `scripts/sync-api.mjs` and `npm run api:sync`: copies the backend specification into `api/openapi.json` for the chosen release tag. The source is the backend release artifact, or a local backend checkout during development: by default `../radio-atlantida-backend/api/openapi.json` (see 9.2). The file is committed, so the frontend build is reproducible without network access to the backend.
 2. `npm run api:generate`: generates TypeScript types from `api/openapi.json` into `src/app/core/api/generated/` with `openapi-typescript`. The generated folder is git-ignored and is produced by `prebuild` and `pretest` hooks, so `npm run build` and `npm run test` always start from fresh types. No runtime client is generated (see 9.2).
 3. A typed request helper in `core/api`, built on `HttpClient` (no `openapi-fetch`, see 9.2):
    - a base URL of `/api` (relative);
@@ -299,7 +299,9 @@ Tasks:
 ### 9.2 API client generation and the specification snapshot
 
 - **Generator — DECIDED.** **openapi-typescript** generates the types only. Requests are made with Angular `HttpClient` through the typed helper (F2). **openapi-fetch** is not used for requests. A runtime client library may be added only for a case that `HttpClient` cannot cover, and only after the decision is recorded in this section.
-- **Specification source — DEFAULT.** The frontend commits a snapshot `api/openapi.json` for the release tag it targets. `npm run api:sync` copies it from the backend's release artifact (or from a local backend checkout when developing). The build then never needs network access to the backend, and the frontend and backend tags always match (design §6.4, §9.2).
+- **Specification source — DEFAULT.** The frontend commits a snapshot `api/openapi.json` for the release tag it targets. `npm run api:sync` copies it from the backend's release artifact or from a local backend checkout. During development the local checkout is the default: `../radio-atlantida-backend/api/openapi.json` (a sibling folder of this repository). Another path can be given as an argument: `npm run api:sync -- <path-to-openapi.json>`. The build then never needs network access to the backend, and the frontend and backend tags always match (design §6.4, §9.2).
+- **Backend side — DECIDED.** The backend generates the specification from its code with `make openapi` (the `backend openapi` command). The file is git-ignored in the backend and is never edited by hand. The backend CI job `openapi` validates it with Redocly and uploads it as the artifact `openapi`. Before syncing, run `make openapi` in the backend, or `make openapi-lint` to also validate it. The stable error codes (9.6, item 4) are enum values in the same document.
+- **Update workflow — DECIDED.** After a DTO or endpoint change in the backend: run `make openapi` in the backend; in the frontend run `npm run api:sync`, then `npm run api:generate`; commit the changed `api/openapi.json` together with the frontend change that uses it. The Angular build then shows every place that must change.
 - **Generated code is not committed.** It is produced from the snapshot before `build` and `test`. Git-ignored under `src/app/core/api/generated/`.
 
 ### 9.3 Help content and language
@@ -322,7 +324,7 @@ Tasks:
 2. **Event payloads.** The WebSocket event schemas are part of the backend's OpenAPI document (design §6.5). If a schema is missing when Phase F3 starts, stop and ask the backend side. The frontend does not invent payloads.
 3. **Filler dialog timing.** The blocking filler dialog is built in Phase F4 and wired in the clock phase. If the clock phase starts before the backend's `save-with-filler` endpoint exists, stop and ask.
 
-4. **Stable error codes — ASK.** Problem responses should carry a stable `code` (for example `playlist_type_in_use`), in addition to the English `title` and `detail`. The panel uses the code to show the message in the active language (1.3). Not yet in the backend plan: it belongs in Phase 3, task 2 (error format). Confirm with the backend side before Phase F2.
+4. **Stable error codes — DECIDED.** Problem responses carry a stable `code` (for example `playlist_type_in_use`), in addition to the English `title` and `detail`. The panel uses the code to show the message in the active language (1.3). The backend implements this in `internal/httpapi/errcodes` and publishes the codes as an enum in `api/openapi.json`. Codes are never renamed once released.
 
 ## 10. Prompt for the first Claude Code session
 
