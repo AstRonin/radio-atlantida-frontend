@@ -27,7 +27,7 @@ import { applySubmitError } from '../../shared/forms/server-errors';
 import { PlaylistPickerComponent } from '../../shared/pickers/playlist-picker.component';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
-import { FileSizePipe } from './file-size.pipe';
+import { FileSizePipe } from '../../shared/ui/file-size.pipe';
 
 type InboxFile = ApiSchema<'InboxFile'>;
 

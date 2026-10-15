@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, Signal, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../i18n/translate.pipe';
+import { logLink } from '../logs/log-files';
 import { StationTimePipe } from '../time/station-time.pipe';
 import type { Alert } from './alerts.service';
 
@@ -15,7 +17,7 @@ export interface ErrorAlertDialogData {
  */
 @Component({
   selector: 'app-error-alert-dialog',
-  imports: [MatButtonModule, MatDialogModule, TranslatePipe, StationTimePipe],
+  imports: [MatButtonModule, MatDialogModule, RouterLink, TranslatePipe, StationTimePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title>
@@ -45,6 +47,9 @@ export interface ErrorAlertDialogData {
                 {{ 'alerts.dialog.requestId' | translate: { id: alert.requestId } }}
               </p>
             }
+            <a class="log-link" routerLink="/logs" [queryParams]="logLink(alert)" mat-dialog-close>
+              {{ 'alerts.dialog.openLog' | translate }}
+            </a>
           </li>
         }
       </ul>
@@ -85,8 +90,13 @@ export interface ErrorAlertDialogData {
       color: var(--mat-sys-error);
       overflow-wrap: anywhere;
     }
+
+    .log-link {
+      font: var(--mat-sys-body-small);
+    }
   `,
 })
 export class ErrorAlertDialogComponent {
   protected readonly alerts = inject<ErrorAlertDialogData>(MAT_DIALOG_DATA).alerts;
+  protected readonly logLink = logLink;
 }

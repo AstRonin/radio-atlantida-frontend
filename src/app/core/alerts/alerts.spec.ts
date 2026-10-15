@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ApplicationRef, Component, ErrorHandler, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { ApiProblem } from '../api/api-problem';
 import { FakeSocketServer } from '../realtime/fake-socket.testing';
 import type { RealtimeEventOf } from '../realtime/realtime-events';
@@ -62,6 +63,7 @@ describe('alerts', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         server.provider,
         { provide: ErrorHandler, useClass: GlobalErrorHandler },
       ],
@@ -103,6 +105,16 @@ describe('alerts', () => {
       expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
     });
 
+    it('links each alert to its entry in the log of its UTC day', () => {
+      server.latest.send(alert('icecast connection lost'));
+      dialogText();
+      const link = document.querySelector<HTMLAnchorElement>('app-error-alert-dialog a.log-link');
+      expect(link?.textContent?.trim()).toBe('alerts.dialog.openLog');
+      expect(link?.getAttribute('href')).toBe(
+        '/logs?file=app-2026-10-15.log&component=icecast&request=r-1',
+      );
+    });
+
     it('collects a burst of alerts in one dialog, newest first', () => {
       server.latest.send(alert('first'));
       server.latest.send(alert('second'));
@@ -114,7 +126,7 @@ describe('alerts', () => {
     it('clears the list when the dialog is closed', async () => {
       server.latest.send(alert('first'));
       dialogText();
-      document.querySelector<HTMLButtonElement>('[mat-dialog-close]')?.click();
+      document.querySelector<HTMLButtonElement>('button[mat-dialog-close]')?.click();
       TestBed.inject(ApplicationRef).tick();
       await vi.waitFor(() => expect(alerts.alerts()).toEqual([]));
     });

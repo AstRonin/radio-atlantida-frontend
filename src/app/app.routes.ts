@@ -82,6 +82,11 @@ export const routes: Routes = [
     data: nav('nav.missedItems'),
   },
   {
+    path: 'logs',
+    loadChildren: () => import('./features/logs/logs.routes'),
+    data: nav('nav.logs'),
+  },
+  {
     path: 'settings',
     loadChildren: () => import('./features/settings/settings.routes'),
     data: nav('nav.settings'),

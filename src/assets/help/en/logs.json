@@ -19,12 +19,13 @@
       "text": "Links an error popup in the panel to its entry in the log."
     }
   ],
-  "usage": "Choose a day, then filter by level and component. Times are converted to the station timezone. Errors also appear as popups when they happen, so you rarely need to search.",
+  "usage": "Choose a day, then filter by level and component. File dates are UTC; times are converted to the station timezone. Errors also appear as popups when they happen, and each popup has an Open log link to its entry.",
   "steps": [
     "Choose the log file of the day.",
     "Set the level to WARN to see only problems.",
     "Filter by component, for example icecast for stream problems.",
-    "Use the request ID from an error popup to find its entry."
+    "From an error popup, use Open log: the page opens that day's file and marks the entry with the popup's request ID.",
+    "Press Refresh to read new entries; the page does not update by itself."
   ],
   "mistakes": [
     "Looking in the wrong day's file near midnight: file dates are UTC, not station time.",
@@ -36,6 +37,10 @@
   },
   "operations": {},
   "fields": {
+    "file": {
+      "label": "Log file",
+      "text": "One file per UTC day, newest first, with its size."
+    },
     "level": {
       "label": "Level",
       "text": "Minimum level: WARN shows warnings and errors."

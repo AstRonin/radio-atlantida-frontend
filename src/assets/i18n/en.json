@@ -85,7 +85,8 @@
     "dialog": {
       "title": "Errors ({count})",
       "component": "Component: {component}",
-      "requestId": "Request ID: {id}"
+      "requestId": "Request ID: {id}",
+      "openLog": "Open log"
     },
     "outage": {
       "title": "Broadcast interrupted.",
@@ -420,6 +421,7 @@
     "fillerReminders": "Filler reminders",
     "playedTracks": "Played tracks",
     "missedItems": "Missed items",
+    "logs": "Logs",
     "settings": "Settings"
   },
   "playlistTypes": {
@@ -1098,5 +1100,36 @@
       "start": "Analyse tracks not analysed yet",
       "running": "Analysing…"
     }
+  },
+  "logs": {
+    "title": "Logs",
+    "filters": "Log file and filters",
+    "note": "Files are named by their UTC date. Times are shown in the station timezone ({zone}).",
+    "noFiles": "No log files yet.",
+    "fileOption": "{date} (UTC)",
+    "refresh": "Refresh",
+    "fields": {
+      "file": "Log file",
+      "level": "Level",
+      "component": "Component"
+    },
+    "levels": {
+      "DEBUG": "DEBUG and above",
+      "INFO": "INFO and above",
+      "WARN": "WARN and ERROR",
+      "ERROR": "ERROR only"
+    },
+    "entries": "Entries",
+    "shown": "{shown} of {total}",
+    "columns": {
+      "time": "Time",
+      "level": "Level",
+      "component": "Component",
+      "message": "Message"
+    },
+    "requestId": "Request ID: {id}",
+    "requested": "From the error popup",
+    "empty": "No entries match the filters.",
+    "offsetLimit": "Older entries of this file cannot be read here. Narrow the filters to see them."
   }
 }
