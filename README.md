@@ -45,6 +45,22 @@ docker run --rm -p 8080:8080 radio-atlantida-frontend
 The image serves the panel on port 8080 and proxies `/api` (including the `/api/ws` WebSocket) to the
 `backend` service on the Docker Compose network.
 
+## Releasing
+
+A tag `vX.Y.Z` on `main` runs the full CI, then pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z`
+and creates the GitHub release `vX.Y.Z` (`.github/workflows/release.yml`, `docs/f12-release-plan.md`).
+Both application images share one version, so the backend release `vX.Y.Z` comes first:
+
+```sh
+gh release download vX.Y.Z --repo AstRonin/radio-atlantida-backend --pattern openapi.json
+npm run api:sync -- openapi.json   # api/openapi.json now says "version": "X.Y.Z"
+# fix what the compiler shows, merge to main, then:
+git tag vX.Y.Z && git push origin vX.Y.Z
+```
+
+The workflow refuses a tag that is not `vX.Y.Z`, a commit not on `main`, a snapshot of another API
+version, and an image tag that already exists.
+
 ## Languages
 
 UI texts live in `src/assets/i18n/<lang>.json`. To add a language, copy `en.json` to `<code>.json`,
