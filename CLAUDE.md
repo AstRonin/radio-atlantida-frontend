@@ -35,7 +35,8 @@ streams it, and PostgreSQL stores the data.
 3. `docs/frontend-init-plan.md`: the task list of F1 to F5. Later phases have their own plan in
    `docs/` (F6: `docs/f6-clocks-grid-plan.md`, F7: `docs/f7-rotation-views-plan.md`, F8:
    `docs/f8-live-control-plan.md`, F9: `docs/f9-outages-missed-plan.md`, F10:
-   `docs/f10-import-plan.md`, F11: `docs/f11-logs-plan.md`, F12: `docs/f12-release-plan.md`). Work only on the current phase.
+   `docs/f10-import-plan.md`, F11: `docs/f11-logs-plan.md`, F12: `docs/f12-release-plan.md`,
+   F13: `docs/f13-grafana-link-plan.md`). Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
@@ -48,10 +49,12 @@ live voice over WebRTC, music gain, on-air status, `docs/f8-live-control-plan.md
 the header, `docs/f9-outages-missed-plan.md`), F10 (import, analysis, and transcoding: inbox
 and import page, quality facts and issues, Analyse / Fix loudness / Optimize track for selected
 tracks, `docs/f10-import-plan.md`), F11 (logs: daily file, level and component filters,
-station-time entries, "Open log" from the error popup, `docs/f11-logs-plan.md`), and F12 (release
+station-time entries, "Open log" from the error popup, `docs/f11-logs-plan.md`), F12 (release
 pipeline: a tag `vX.Y.Z` on `main` pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z` after
 the full CI, only when `api/openapi.json` is the backend release of the same version,
-`docs/f12-release-plan.md`) done. A page follows an operation it started (progress,
+`docs/f12-release-plan.md`), and F13 (Grafana link: "Monitoring" in the navigation and "Search in
+Grafana" on the Logs page, from the container's `GRAFANA_URL` served as `/config.json` and read by
+`RuntimeConfigService` (`core/config`), `docs/f13-grafana-link-plan.md`) done. A page follows an operation it started (progress,
 summary) with `followOperation()` (`core/operations`) and `app-operation-status` (`shared/ui`). The live
 session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
 browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The
@@ -139,10 +142,12 @@ initialization plan ends with F5; later phases have their own plans.
 .github/workflows/release.yml  tag vX.Y.Z -> CI -> image ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z
 api/openapi.json             backend specification snapshot (committed, never edited by hand)
 docker/Dockerfile            Node build -> unprivileged nginx on port 8080
-docker/nginx.conf            static files, SPA fallback, /api and /api/ws proxy, security headers
+docker/default.conf.template nginx: static files, SPA fallback, /api and /api/ws proxy, security
+                             headers, /config.json from GRAFANA_URL (rendered at container start)
 docs/                        context documents (kept verbatim, not formatted by Prettier)
 scripts/sync-api.mjs         copies the backend specification into api/
-src/app/core/                app-wide services: api, realtime, operations, alerts (errors, open
+src/app/core/                app-wide services: api, config (runtime config.json), realtime,
+                             operations, alerts (errors, open
                              outage, open missed items), settings, time, logs (log file names,
                              levels, components, popup links),
                              player, help, catalog (lists for pickers), rotation (plan warnings,

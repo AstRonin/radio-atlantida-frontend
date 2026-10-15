@@ -45,6 +45,12 @@ docker run --rm -p 8080:8080 radio-atlantida-frontend
 The image serves the panel on port 8080 and proxies `/api` (including the `/api/ws` WebSocket) to the
 `backend` service on the Docker Compose network.
 
+`GRAFANA_URL` (for example `-e GRAFANA_URL=http://127.0.0.1:3000`) is the address of the station's
+Grafana. The panel then shows a "Monitoring" link and a "Search in Grafana" link on the Logs page.
+Empty or unset means monitoring is off and no link is shown. The image serves the value as
+`/config.json`. With `npm run dev` there is no such file; to try the links, create a git-ignored
+`public/config.json` containing `{"grafana_url":"http://127.0.0.1:3000"}`.
+
 ## Releasing
 
 A tag `vX.Y.Z` on `main` runs the full CI, then pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z`

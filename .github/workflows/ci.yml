@@ -57,12 +57,23 @@ jobs:
       - uses: actions/checkout@v5
       - name: Build image
         run: docker build -f docker/Dockerfile -t radio-atlantida-frontend:ci .
-      - name: Serve the shell
+      - name: Serve the shell and the runtime configuration
         run: |
-          docker run -d --name panel -p 8080:8080 radio-atlantida-frontend:ci
+          docker run -d --name panel -p 8080:8080 -e GRAFANA_URL=http://127.0.0.1:3000 \
+            radio-atlantida-frontend:ci
+          served=false
           for _ in $(seq 1 20); do
-            if curl -fsS -o /dev/null http://127.0.0.1:8080/; then exit 0; fi
+            if curl -fsS -o /dev/null http://127.0.0.1:8080/; then served=true; break; fi
             sleep 1
           done
-          docker logs panel
-          exit 1
+          if [ "$served" != true ]; then
+            docker logs panel
+            exit 1
+          fi
+          want='{"grafana_url":"http://127.0.0.1:3000"}'
+          got=$(curl -fsS http://127.0.0.1:8080/config.json)
+          if [ "$got" != "$want" ]; then
+            echo "/config.json is '$got', expected '$want'."
+            docker logs panel
+            exit 1
+          fi

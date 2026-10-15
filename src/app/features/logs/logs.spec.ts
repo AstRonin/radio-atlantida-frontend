@@ -4,6 +4,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
 import type { ApiSchema } from '../../core/api/api-types';
 import { apiProblemInterceptor } from '../../core/api/api.interceptors';
+import {
+  RUNTIME_CONFIG_PATH,
+  RuntimeConfigService,
+} from '../../core/config/runtime-config.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import LogsPageComponent from './logs-page.component';
 
@@ -232,5 +236,32 @@ describe('LogsPageComponent', () => {
     await settlePage();
 
     expect(rows(fixture)).toHaveLength(1);
+  });
+
+  const grafanaLink = (fixture: ComponentFixture<unknown>) =>
+    [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>('a')].find(
+      (link) => link.textContent?.includes('logs.openGrafana'),
+    );
+
+  it('links to the Logs dashboard of Grafana when monitoring is on', async () => {
+    const config = TestBed.inject(RuntimeConfigService);
+    config.load();
+    http.expectOne(RUNTIME_CONFIG_PATH).flush({ grafana_url: 'http://127.0.0.1:3000' });
+    const fixture = await open();
+    expectFiles([]);
+    await settlePage();
+
+    const link = grafanaLink(fixture);
+    expect(link?.getAttribute('href')).toBe('http://127.0.0.1:3000/d/radio-logs');
+    expect(link?.target).toBe('_blank');
+    expect(link?.rel).toBe('noopener noreferrer');
+  });
+
+  it('shows no Grafana link when monitoring is off', async () => {
+    const fixture = await open();
+    expectFiles([]);
+    await settlePage();
+
+    expect(grafanaLink(fixture)).toBeUndefined();
   });
 });

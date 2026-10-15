@@ -14,14 +14,16 @@
     "all": "All",
     "yes": "Yes",
     "no": "No",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "opensInNewTab": "(opens in a new tab)"
   },
   "shell": {
     "stationName": "Radio Atlantida",
     "navigation": "Main navigation",
     "toggleNavigation": "Show or hide navigation",
     "noPages": "No pages are available yet.",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "monitoring": "Monitoring (Grafana)"
   },
   "language": {
     "label": "Language"
@@ -1130,6 +1132,7 @@
     "requestId": "Request ID: {id}",
     "requested": "From the error popup",
     "empty": "No entries match the filters.",
-    "offsetLimit": "Older entries of this file cannot be read here. Narrow the filters to see them."
+    "offsetLimit": "Older entries of this file cannot be read here. Narrow the filters to see them.",
+    "openGrafana": "Search in Grafana"
   }
 }

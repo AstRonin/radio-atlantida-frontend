@@ -17,6 +17,10 @@
     {
       "term": "Request ID",
       "text": "Links an error popup in the panel to its entry in the log."
+    },
+    {
+      "term": "Grafana",
+      "text": "The station's monitoring tool, when it is switched on. Its Logs dashboard searches the text of the log and the playout journal across several days and shows errors per component over time. It asks for its own login."
     }
   ],
   "usage": "Choose a day, then filter by level and component. File dates are UTC; times are converted to the station timezone. Errors also appear as popups when they happen, and each popup has an Open log link to its entry.",
@@ -25,7 +29,8 @@
     "Set the level to WARN to see only problems.",
     "Filter by component, for example icecast for stream problems.",
     "From an error popup, use Open log: the page opens that day's file and marks the entry with the popup's request ID.",
-    "Press Refresh to read new entries; the page does not update by itself."
+    "Press Refresh to read new entries; the page does not update by itself.",
+    "For text search or several days at once, use Search in Grafana (shown only when monitoring is on). It opens in a new tab."
   ],
   "mistakes": [
     "Looking in the wrong day's file near midnight: file dates are UTC, not station time.",

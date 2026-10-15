@@ -18,6 +18,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { Subject, catchError, map, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import { ApiProblem } from '../../core/api/api-problem';
+import {
+  GRAFANA_LOGS_DASHBOARD,
+  RuntimeConfigService,
+} from '../../core/config/runtime-config.service';
 import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
@@ -83,7 +87,19 @@ interface LogRow {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="logs.title" helpPage="help.logs" />
+    <app-page-header title="logs.title" helpPage="help.logs">
+      @if (grafanaUrl(); as grafana) {
+        <a
+          matButton="outlined"
+          [href]="grafana + grafanaLogs"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {{ 'logs.openGrafana' | translate }} <span aria-hidden="true">↗</span>
+          <span class="cdk-visually-hidden">{{ 'common.opensInNewTab' | translate }}</span>
+        </a>
+      }
+    </app-page-header>
 
     <section class="page-section" aria-labelledby="filters-heading">
       <h2 id="filters-heading" class="section-title">{{ 'logs.filters' | translate }}</h2>
@@ -286,6 +302,8 @@ export default class LogsPageComponent implements OnInit {
   readonly request = input<string>();
 
   protected readonly zone = inject(StationTimeService).zone;
+  protected readonly grafanaUrl = inject(RuntimeConfigService).grafanaUrl;
+  protected readonly grafanaLogs = GRAFANA_LOGS_DASHBOARD;
   protected readonly levels = LOG_LEVELS;
   protected readonly components = LOG_COMPONENTS;
 

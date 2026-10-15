@@ -18,6 +18,8 @@ yarn-error.log*
 
 # Environment files
 /.env
+# Local runtime configuration for the dev server (docs/f13-grafana-link-plan.md)
+/public/config.json
 
 # Test output
 /coverage/

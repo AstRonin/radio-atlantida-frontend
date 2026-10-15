@@ -16,6 +16,7 @@ import { AlertsService } from './core/alerts/alerts.service';
 import { GlobalErrorHandler } from './core/alerts/global-error-handler';
 import { OutageService } from './core/alerts/outage.service';
 import { apiProblemInterceptor, apiTimeoutInterceptor } from './core/api/api.interceptors';
+import { RuntimeConfigService } from './core/config/runtime-config.service';
 import { provideI18n } from './core/i18n/i18n.providers';
 import { OperationsService } from './core/operations/operations.service';
 import { LiveVoiceService } from './core/live/live-voice.service';
@@ -48,6 +49,7 @@ export const appConfig: ApplicationConfig = {
       inject(FillerRemindersService);
       inject(LiveVoiceService);
       inject(SettingsService).load();
+      inject(RuntimeConfigService).load();
       inject(RealtimeService).connect();
     }),
   ],

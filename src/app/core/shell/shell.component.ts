@@ -2,6 +2,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -11,6 +12,7 @@ import { HelpPanelComponent } from '../../shared/ui/help-panel.component';
 import { MissedItemsService } from '../alerts/missed-items.service';
 import { OutageBannerComponent } from '../alerts/outage-banner.component';
 import { OutageService } from '../alerts/outage.service';
+import { RuntimeConfigService } from '../config/runtime-config.service';
 import { HelpService } from '../help/help.service';
 import { LanguageSwitchComponent } from '../i18n/language-switch.component';
 import { LiveIndicatorComponent } from '../live/live-indicator.component';
@@ -29,6 +31,7 @@ const NARROW_QUERY = '(max-width: 959.98px)';
   selector: 'app-shell',
   imports: [
     MatButtonModule,
+    MatDividerModule,
     MatListModule,
     MatSidenavModule,
     MatToolbarModule,
@@ -62,4 +65,5 @@ export class ShellComponent {
   protected readonly help = inject(HelpService);
   protected readonly pendingReminders = inject(FillerRemindersService).pending;
   protected readonly openMissedItems = inject(MissedItemsService).open;
+  protected readonly grafanaUrl = inject(RuntimeConfigService).grafanaUrl;
 }
