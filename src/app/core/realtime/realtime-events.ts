@@ -36,6 +36,7 @@ const EVENT_TYPES: Readonly<Record<RealtimeEventType, true>> = {
   'liquidsoap.state': true,
   'live.state': true,
   'playout.now_playing': true,
+  'playout.track_ended': true,
   'track_plan.warning': true,
   'filler_request.created': true,
   'retention.completed': true,

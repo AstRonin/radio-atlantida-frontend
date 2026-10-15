@@ -36,7 +36,8 @@ streams it, and PostgreSQL stores the data.
    `docs/` (F6: `docs/f6-clocks-grid-plan.md`, F7: `docs/f7-rotation-views-plan.md`, F8:
    `docs/f8-live-control-plan.md`, F9: `docs/f9-outages-missed-plan.md`, F10:
    `docs/f10-import-plan.md`, F11: `docs/f11-logs-plan.md`, F12: `docs/f12-release-plan.md`,
-   F13: `docs/f13-grafana-link-plan.md`, F14: `docs/f14-broadcast-status-plan.md`). Work only on
+   F13: `docs/f13-grafana-link-plan.md`, F14: `docs/f14-broadcast-status-plan.md`, F15:
+   `docs/f15-air-window-plan.md`). Work only on
    the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
@@ -55,10 +56,13 @@ pipeline: a tag `vX.Y.Z` on `main` pushes `ghcr.io/astronin/radio-atlantida-fron
 the full CI, only when `api/openapi.json` is the backend release of the same version,
 `docs/f12-release-plan.md`), F13 (Grafana link: "Monitoring" in the navigation and "Search in
 Grafana" on the Logs page, from the container's `GRAFANA_URL` served as `/config.json` and read by
-`RuntimeConfigService` (`core/config`), `docs/f13-grafana-link-plan.md`), and F14 (broadcast status
+`RuntimeConfigService` (`core/config`), `docs/f13-grafana-link-plan.md`), F14 (broadcast status
 in the header: state, timer on the server clock, tooltip, from `broadcast.state` and
 `GET /api/broadcast/status` in `BroadcastService` (`core/broadcast`),
-`docs/f14-broadcast-status-plan.md`) done. A page follows an operation it started (progress,
+`docs/f14-broadcast-status-plan.md`), and F15 (air window: played, on-air, and queued items from
+`GET /api/air-window` on the page `/air-window`, reloaded on playout, plan, and outage events
+without polling; the list is `app-air-window-list` (`shared/air-window`); settings group "Air
+window", `docs/f15-air-window-plan.md`) done. A page follows an operation it started (progress,
 summary) with `followOperation()` (`core/operations`) and `app-operation-status` (`shared/ui`). The live
 session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
 browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The
@@ -158,7 +162,7 @@ src/app/core/                app-wide services: api, config (runtime config.json
                              pending filler reminders), live (voice session, header mark),
                              broadcast (stream state and timer in the header), i18n,
                              shell, testing
-src/app/shared/              ui, forms, pickers (presentational only)
+src/app/shared/              ui, forms, pickers, air-window (presentational only)
 src/app/features/            one folder per domain, created when its phase starts
 src/app/app.routes.ts        lazy routes; a route with data.navLabel appears in the navigation
 src/app/app.config.ts        router, HttpClient with interceptors, error handler, translations

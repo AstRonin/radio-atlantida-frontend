@@ -135,6 +135,14 @@
       "label": "Pre-push",
       "text": "Minutes before an hour starts when its first items go to Liquidsoap. From then on the hour is frozen."
     },
+    "air.played_count": {
+      "label": "Played rows",
+      "text": "How many items that were due before the one on air the air window shows: aired, truncated, and not aired. 1 to 50."
+    },
+    "air.queued_count": {
+      "label": "Queued rows",
+      "text": "How many planned items after the one on air the air window shows. 0 to 50; 0 shows none."
+    },
     "rotation.grid_horizon_days": {
       "label": "Grid horizon",
       "text": "How many days ahead the grid can be edited. Up to 30."

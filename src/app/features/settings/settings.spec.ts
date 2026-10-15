@@ -62,6 +62,18 @@ const stationName = setting('station.name', {
   minimum: 1,
   maximum: 100,
 });
+const playedCount = setting('air.played_count', {
+  value: 10,
+  default: 10,
+  minimum: 1,
+  maximum: 50,
+});
+const queuedCount = setting('air.queued_count', {
+  value: 9,
+  default: 9,
+  minimum: 0,
+  maximum: 50,
+});
 const fallback = setting('filler.fallback', {
   type: 'object',
   value: { mode: 'random' },
@@ -122,6 +134,30 @@ describe('settings', () => {
       expect(description.valid).toBe(true);
     });
 
+    it('limits the rows of the air window like the backend', () => {
+      const played = settingControl(playedCount);
+      for (const value of [1, 50]) {
+        played.setValue(value);
+        expect(played.valid).toBe(true);
+      }
+      for (const value of [0, 51]) {
+        played.setValue(value);
+        expect(played.hasError('range')).toBe(true);
+      }
+
+      const queued = settingControl(queuedCount);
+      for (const value of [0, 50]) {
+        queued.setValue(value);
+        expect(queued.valid).toBe(true);
+      }
+      for (const value of [-1, 51]) {
+        queued.setValue(value);
+        expect(queued.hasError('range')).toBe(true);
+      }
+      queued.setValue(2.5);
+      expect(queued.hasError('step')).toBe(true);
+    });
+
     it('allows no emergency playlist, since the setting is nullable', () => {
       const control = settingControl(
         setting('playout.emergency_playlist_id', { nullable: true, value: null, minimum: 1 }),
@@ -177,7 +213,7 @@ describe('settings', () => {
       await settlePage();
       http
         .expectOne('/api/settings')
-        .flush({ items: [stationName, icecastHost, fadeOut, fallback] });
+        .flush({ items: [stationName, icecastHost, fadeOut, fallback, playedCount, queuedCount] });
       http.expectOne('/api/settings/secrets').flush({ items: SECRETS });
       await settlePage();
     });
@@ -213,6 +249,7 @@ describe('settings', () => {
         'settings.groups.stream',
         'settings.groups.liquidsoap',
         'settings.groups.filler',
+        'settings.groups.air',
       ]);
     });
 
@@ -302,6 +339,28 @@ describe('settings', () => {
         'liquidsoap.fade_out_ms: Validation failed',
       );
       expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
+    });
+
+    it('saves the rows of the air window', async () => {
+      const [played, queued] = [
+        ...(section('air')?.querySelectorAll<HTMLInputElement>('input') ?? []),
+      ];
+      type(played, '20');
+      type(queued, '0');
+      await settlePage();
+      button(page(), 'common.save')?.click();
+      await settlePage();
+
+      const playedPut = http.expectOne({ method: 'PUT', url: '/api/settings/air.played_count' });
+      expect(playedPut.request.body).toEqual({ value: 20 });
+      playedPut.flush({ ...playedCount, value: 20, is_default: false });
+      await settlePage();
+      const queuedPut = http.expectOne({ method: 'PUT', url: '/api/settings/air.queued_count' });
+      expect(queuedPut.request.body).toEqual({ value: 0 });
+      queuedPut.flush({ ...queuedCount, value: 0, is_default: false });
+      await settlePage();
+
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
     });
 
     it('keeps Save disabled while a value is invalid', async () => {

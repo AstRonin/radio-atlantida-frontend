@@ -24,6 +24,7 @@ export const GROUP_ORDER: readonly SettingGroup[] = [
   'outage',
   'retention',
   'playout',
+  'air',
   'import',
 ];
 
