@@ -16,6 +16,7 @@
   }
   <span class="station-name">{{ stationName() ?? ('shell.stationName' | translate) }}</span>
   <span class="spacer"></span>
+  <app-live-indicator />
   @if (pendingReminders(); as count) {
     <a matButton class="reminders" routerLink="/filler-reminders">
       {{ 'rotation.pendingReminders' | translate: { count } }}

@@ -4,6 +4,7 @@
  * at missing help.
  */
 export const HELP_PAGE_IDS = [
+  'help.live',
   'help.library',
   'help.playlists',
   'help.playlist-types',

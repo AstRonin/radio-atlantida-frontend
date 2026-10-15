@@ -12,6 +12,7 @@ import { OutageBannerComponent } from '../alerts/outage-banner.component';
 import { OutageService } from '../alerts/outage.service';
 import { HelpService } from '../help/help.service';
 import { LanguageSwitchComponent } from '../i18n/language-switch.component';
+import { LiveIndicatorComponent } from '../live/live-indicator.component';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { OperationsMenuComponent } from '../operations/operations-menu.component';
 import { PlayerBarComponent } from '../player/player-bar.component';
@@ -36,6 +37,7 @@ const NARROW_QUERY = '(max-width: 959.98px)';
     ConnectionStatusComponent,
     HelpPanelComponent,
     LanguageSwitchComponent,
+    LiveIndicatorComponent,
     OperationsMenuComponent,
     OutageBannerComponent,
     PlayerBarComponent,

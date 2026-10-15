@@ -12,6 +12,11 @@ export const routes: Routes = [
     loadComponent: () => import('./core/shell/home.component'),
   },
   {
+    path: 'live',
+    loadChildren: () => import('./features/live/live.routes'),
+    data: nav('nav.live'),
+  },
+  {
     path: 'library',
     loadChildren: () => import('./features/library/library.routes'),
     data: nav('nav.library'),

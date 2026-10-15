@@ -406,6 +406,7 @@
     "unexpected_response": "The server sent an unexpected answer. Try again in a moment."
   },
   "nav": {
+    "live": "Live",
     "library": "Library",
     "artists": "Artists",
     "playlists": "Playlists",
@@ -827,5 +828,78 @@
     "save": "Use this track",
     "answered": "The answer is saved; the hour of “{clock}” is rebuilt.",
     "empty": "No reminders here."
+  },
+  "live": {
+    "title": "Live",
+    "states": {
+      "off": "Off air",
+      "connecting": "Connecting",
+      "on_air": "On air",
+      "reconnecting": "Reconnecting"
+    },
+    "reasons": {
+      "stopped": "The live session was stopped.",
+      "replaced": "Another panel took over the live session.",
+      "no_audio": "The live session ended: no audio reached the station.",
+      "dropout": "The live session ended: the audio connection was lost.",
+      "shutdown": "The live session ended because the backend stopped."
+    },
+    "voice": {
+      "title": "Live voice",
+      "insecure": "The browser offers the microphone only when the panel is opened on localhost or over HTTPS. Open it that way to go live.",
+      "onAirSince": "since {time}",
+      "otherPanel": "Started from another panel.",
+      "input": "Microphone",
+      "inputNumber": "Microphone {number}",
+      "testMicrophone": "Test microphone",
+      "closeMicrophone": "Close microphone",
+      "level": "Level",
+      "clipping": "Clipping",
+      "note": "Testing the microphone sends nothing to the air.",
+      "goOnAir": "Go on air",
+      "stop": "Stop live",
+      "ducking": "While you are live, the music is lowered automatically to the ducking level set in"
+    },
+    "takeover": {
+      "title": "Take over the live session?",
+      "message": "A live session is already running, from another panel or from this one before a reload. Taking over ends it and puts this microphone on air.",
+      "confirm": "Take over"
+    },
+    "errors": {
+      "denied": "The browser was not allowed to use the microphone. Allow it in the site settings and try again.",
+      "noInput": "No microphone was found.",
+      "busy": "The microphone is in use by another program.",
+      "microphone": "The microphone could not be opened.",
+      "inputLost": "The microphone was disconnected. Choose it again or another one.",
+      "connection": "The live connection could not be set up."
+    },
+    "gain": {
+      "title": "Music gain",
+      "label": "Music gain",
+      "note": "Applies at once and stays until it is changed or the backend restarts; then the gain from the settings applies.",
+      "unknown": "The current gain is not known yet: the playout engine has not connected.",
+      "presets": {
+        "normal": "Normal",
+        "underVoice": "Under voice",
+        "off": "Music off"
+      }
+    },
+    "onAir": {
+      "title": "On air",
+      "controlLink": "Control link",
+      "output": "Stream output",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "unknown": "Not reported yet",
+      "since": "since {time}",
+      "nowPlaying": "Now playing",
+      "nothing": "Nothing is reported as playing.",
+      "emergency": "Emergency playlist",
+      "truncated": "Cut with a fade",
+      "started": "Started {time}",
+      "progress": "Progress of the current track",
+      "queued": "Waiting in the playout engine",
+      "queueEmpty": "No tracks are waiting."
+    }
   }
 }

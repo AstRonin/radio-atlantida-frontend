@@ -1,0 +1,40 @@
+{
+  "title": "Live",
+  "summary": "The live page puts your voice on air from this browser, sets the music level, and shows what is playing now.",
+  "entities": [
+    {
+      "term": "Live session",
+      "text": "Your microphone, sent from this browser to the station. Only one session runs at a time. It keeps running while you open other pages; the mark in the header shows it."
+    },
+    {
+      "term": "Level meter",
+      "text": "How loud the microphone is. Speak so that it moves well into the bar; \"Clipping\" means you are too loud or too close."
+    },
+    {
+      "term": "Music gain",
+      "text": "The level of the music: normal, under voice, or off. While you are live, the music is lowered automatically by the ducking level in the settings."
+    },
+    {
+      "term": "Control link and output",
+      "text": "The control link is the backend's connection to the playout engine; the output is the stream's connection to the stream server. Both must be connected for listeners to hear the station."
+    }
+  ],
+  "usage": "Test the microphone first and watch the level. Go on air when ready, and stop when you are done. The music goes back to its normal level by itself.",
+  "steps": [
+    "Choose the microphone and press \"Test microphone\".",
+    "Speak and check the level meter.",
+    "Press \"Go on air\" and wait for the state \"On air\".",
+    "Press \"Stop\" when you are done."
+  ],
+  "mistakes": [
+    "Opening the panel on a network address over plain HTTP. Browsers give the microphone only on localhost or HTTPS.",
+    "Playing a track preview through the speakers while live. The microphone may pick it up.",
+    "Closing or reloading the tab while live. It ends the voice; the browser asks first."
+  ],
+  "example": {
+    "title": "A short announcement",
+    "text": "At 10:15 you want to announce a concert. Test the microphone, go on air, speak for a minute over the lowered music, and stop. The music comes back up within half a second."
+  },
+  "operations": {},
+  "fields": {}
+}

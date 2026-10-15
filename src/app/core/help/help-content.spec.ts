@@ -1,3 +1,4 @@
+import live from '../../../assets/help/en/live.json';
 import library from '../../../assets/help/en/library.json';
 import playlists from '../../../assets/help/en/playlists.json';
 import playlistTypes from '../../../assets/help/en/playlist-types.json';
@@ -16,6 +17,7 @@ import { HELP_PAGE_IDS, HelpPageId, helpFileName, isHelpContent } from './help-c
 // Typed by page ID: a page ID without an English help file is a compile error here, and a missing
 // file fails the import.
 const ENGLISH: Record<HelpPageId, unknown> = {
+  'help.live': live,
   'help.library': library,
   'help.playlists': playlists,
   'help.playlist-types': playlistTypes,

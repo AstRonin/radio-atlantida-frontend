@@ -33,16 +33,19 @@ streams it, and PostgreSQL stores the data.
 2. `docs/tech-design.md`: the technical design. **It is the authority.** §6 (API, help, validation,
    settings, track preview), §6.4 (client generation), and §10 (time and logging) matter most.
 3. `docs/frontend-init-plan.md`: the task list of F1 to F5. Later phases have their own plan in
-   `docs/` (F6: `docs/f6-clocks-grid-plan.md`, F7: `docs/f7-rotation-views-plan.md`). Work only on
-   the current phase.
+   `docs/` (F6: `docs/f6-clocks-grid-plan.md`, F7: `docs/f7-rotation-views-plan.md`, F8:
+   `docs/f8-live-control-plan.md`). Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
 Phase status: F1 (skeleton), F2 (API client and contract pipeline), F3 (realtime, operations,
 alerts, settings core), F4 (shared UI: help, validation, pickers, player), F5 (settings and
-library pages), F6 (clocks and grid, `docs/f6-clocks-grid-plan.md`), and F7 (rotation views: track
-plan, filler reminders, engine warnings, `docs/f7-rotation-views-plan.md`) done. The initialization
-plan ends with F5; later phases have their own plans.
+library pages), F6 (clocks and grid, `docs/f6-clocks-grid-plan.md`), F7 (rotation views: track
+plan, filler reminders, engine warnings, `docs/f7-rotation-views-plan.md`), and F8 (live control:
+live voice over WebRTC, music gain, on-air status, `docs/f8-live-control-plan.md`) done. The live
+session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
+browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The
+initialization plan ends with F5; later phases have their own plans.
 
 ## Ground rules
 
@@ -130,7 +133,8 @@ docs/                        context documents (kept verbatim, not formatted by 
 scripts/sync-api.mjs         copies the backend specification into api/
 src/app/core/                app-wide services: api, realtime, operations, alerts, settings, time,
                              player, help, catalog (lists for pickers), rotation (plan warnings,
-                             pending filler reminders), i18n, shell, testing
+                             pending filler reminders), live (voice session, header mark), i18n,
+                             shell, testing
 src/app/shared/              ui, forms, pickers (presentational only)
 src/app/features/            one folder per domain, created when its phase starts
 src/app/app.routes.ts        lazy routes; a route with data.navLabel appears in the navigation
