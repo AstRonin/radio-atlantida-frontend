@@ -6,6 +6,7 @@
 export const HELP_PAGE_IDS = [
   'help.live',
   'help.library',
+  'help.import',
   'help.playlists',
   'help.playlist-types',
   'help.clocks',

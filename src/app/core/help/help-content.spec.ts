@@ -1,5 +1,6 @@
 import live from '../../../assets/help/en/live.json';
 import library from '../../../assets/help/en/library.json';
+import importHelp from '../../../assets/help/en/import.json';
 import playlists from '../../../assets/help/en/playlists.json';
 import playlistTypes from '../../../assets/help/en/playlist-types.json';
 import clocks from '../../../assets/help/en/clocks.json';
@@ -19,6 +20,7 @@ import { HELP_PAGE_IDS, HelpPageId, helpFileName, isHelpContent } from './help-c
 const ENGLISH: Record<HelpPageId, unknown> = {
   'help.live': live,
   'help.library': library,
+  'help.import': importHelp,
   'help.playlists': playlists,
   'help.playlist-types': playlistTypes,
   'help.clocks': clocks,

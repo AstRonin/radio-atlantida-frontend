@@ -38,6 +38,8 @@ export function trackForm() {
       rangeValidator({ min: 1, max: TRACK_LIMITS.durationMaxMs, step: 1 }),
     ),
     quality_notes: new FormControl<string | null>('', Validators.maxLength(TRACK_LIMITS.notesMax)),
+    /** Overrides the analysis result until the next analysis; null keeps it unset. */
+    quality_ok: new FormControl<boolean | null>(null),
     playlist_ids: new FormControl<number[] | null>([]),
     rule_ids: new FormControl<number[] | null>([]),
   });
@@ -51,15 +53,16 @@ export function trackFormValue(track: Track): TrackForm['value'] {
     file_path: track.file_path,
     duration_ms: track.duration_ms ?? null,
     quality_notes: track.quality_notes,
+    quality_ok: track.quality_ok ?? null,
     playlist_ids: track.playlist_ids,
     rule_ids: track.play_rule_ids,
   };
 }
 
 /**
- * The request body. The update replaces every field, so the values this page does not edit yet
- * (format, bitrate, sample rate, and the quality flag; analysis is a later phase) are sent back
- * as stored. On create they are left out, and the backend reads them from the file.
+ * The request body. The update replaces every field, so the file facts this page does not edit
+ * (format, bitrate, sample rate; the analysis sets them) are sent back as stored, with the quality
+ * flag from the form. On create they are left out, and the backend reads them from the file.
  */
 export function trackBody(form: TrackForm, stored: Track | null): TrackBody {
   const value = form.getRawValue();
@@ -75,7 +78,7 @@ export function trackBody(form: TrackForm, stored: Track | null): TrackBody {
       format: stored.format ?? null,
       bitrate: stored.bitrate ?? null,
       sample_rate: stored.sample_rate ?? null,
-      quality_ok: stored.quality_ok ?? null,
+      quality_ok: value.quality_ok,
     }),
   };
 }

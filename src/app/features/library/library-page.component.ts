@@ -1,7 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -14,6 +24,7 @@ import {
   debounceTime,
   distinctUntilChanged,
   map,
+  merge,
   of,
   startWith,
   switchMap,
@@ -23,11 +34,15 @@ import { ApiClient } from '../../core/api/api-client.service';
 import { CatalogService, TrackQuery, catalogList } from '../../core/catalog/catalog.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { DurationPipe } from '../../core/time/duration.pipe';
 import { ConfirmService } from '../../shared/ui/confirm.service';
+import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 import type { Track } from './track-form';
+import { trackMedia } from './track-media';
+import { TrackMediaActionsComponent } from './track-media-actions.component';
 import { TrackQualityComponent } from './track-quality.component';
 
 export const LIBRARY_PAGE_SIZE = 100;
@@ -44,12 +59,13 @@ interface PageRequest {
 /**
  * The track library (docs/frontend-init-plan.md F5): search by title or artist, filters by
  * playlist, type, and quality, a play button on every row. Pages are read with the backend's
- * cursor, a hundred tracks at a time.
+ * cursor, a hundred tracks at a time. Selected tracks can be analysed again or fixed (F10).
  */
 @Component({
   selector: 'app-library-page',
   imports: [
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     MatProgressBarModule,
@@ -60,7 +76,9 @@ interface PageRequest {
     TranslatePipe,
     DurationPipe,
     PageHeaderComponent,
+    OperationStatusComponent,
     PlayButtonComponent,
+    TrackMediaActionsComponent,
     TrackQualityComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -105,6 +123,28 @@ interface PageRequest {
       </mat-form-field>
     </form>
 
+    @if (selectedTracks().length > 0 || media.run.state()) {
+      <section class="page-section selection" aria-labelledby="selection-heading">
+        <h2 id="selection-heading" class="section-title">
+          {{ 'library.media.selected' | translate: { count: selectedTracks().length } }}
+          @if (selectedTracks().length > 0) {
+            <button matButton type="button" (click)="clearSelection()">
+              {{ 'library.media.clearSelection' | translate }}
+            </button>
+          }
+        </h2>
+        <app-track-media-actions
+          [tracks]="selectedTracks()"
+          [running]="media.run.running()"
+          (request)="media.start($event)"
+        />
+        @if (media.error(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        <app-operation-status [state]="media.run.state()" runningLabel="library.media.running" />
+      </section>
+    }
+
     @if (loading()) {
       <mat-progress-bar mode="indeterminate" [attr.aria-label]="'common.loading' | translate" />
     }
@@ -117,6 +157,24 @@ interface PageRequest {
 
     <div class="table-scroll">
       <table mat-table [dataSource]="rows()">
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef>
+            <mat-checkbox
+              [checked]="allSelected()"
+              [indeterminate]="selectedTracks().length > 0 && !allSelected()"
+              [disabled]="rows().length === 0"
+              [aria-label]="'library.media.selectAll' | translate"
+              (change)="selectAll($event.checked)"
+            />
+          </th>
+          <td mat-cell *matCellDef="let track">
+            <mat-checkbox
+              [checked]="selected().has(track.id)"
+              [aria-label]="'library.media.select' | translate: { title: track.title }"
+              (change)="select(track, $event.checked)"
+            />
+          </td>
+        </ng-container>
         <ng-container matColumnDef="play">
           <th mat-header-cell *matHeaderCellDef>
             <span class="cdk-visually-hidden">{{ 'library.preview' | translate }}</span>
@@ -190,18 +248,31 @@ interface PageRequest {
     }
   `,
   styles: `
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 0 0 0.5rem;
+      font: var(--mat-sys-title-medium);
+    }
+
     .numeric {
       font-variant-numeric: tabular-nums;
     }
   `,
 })
-export default class LibraryPageComponent {
+export default class LibraryPageComponent implements OnInit {
   private readonly api = inject(ApiClient);
   private readonly confirm = inject(ConfirmService);
   private readonly i18n = inject(I18nService);
   private readonly catalog = inject(CatalogService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** Query parameter `quality`, as the import's "tracks with issues" link sets it. */
+  readonly quality = input<string>();
 
   protected readonly columns = [
+    'select',
     'play',
     'title',
     'artist',
@@ -226,6 +297,24 @@ export default class LibraryPageComponent {
   protected readonly nextCursor = signal<string | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
+
+  /**
+   * Selected tracks by ID, always a subset of the loaded rows: a reload keeps the ones it reads
+   * again, with their new fixes, and drops the rest; a filter change clears it.
+   */
+  protected readonly selected = signal<ReadonlyMap<number, Track>>(new Map());
+  protected readonly selectedTracks = computed(() => [...this.selected().values()]);
+  protected readonly allSelected = computed(
+    () => this.rows().length > 0 && this.rows().every((track) => this.selected().has(track.id)),
+  );
+
+  /** The tracks changed, so their rows and fixes are read again. */
+  protected readonly media = trackMedia((state) => {
+    if (state.status === 'completed') {
+      this.clearSelection();
+    }
+    this.reload();
+  });
 
   private readonly pages = new Subject<PageRequest>();
   private query: TrackQuery = { limit: LIBRARY_PAGE_SIZE };
@@ -253,7 +342,26 @@ export default class LibraryPageComponent {
         }
         this.rows.update((rows) => (request.cursor ? [...rows, ...page.items] : page.items));
         this.nextCursor.set(page.next_cursor ?? null);
+        this.refreshSelection();
       });
+
+    // Tracks imported, analysed, or fixed, here or elsewhere.
+    const realtime = inject(RealtimeService);
+    merge(
+      realtime.on('import.completed'),
+      realtime.on('analyse.completed'),
+      realtime.on('transcode.completed'),
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reload());
+  }
+
+  ngOnInit(): void {
+    // Router inputs are set before the first change detection, not in the constructor.
+    const quality = this.quality();
+    if (QUALITIES.includes(quality as Quality)) {
+      this.filters.controls.quality.setValue(quality as Quality, { emitEvent: false });
+    }
 
     // One debounce for every filter, so typing in the search reads one page after a pause.
     this.filters.valueChanges
@@ -268,12 +376,59 @@ export default class LibraryPageComponent {
           limit: LIBRARY_PAGE_SIZE,
         })),
         distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
-        takeUntilDestroyed(),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((query) => {
+        this.clearSelection();
         this.query = query;
         this.pages.next({ query });
       });
+  }
+
+  protected select(track: Track, checked: boolean): void {
+    this.selected.update((selected) => {
+      const next = new Map(selected);
+      if (checked) {
+        next.set(track.id, track);
+      } else {
+        next.delete(track.id);
+      }
+      return next;
+    });
+  }
+
+  protected selectAll(checked: boolean): void {
+    this.selected.update((selected) => {
+      const next = new Map(selected);
+      for (const track of this.rows()) {
+        if (checked) {
+          next.set(track.id, track);
+        } else {
+          next.delete(track.id);
+        }
+      }
+      return next;
+    });
+  }
+
+  private refreshSelection(): void {
+    if (this.selected().size === 0) {
+      return;
+    }
+    const rows = new Map(this.rows().map((track) => [track.id, track]));
+    this.selected.update(
+      (selected) =>
+        new Map(
+          [...selected.keys()].flatMap((id) => {
+            const track = rows.get(id);
+            return track ? [[id, track] as const] : [];
+          }),
+        ),
+    );
+  }
+
+  protected clearSelection(): void {
+    this.selected.set(new Map());
   }
 
   protected reload(): void {

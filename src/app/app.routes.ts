@@ -22,6 +22,11 @@ export const routes: Routes = [
     data: nav('nav.library'),
   },
   {
+    path: 'import',
+    loadChildren: () => import('./features/import/import.routes'),
+    data: nav('nav.import'),
+  },
+  {
     path: 'artists',
     loadChildren: () => import('./features/artists/artists.routes'),
     data: nav('nav.artists'),

@@ -1,6 +1,6 @@
 {
   "title": "Library",
-  "summary": "The library lists every track the station can play: songs, jingles, news, and segments. Here you add tracks, describe them, put them into playlists, and listen to them before they go to air.",
+  "summary": "The library lists every track the station can play: songs, jingles, news, and segments. Here you describe tracks, put them into playlists, listen to them before they go to air, and check and fix their sound quality.",
   "entities": [
     {
       "term": "Track",
@@ -19,6 +19,10 @@
       "text": "The result of the audio analysis: format, sample rate, channels, loudness, and peak compared with the broadcast standard in the settings."
     },
     {
+      "term": "Fix loudness and Optimize track",
+      "text": "Fix loudness brings the loudness to the station level and keeps the format. Optimize track also converts the file to the broadcast standard. A button appears only when it removes at least one issue. Choose whether the fixed file replaces the original or is kept as an optimal copy next to it."
+    },
+    {
       "term": "Play button",
       "text": "Plays the track in your browser only. A preview never goes to air and does not count as a play."
     },
@@ -27,25 +31,28 @@
       "text": "The performer of a track, kept on the Artists page. Artist separation counts plays per artist, so each artist has one entry with a unique name. Jingles and station IDs need no artist."
     }
   ],
-  "usage": "Search by title or artist, or filter by playlist, type, or quality. Open a track to edit its details, its playlists, and its play rules. Use the play button on any row to check what a track sounds like.",
+  "usage": "Search by title or artist, or filter by playlist, type, or quality. Open a track to edit its details, its playlists, and its play rules, and to see what the analysis measured. Select tracks with the checkboxes to analyse them again or fix them. Use the play button on any row to check what a track sounds like.",
   "steps": [
-    "Copy the audio file into the media folder on the station computer.",
-    "Click Add track and enter the title, the artist, the type, and the file path.",
+    "Bring new files in through the Import page, or copy a file into the media folder and click Add track.",
+    "For a track added by hand, enter the title, the artist, the type, and the file path.",
     "Choose the playlists the track belongs to.",
     "Add play rules if the track may only play at certain times (mostly jingles).",
-    "Press play to check that the file is the right one, then save."
+    "Filter by quality Issues, select the tracks, and use Fix loudness or Optimize track where offered.",
+    "Press play to check the result."
   ],
   "mistakes": [
     "Entering a full path such as C:\\media\\song.mp3 or /media/song.mp3. Enter only the part inside the media folder.",
     "Forgetting the duration of a track whose file cannot be read: a track without a duration is never planned.",
-    "Expecting the type to control rotation. Only playlists, clocks, and rules decide when a track plays."
+    "Expecting the type to control rotation. Only playlists, clocks, and rules decide when a track plays.",
+    "Choosing Replace the original when you may want the original back. Replace deletes it; an optimal copy keeps it on disk.",
+    "Expecting a fix for a low bitrate. Detail lost in the source cannot be restored; replace the file with a better one."
   ],
   "example": {
     "title": "Adding a morning jingle",
     "text": "The file jingles/good-morning.mp3 is in the media folder. Add a track titled \"Good morning\", type jingle, file path jingles/good-morning.mp3, playlist \"Jingles\", and the play rule \"Morning 06:00 to 10:00\". Press play to check it, then save. The jingle now fills jingle slots only in the morning."
   },
   "operations": {
-    "create": "The file must already be in the media folder. The panel does not upload files here; use the import for that.",
+    "create": "The file must already be in the media folder. The panel does not upload files; use the Import page for new files.",
     "edit": "Changing the playlists or rules affects only hours that are not planned yet or are rebuilt.",
     "delete": "A track that has aired or is planned cannot be deleted, so the played-tracks list stays complete. Remove it from its playlists instead."
   },
@@ -80,11 +87,19 @@
     },
     "quality_ok": {
       "label": "Quality OK",
-      "text": "Overrides the analysis result until the next analysis."
+      "text": "Your own decision that the track is good enough, or not. It overrides the analysis result until the next analysis."
     },
     "quality_notes": {
       "label": "Quality notes",
       "text": "Your own notes about the file, for example \"quiet intro\"."
+    },
+    "force": {
+      "label": "Decode again",
+      "text": "Off: a file that has not changed is only checked again against the current settings, which is quick. On: every file is decoded and measured again."
+    },
+    "output": {
+      "label": "Fixed file",
+      "text": "Optimal copy: the fixed file is written next to the original as name.optimal.ext and the track plays it; the original stays on disk. Replace: the fixed file takes the original's place and the original is deleted."
     }
   }
 }

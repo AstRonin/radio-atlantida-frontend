@@ -34,8 +34,8 @@ streams it, and PostgreSQL stores the data.
    settings, track preview), §6.4 (client generation), and §10 (time and logging) matter most.
 3. `docs/frontend-init-plan.md`: the task list of F1 to F5. Later phases have their own plan in
    `docs/` (F6: `docs/f6-clocks-grid-plan.md`, F7: `docs/f7-rotation-views-plan.md`, F8:
-   `docs/f8-live-control-plan.md`, F9: `docs/f9-outages-missed-plan.md`). Work only on the
-   current phase.
+   `docs/f8-live-control-plan.md`, F9: `docs/f9-outages-missed-plan.md`, F10:
+   `docs/f10-import-plan.md`). Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
@@ -43,9 +43,12 @@ Phase status: F1 (skeleton), F2 (API client and contract pipeline), F3 (realtime
 alerts, settings core), F4 (shared UI: help, validation, pickers, player), F5 (settings and
 library pages), F6 (clocks and grid, `docs/f6-clocks-grid-plan.md`), F7 (rotation views: track
 plan, filler reminders, engine warnings, `docs/f7-rotation-views-plan.md`), F8 (live control:
-live voice over WebRTC, music gain, on-air status, `docs/f8-live-control-plan.md`), and F9
+live voice over WebRTC, music gain, on-air status, `docs/f8-live-control-plan.md`), F9
 (outages and missed items: played-tracks list, outage list, reschedule and dismiss, open count in
-the header, `docs/f9-outages-missed-plan.md`) done. The live
+the header, `docs/f9-outages-missed-plan.md`), and F10 (import, analysis, and transcoding: inbox
+and import page, quality facts and issues, Analyse / Fix loudness / Optimize track for selected
+tracks, `docs/f10-import-plan.md`) done. A page follows an operation it started (progress,
+summary) with `followOperation()` (`core/operations`) and `app-operation-status` (`shared/ui`). The live
 session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
 browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The
 initialization plan ends with F5; later phases have their own plans.

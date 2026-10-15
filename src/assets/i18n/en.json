@@ -408,6 +408,7 @@
   "nav": {
     "live": "Live",
     "library": "Library",
+    "import": "Import",
     "artists": "Artists",
     "playlists": "Playlists",
     "playlistTypes": "Playlist types",
@@ -545,6 +546,15 @@
         "true_peak": "true peak",
         "low_bitrate": "low bitrate",
         "file_missing": "file missing"
+      },
+      "explain": {
+        "format": "the file format is not the broadcast format. Optimize track converts it.",
+        "sample_rate": "the sample rate is not the broadcast sample rate. Optimize track converts it.",
+        "channels": "the number of channels is not the broadcast standard. Optimize track converts it.",
+        "loudness": "the loudness is outside the tolerance around the station loudness. Fix loudness or Optimize track corrects it.",
+        "true_peak": "the peaks are above the allowed limit. Fix loudness or Optimize track corrects them.",
+        "low_bitrate": "the source was encoded below the minimum bitrate. A fix cannot restore lost detail; replace the source file.",
+        "file_missing": "the file is not in the media folder. Put it back or correct the file path."
       }
     },
     "edit": {
@@ -555,7 +565,47 @@
       "durationEmpty": "Left empty, the length is read from the file. A track without a length cannot be planned.",
       "file": "File",
       "kbps": "{kbps} kbps",
-      "hz": "{hz} Hz"
+      "hz": "{hz} Hz",
+      "qualityOverride": "Quality OK (your choice, until the next analysis)"
+    },
+    "analysis": {
+      "source_bitrate": "Source bitrate",
+      "channels": "Channels",
+      "loudness_lufs": "Loudness",
+      "true_peak_dbtp": "True peak",
+      "loudness_range_lu": "Loudness range",
+      "analyzed_at": "Analysed",
+      "lufs": "{value} LUFS",
+      "dbtp": "{value} dBTP",
+      "lu": "{value} LU"
+    },
+    "media": {
+      "title": "Analysis and fixes",
+      "selected": "Selected tracks: {count}",
+      "clearSelection": "Clear selection",
+      "selectAll": "Select every track on the page",
+      "select": "Select {title}",
+      "analyse": "Analyse",
+      "force": "Decode again",
+      "fixLoudness": "Fix loudness",
+      "fixLoudnessCount": "Fix loudness ({count})",
+      "optimize": "Optimize track",
+      "optimizeCount": "Optimize track ({count})",
+      "output": "Fixed file",
+      "outputs": {
+        "copy": "Optimal copy next to the original",
+        "replace": "Replace the original"
+      },
+      "tooMany": "At most {max} tracks at once. Select fewer.",
+      "lowBitrate": "Tracks with a low bitrate: {count}. No fix can restore it; replace the source file.",
+      "missing": "Tracks with a missing file: {count}. Put the file back or correct the path.",
+      "saveFirst": "Save or undo your changes first.",
+      "running": "Working on the files…",
+      "replaceDialog": {
+        "title": "Replace the original files?",
+        "message": "The fixed files replace the originals of {count} tracks. The originals are deleted from the media folder and cannot be restored.",
+        "confirm": "Replace"
+      }
     }
   },
   "playlists": {
@@ -1013,6 +1063,40 @@
       "progress": "Progress of the current track",
       "queued": "Waiting in the playout engine",
       "queueEmpty": "No tracks are waiting."
+    }
+  },
+  "operationStatus": {
+    "running": "Running…",
+    "completed": "Done.",
+    "failed": "Failed. The error message shows the reason."
+  },
+  "import": {
+    "title": "Import",
+    "refresh": "Refresh",
+    "inbox": {
+      "title": "Inbox",
+      "titleIn": "Inbox: {dir}",
+      "empty": "The inbox is empty. Copy audio files into the {dir} folder inside the media folder on the station computer, then press Refresh.",
+      "count": "Files waiting: {count}.",
+      "more": "The folder holds more files than are listed here.",
+      "path": "File",
+      "size": "Size",
+      "modified": "Modified"
+    },
+    "form": {
+      "title": "Import the inbox",
+      "intro": "Every file in the inbox becomes a track with this type and these playlists. Import songs and jingles as separate batches.",
+      "type_id": "Type",
+      "playlist_ids": "Playlists",
+      "start": "Import",
+      "running": "Importing…",
+      "showIssues": "Show tracks with quality issues"
+    },
+    "analyse": {
+      "title": "Analysis",
+      "intro": "Analyse the tracks that have never been analysed. To check other tracks again, for example after changing the broadcast standard in Settings, select them in the library and press Analyse.",
+      "start": "Analyse tracks not analysed yet",
+      "running": "Analysing…"
     }
   }
 }

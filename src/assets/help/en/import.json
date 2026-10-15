@@ -1,0 +1,57 @@
+{
+  "title": "Import",
+  "summary": "The import brings new audio files into the library without typing their details. You copy the files into the inbox folder on the station computer, and the import reads their tags, checks their sound against the broadcast standard, moves them into the library folder, and adds them as tracks.",
+  "entities": [
+    {
+      "term": "Inbox",
+      "text": "A folder inside the media folder (incoming by default, set in Settings under Import) where new files wait. Subfolders are allowed. Files are not uploaded through the panel: copy them into this folder on the station computer."
+    },
+    {
+      "term": "Batch",
+      "text": "One import takes every file in the inbox. All of them get the same type and the same playlists, so import songs and jingles as separate batches."
+    },
+    {
+      "term": "Title and artist",
+      "text": "Read from the file's tags. Without a title tag, the file name is used. An artist is found by name or added to the Artists page."
+    },
+    {
+      "term": "Analysis",
+      "text": "Every file is measured: format, bitrate, sample rate, channels, length, loudness, and true peak. The result is compared with the broadcast standard in the settings, and problems appear as quality issues in the library."
+    },
+    {
+      "term": "Duplicate",
+      "text": "A file whose content is already in the library. It is not imported again and stays in the inbox."
+    }
+  ],
+  "usage": "Check the list of waiting files, choose the type and playlists for the whole batch, and start the import. The progress shows how many files are done; when it finishes, the summary counts the imported, duplicate, unreadable, and skipped files. Files that were not imported stay in the inbox. Then open the tracks with issues in the library and fix them there.",
+  "steps": [
+    "Copy the new audio files into the inbox folder on the station computer.",
+    "Press Refresh and check that the list shows them.",
+    "Choose the type, for example music, and the playlists the tracks should join.",
+    "Press Import and wait for the summary.",
+    "Open the tracks with issues and use Fix loudness or Optimize track where offered."
+  ],
+  "mistakes": [
+    "Mixing songs and jingles in one batch: every file gets the same type and playlists. Import them one batch at a time.",
+    "Expecting a file that is still being copied to be imported. Wait until the copy has finished; temporary and hidden files are skipped.",
+    "Starting an import while an analysis or a fix runs. Only one of them runs at a time; wait until the other finishes.",
+    "Looking for a duplicate in the library under a new name: it was not imported because the same content is already there."
+  ],
+  "example": {
+    "title": "Importing new songs",
+    "text": "Ten MP3 files are copied into incoming/2026-10. The inbox lists them. Choose the type Music and the playlist \"Daytime pop\", then press Import. The summary says 9 imported and 1 duplicate. The duplicate stays in the inbox; the nine tracks are in the library and the playlist, and two of them are flagged as too loud."
+  },
+  "operations": {
+    "create": "An import adds tracks; it never changes or deletes existing ones. A file that fails stays in the inbox, and the summary says why."
+  },
+  "fields": {
+    "type_id": {
+      "label": "Type",
+      "text": "The type of every track in this batch, for example music or jingle."
+    },
+    "playlist_ids": {
+      "label": "Playlists",
+      "text": "Every imported track joins these playlists. Leave empty to add the tracks to playlists later."
+    }
+  }
+}

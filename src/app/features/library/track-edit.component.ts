@@ -13,13 +13,15 @@ import {
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, concatMap, map, of } from 'rxjs';
+import { Observable, concatMap, map, merge, of } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { formatDurationMs } from '../../core/time/duration';
 import { controlVersion } from '../../shared/forms/field-errors';
 import { NumberInputComponent } from '../../shared/forms/number-input.component';
@@ -30,20 +32,26 @@ import { PendingChanges, warnBeforeUnload } from '../../shared/forms/unsaved-cha
 import { ArtistSelectComponent } from '../../shared/pickers/artist-select.component';
 import { PlayRulePickerComponent } from '../../shared/pickers/play-rule-picker.component';
 import { PlaylistPickerComponent } from '../../shared/pickers/playlist-picker.component';
+import { FieldHintComponent } from '../../shared/ui/field-hint.component';
+import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 import { TRACK_LIMITS, Track, trackBody, trackForm, trackFormValue } from './track-form';
-import { TrackQualityComponent } from './track-quality.component';
+import { TrackAnalysisComponent } from './track-analysis.component';
+import { trackMedia } from './track-media';
+import { TrackMediaActionsComponent } from './track-media-actions.component';
 
 /**
  * Creates or edits a track: its metadata, its file path under the media root, its playlists, and
- * its play rules. The file is not uploaded here; it must already be in the media folder (the
- * import is a later phase). Format and quality are shown read-only.
+ * its play rules. The file is not uploaded here; it must already be in the media folder (new files
+ * come in through the import). A stored track shows its analysis and offers Analyse, Fix
+ * loudness, and Optimize track.
  */
 @Component({
   selector: 'app-track-edit',
   imports: [
     MatButtonModule,
+    MatCheckboxModule,
     MatProgressBarModule,
     ReactiveFormsModule,
     RouterLink,
@@ -56,7 +64,10 @@ import { TrackQualityComponent } from './track-quality.component';
     PlaylistPickerComponent,
     PlaylistTypeSelectComponent,
     TextInputComponent,
-    TrackQualityComponent,
+    FieldHintComponent,
+    OperationStatusComponent,
+    TrackAnalysisComponent,
+    TrackMediaActionsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -141,28 +152,24 @@ import { TrackQualityComponent } from './track-quality.component';
       @if (stored(); as track) {
         <section class="page-section" aria-labelledby="file-heading">
           <h2 id="file-heading" class="section-title">{{ 'library.edit.file' | translate }}</h2>
-          <dl class="facts">
-            <dt>{{ 'library.fields.format' | translate }}</dt>
-            <dd>{{ track.format ?? '–' }}</dd>
-            <dt>{{ 'library.fields.bitrate' | translate }}</dt>
-            <dd>
-              @if (track.bitrate) {
-                {{ 'library.edit.kbps' | translate: { kbps: kbps(track.bitrate) } }}
-              } @else {
-                –
-              }
-            </dd>
-            <dt>{{ 'library.fields.sample_rate' | translate }}</dt>
-            <dd>
-              @if (track.sample_rate) {
-                {{ 'library.edit.hz' | translate: { hz: track.sample_rate } }}
-              } @else {
-                –
-              }
-            </dd>
-            <dt>{{ 'library.fields.quality_ok' | translate }}</dt>
-            <dd><app-track-quality [track]="track" [detailed]="true" /></dd>
-          </dl>
+          <app-track-analysis [track]="track" />
+          <div class="quality-ok">
+            <mat-checkbox [formControl]="form.controls.quality_ok">{{
+              'library.edit.qualityOverride' | translate
+            }}</mat-checkbox>
+            <app-field-hint page="help.library" field="quality_ok" />
+          </div>
+          <app-track-media-actions
+            [tracks]="[track]"
+            [counts]="false"
+            [running]="media.run.running()"
+            [disabledReason]="dirty() ? 'library.media.saveFirst' : null"
+            (request)="media.start($event)"
+          />
+          @if (media.error(); as message) {
+            <p class="form-error" role="alert">{{ message }}</p>
+          }
+          <app-operation-status [state]="media.run.state()" runningLabel="library.media.running" />
         </section>
       }
       <app-text-input
@@ -196,19 +203,10 @@ import { TrackQualityComponent } from './track-quality.component';
       margin: 0 0 1.25rem;
     }
 
-    .facts {
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 0.25rem 1rem;
-      margin: 0;
-    }
-
-    .facts dt {
-      color: var(--mat-sys-on-surface-variant);
-    }
-
-    .facts dd {
-      margin: 0;
+    .quality-ok {
+      display: flex;
+      align-items: center;
+      margin: 0.75rem 0;
     }
   `,
 })
@@ -239,11 +237,22 @@ export default class TrackEditComponent implements PendingChanges {
     this.version();
     return this.form.invalid;
   });
+  /**
+   * A transcode changes the file path and the length, so media actions wait for a saved form:
+   * saving a stale form afterwards would write the old path back.
+   */
+  protected readonly dirty = computed(() => {
+    this.version();
+    return this.form.dirty;
+  });
   protected readonly duration = computed(() => {
     this.version();
     const ms = this.form.controls.duration_ms.value;
     return ms !== null && this.form.controls.duration_ms.valid ? formatDurationMs(ms) : null;
   });
+
+  /** The track is read again when its operation ends; the form then resets from it. */
+  protected readonly media = trackMedia(() => this.track.reload());
 
   protected readonly track = rxResource({
     params: () => {
@@ -267,14 +276,21 @@ export default class TrackEditComponent implements PendingChanges {
       }
     });
     warnBeforeUnload(() => this.hasUnsavedChanges());
+
+    // A change made elsewhere (an import, a batch from the list) is shown unless it would
+    // overwrite edits in progress.
+    const realtime = inject(RealtimeService);
+    merge(realtime.on('analyse.completed'), realtime.on('transcode.completed'))
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.stored() && !this.form.dirty && !this.media.run.running()) {
+          this.track.reload();
+        }
+      });
   }
 
   hasUnsavedChanges(): boolean {
     return this.form.dirty;
-  }
-
-  protected kbps(bitsPerSecond: number): number {
-    return Math.round(bitsPerSecond / 1000);
   }
 
   protected save(): void {
