@@ -135,13 +135,40 @@ export function atLeastOneValidator(fields: readonly string[]): ValidatorFn {
   };
 }
 
+/**
+ * Group validator: two station dates (`YYYY-MM-DD`) form a range of 1 to `maxDays` days, the last
+ * on or after the first, as the track plan range (at most 7 days). The error is on the group and
+ * on the `to` control.
+ */
+export function dateRangeValidator(from: string, to: string, maxDays: number): ValidatorFn {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const first: unknown = group.get(from)?.value;
+    const last = group.get(to);
+    const value: unknown = last?.value;
+    if (!last || typeof first !== 'string' || typeof value !== 'string' || !first || !value) {
+      return null;
+    }
+    const days = (Date.parse(`${value}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000;
+    const ok = days >= 0 && days < maxDays;
+    markMissing(last, 'dateRange', !ok, { maxDays });
+    return ok ? null : { dateRange: { maxDays } };
+  };
+}
+
 // A group validator may add or clear an error on a child, without touching the child's own errors.
-function markMissing(control: AbstractControl, key: string, missing: boolean): void {
+function markMissing(
+  control: AbstractControl,
+  key: string,
+  missing: boolean,
+  detail: unknown = true,
+): void {
   const has = control.hasError(key);
   if (missing === has) {
     return;
   }
   const others = Object.entries(control.errors ?? {}).filter(([name]) => name !== key);
-  const errors: ValidationErrors = Object.fromEntries(missing ? [...others, [key, true]] : others);
+  const errors: ValidationErrors = Object.fromEntries(
+    missing ? [...others, [key, detail]] : others,
+  );
   control.setErrors(Object.keys(errors).length > 0 ? errors : null, { emitEvent: false });
 }

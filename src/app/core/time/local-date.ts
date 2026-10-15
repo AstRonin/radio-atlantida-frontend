@@ -66,3 +66,46 @@ export function weekdayName(
 export function hourLabel(hour: number): string {
   return `${String(hour).padStart(2, '0')}:00`;
 }
+
+/** Whole days from one date to another; negative when `to` is earlier. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((toUtc(to) - toUtc(from)) / DAY_MS);
+}
+
+/**
+ * The instant (ISO 8601 UTC) at which a station date begins in an IANA zone, for API ranges such
+ * as the track plan's `from` and `to`. Computed from the zone's offset at that moment, so a zone
+ * with a half-hour offset or daylight saving time is handled.
+ */
+export function stationMidnightUtc(date: string, zone: string): string {
+  const wall = toUtc(date);
+  // The offset at the wall time read as UTC may be on the other side of a DST change; the offset
+  // at the first guess is the one in force at the station's midnight.
+  const guess = wall - zoneOffsetMs(wall, zone);
+  return new Date(wall - zoneOffsetMs(guess, zone)).toISOString();
+}
+
+/** The zone's offset from UTC at an instant, in milliseconds (positive east of Greenwich). */
+function zoneOffsetMs(instant: number, zone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(instant);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((item) => item.type === type)?.value ?? 0);
+  const wall = Date.UTC(
+    part('year'),
+    part('month') - 1,
+    part('day'),
+    part('hour'),
+    part('minute'),
+    part('second'),
+  );
+  return wall - Math.floor(instant / 1000) * 1000;
+}

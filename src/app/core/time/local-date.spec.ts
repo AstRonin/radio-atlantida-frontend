@@ -1,4 +1,11 @@
-import { addDays, isLocalDate, stationToday, weekdayOf } from './local-date';
+import {
+  addDays,
+  daysBetween,
+  isLocalDate,
+  stationMidnightUtc,
+  stationToday,
+  weekdayOf,
+} from './local-date';
 
 describe('local dates', () => {
   it('takes today in the station zone, not the browser zone', () => {
@@ -23,5 +30,26 @@ describe('local dates', () => {
     expect(isLocalDate('2026-02-30')).toBe(false);
     expect(isLocalDate('2026-10-15T00:00:00Z')).toBe(false);
     expect(() => addDays('15.10.2026', 1)).toThrow();
+  });
+
+  it('counts the days between two dates', () => {
+    expect(daysBetween('2026-10-15', '2026-10-21')).toBe(6);
+    expect(daysBetween('2026-10-15', '2026-10-14')).toBe(-1);
+    expect(daysBetween('2026-12-31', '2027-01-01')).toBe(1);
+  });
+
+  it('finds the UTC instant of a station midnight', () => {
+    expect(stationMidnightUtc('2026-10-15', 'Asia/Yerevan')).toBe('2026-10-14T20:00:00.000Z');
+    expect(stationMidnightUtc('2026-10-15', 'Asia/Kolkata')).toBe('2026-10-14T18:30:00.000Z');
+    expect(stationMidnightUtc('2026-10-15', 'UTC')).toBe('2026-10-15T00:00:00.000Z');
+  });
+
+  it('uses the offset in force on the day of a DST change', () => {
+    // Berlin moves from UTC+2 to UTC+1 at 03:00 on 2026-10-25; midnight is still summer time.
+    expect(stationMidnightUtc('2026-10-25', 'Europe/Berlin')).toBe('2026-10-24T22:00:00.000Z');
+    expect(stationMidnightUtc('2026-10-26', 'Europe/Berlin')).toBe('2026-10-25T23:00:00.000Z');
+    // New York moves from UTC-5 to UTC-4 at 02:00 on 2026-03-08.
+    expect(stationMidnightUtc('2026-03-08', 'America/New_York')).toBe('2026-03-08T05:00:00.000Z');
+    expect(stationMidnightUtc('2026-03-09', 'America/New_York')).toBe('2026-03-09T04:00:00.000Z');
   });
 });

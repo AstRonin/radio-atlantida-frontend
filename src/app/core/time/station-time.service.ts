@@ -3,13 +3,14 @@ import { I18nService } from '../i18n/i18n.service';
 
 export const DEFAULT_TIME_ZONE = 'Asia/Yerevan';
 
-export type TimeFormat = 'datetime' | 'datetime-seconds' | 'date' | 'time';
+export type TimeFormat = 'datetime' | 'datetime-seconds' | 'date' | 'time' | 'time-seconds';
 
 const FORMATS: Readonly<Record<TimeFormat, Intl.DateTimeFormatOptions>> = {
   datetime: { dateStyle: 'medium', timeStyle: 'short' },
   'datetime-seconds': { dateStyle: 'medium', timeStyle: 'medium' },
   date: { dateStyle: 'medium' },
   time: { timeStyle: 'short' },
+  'time-seconds': { timeStyle: 'medium' },
 };
 
 // The backend sends instants as ISO 8601 UTC (design §10.2); Go may add up to nine fraction digits.

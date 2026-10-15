@@ -52,6 +52,16 @@ export const routes: Routes = [
     data: nav('nav.grid'),
   },
   {
+    path: 'track-plan',
+    loadChildren: () => import('./features/track-plan/track-plan.routes'),
+    data: nav('nav.trackPlan'),
+  },
+  {
+    path: 'filler-reminders',
+    loadChildren: () => import('./features/filler-reminders/filler-reminders.routes'),
+    data: nav('nav.fillerReminders'),
+  },
+  {
     path: 'settings',
     loadChildren: () => import('./features/settings/settings.routes'),
     data: nav('nav.settings'),

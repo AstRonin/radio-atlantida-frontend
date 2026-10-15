@@ -19,6 +19,8 @@ import { apiProblemInterceptor, apiTimeoutInterceptor } from './core/api/api.int
 import { provideI18n } from './core/i18n/i18n.providers';
 import { OperationsService } from './core/operations/operations.service';
 import { RealtimeService } from './core/realtime/realtime.service';
+import { FillerRemindersService } from './core/rotation/filler-reminders.service';
+import { PlanWarningsService } from './core/rotation/plan-warnings.service';
 import { SettingsService } from './core/settings/settings.service';
 import { routes } from './app.routes';
 
@@ -41,6 +43,8 @@ export const appConfig: ApplicationConfig = {
       inject(OperationsService);
       inject(AlertsService);
       inject(OutageService);
+      inject(PlanWarningsService);
+      inject(FillerRemindersService);
       inject(SettingsService).load();
       inject(RealtimeService).connect();
     }),

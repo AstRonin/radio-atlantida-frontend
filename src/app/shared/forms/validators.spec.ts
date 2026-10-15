@@ -2,6 +2,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 import {
   atLeastOneValidator,
   bothOrNoneValidator,
+  dateRangeValidator,
   rangeValidator,
   relativePathValidator,
   timeOfDayValidator,
@@ -126,6 +127,35 @@ describe('validators', () => {
       ]) {
         expect(validate(path), path).toEqual({ relativePath: true });
       }
+    });
+  });
+
+  describe('dateRangeValidator', () => {
+    const group = (from: string | null, to: string | null) =>
+      new FormGroup(
+        { from: new FormControl(from), to: new FormControl(to) },
+        { validators: dateRangeValidator('from', 'to', 7) },
+      );
+
+    it('accepts 1 to 7 days and leaves empty fields to required', () => {
+      expect(group('2026-10-15', '2026-10-15').valid).toBe(true);
+      expect(group('2026-10-15', '2026-10-21').valid).toBe(true);
+      expect(group('2026-10-15', null).valid).toBe(true);
+    });
+
+    it('marks the last date when the range is reversed or too long', () => {
+      for (const to of ['2026-10-14', '2026-10-22']) {
+        const form = group('2026-10-15', to);
+        expect(form.errors, to).toEqual({ dateRange: { maxDays: 7 } });
+        expect(form.controls.to.getError('dateRange'), to).toEqual({ maxDays: 7 });
+      }
+    });
+
+    it('clears the mark once the range is fixed', () => {
+      const form = group('2026-10-15', '2026-10-22');
+      form.controls.to.setValue('2026-10-16');
+      expect(form.valid).toBe(true);
+      expect(form.controls.to.errors).toBeNull();
     });
   });
 });

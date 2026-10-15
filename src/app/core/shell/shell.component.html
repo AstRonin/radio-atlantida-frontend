@@ -16,6 +16,11 @@
   }
   <span class="station-name">{{ stationName() ?? ('shell.stationName' | translate) }}</span>
   <span class="spacer"></span>
+  @if (pendingReminders(); as count) {
+    <a matButton class="reminders" routerLink="/filler-reminders">
+      {{ 'rotation.pendingReminders' | translate: { count } }}
+    </a>
+  }
   <app-connection-status />
   <app-operations-menu />
   <app-language-switch />

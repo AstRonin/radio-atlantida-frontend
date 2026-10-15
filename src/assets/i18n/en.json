@@ -241,7 +241,8 @@
       "pattern": "The value does not have the expected form.",
       "invalid": "The value is not valid.",
       "relativePath": "Enter a path inside the media folder, such as music/song.mp3: no leading /, no drive letter, no \\, and no ..",
-      "fallbackSource": "Choose the playlist or artist for this mode."
+      "fallbackSource": "Choose the playlist or artist for this mode.",
+      "dateRange": "Choose a last date on or after the first one, at most {days} days in all."
     },
     "serverErrors": {
       "required": "This field is required.",
@@ -413,7 +414,9 @@
     "separationRules": "Separation rules",
     "settings": "Settings",
     "clocks": "Clocks",
-    "grid": "Grid"
+    "grid": "Grid",
+    "trackPlan": "Track plan",
+    "fillerReminders": "Filler reminders"
   },
   "playlistTypes": {
     "title": "Playlist types",
@@ -716,5 +719,113 @@
       "openEnd": "no end",
       "describe": "{day} {hour} · {clock} · {from} to {to}"
     }
+  },
+  "rotation": {
+    "pendingReminders": "Filler reminders: {count}"
+  },
+  "trackPlan": {
+    "title": "Track plan",
+    "fields": {
+      "from": "From",
+      "to": "To"
+    },
+    "range": {
+      "title": "Dates",
+      "note": "Dates and times are in the station timezone ({zone}). Up to 7 days at once.",
+      "reset": "Today and tomorrow"
+    },
+    "rebuild": {
+      "action": "Rebuild these dates",
+      "note": "A rebuild chooses the tracks of the planned hours again. Hours that have started keep their plan."
+    },
+    "hours": {
+      "title": "Planned hours",
+      "warningsNote": "Warnings are shown for hours built since this panel was opened.",
+      "empty": "No planned hours on these dates. The plan covers the next 24 to 48 hours; later hours are built as the time comes."
+    },
+    "builtAt": "Built {time}",
+    "reminder": "Filler reminder",
+    "warningsLabel": "Warnings of this hour",
+    "noItems": "No tracks are planned in this hour.",
+    "truncated": "cut (file {length})",
+    "columns": {
+      "start": "Start",
+      "preview": "Preview",
+      "title": "Title",
+      "artist": "Artist",
+      "length": "Plays for",
+      "source": "Source",
+      "status": "Status"
+    },
+    "sources": {
+      "clock": "Clock",
+      "filler_pool": "Filler: pool",
+      "filler_random": "Filler: random",
+      "filler_playlist": "Filler: playlist",
+      "filler_artist": "Filler: artist",
+      "filler_answer": "Filler: your answer",
+      "reschedule": "Rescheduled"
+    },
+    "statuses": {
+      "planned": "Planned",
+      "queued": "Sent to playout",
+      "aired": "Aired",
+      "missed": "Not aired",
+      "replaced": "Replaced"
+    },
+    "warnings": {
+      "element_blocked_by_play_rules": "Element {element}: play rules block every track, so the element is skipped.",
+      "element_tolerance_relaxed": "Element {element}: no track fit the tolerance; one was chosen with a wider tolerance.",
+      "element_general_pool": "Element {element}: no track of its playlists fit; one was taken from the whole library.",
+      "element_emergency": "Element {element}: no track at all; the element is skipped and the emergency playlist covers it.",
+      "pool_track_refused": "Segment {segment}: the pool track {track} breaks a separation or play rule and was skipped.",
+      "pool_empty": "Segment {segment}: the filler pool is empty, so the default filler mode was used. Refill the pool.",
+      "filler_waiting": "Segment {segment}: waits for the answer to a filler reminder.",
+      "gap_unfilled": "Segment {segment}: a gap is left that no filler could close.",
+      "element_replaced": "Element {element}: replaced in this hour by a rescheduled item.",
+      "reschedule_dropped": "A rescheduled item could not be placed in this hour."
+    }
+  },
+  "fillerReminders": {
+    "title": "Filler reminders",
+    "statusLabel": "Status",
+    "filter": {
+      "pending": "Waiting",
+      "answered": "Answered",
+      "defaulted": "Default used",
+      "expired": "Expired",
+      "all": "All"
+    },
+    "statuses": {
+      "pending": "Waiting",
+      "answered": "Answered",
+      "defaulted": "Default used",
+      "expired": "Expired"
+    },
+    "reasons": {
+      "short_clock": "Short clock",
+      "pool_empty": "Filler pool empty"
+    },
+    "modes": {
+      "none": "no filler chosen",
+      "ask": "ask at air time",
+      "pool": "pool"
+    },
+    "columns": {
+      "hour": "Hour",
+      "clock": "Clock",
+      "reason": "Reason",
+      "deadline": "Deadline"
+    },
+    "fields": {
+      "track_id": "Track"
+    },
+    "overdue": "deadline passed",
+    "answer": "Answer",
+    "refillPool": "Refill the pool",
+    "answerNote": "Choose a track for the short segment of “{clock}” at {hour}. The hour is rebuilt with it.",
+    "save": "Use this track",
+    "answered": "The answer is saved; the hour of “{clock}” is rebuilt.",
+    "empty": "No reminders here."
   }
 }

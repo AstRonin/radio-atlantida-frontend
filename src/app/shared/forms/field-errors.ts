@@ -58,6 +58,10 @@ export function fieldErrorMessage(
     const value = key === 'min' ? limit.min : limit.max;
     return i18n.translate(`forms.errors.${key}`, { value: format(value ?? 0, i18n) });
   }
+  if (key === 'dateRange') {
+    const range = detail as { maxDays?: number };
+    return i18n.translate('forms.errors.dateRange', { days: range.maxDays ?? 0 });
+  }
   if (key === 'minlength' || key === 'maxlength') {
     const length = detail as { requiredLength: number };
     return i18n.translate(`forms.errors.${key}`, { length: length.requiredLength });
