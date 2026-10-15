@@ -17,6 +17,11 @@ export const routes: Routes = [
     data: nav('nav.live'),
   },
   {
+    path: 'air-window',
+    loadChildren: () => import('./features/air-window/air-window.routes'),
+    data: nav('nav.airWindow'),
+  },
+  {
     path: 'library',
     loadChildren: () => import('./features/library/library.routes'),
     data: nav('nav.library'),

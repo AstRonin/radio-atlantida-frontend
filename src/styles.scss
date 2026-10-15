@@ -21,6 +21,13 @@ html {
   );
 }
 
+// Status colors the Material theme has no role for. `light-dark()` follows `color-scheme`, so
+// each stays readable against the surface if the panel gets a dark scheme.
+:root {
+  --app-status-success: light-dark(#2e7d32, #81c784);
+  --app-status-warning: light-dark(#b26a00, #ffb74d);
+}
+
 html,
 body {
   height: 100%;
@@ -120,4 +127,10 @@ body {
 .badge.warn {
   background: var(--mat-sys-error-container);
   color: var(--mat-sys-on-error-container);
+}
+
+// The header's broadcast tooltip lists one fact per line.
+.broadcast-tooltip .mdc-tooltip__surface {
+  white-space: pre-line;
+  text-align: start;
 }

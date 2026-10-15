@@ -1,0 +1,47 @@
+{
+  "title": "Air window",
+  "summary": "The air window shows the air around now: the last items that were due, the item on air with its progress, and the next planned items, oldest at the top. Times are station time.",
+  "entities": [
+    {
+      "term": "Aired",
+      "text": "The item played in full."
+    },
+    {
+      "term": "Truncated",
+      "text": "The item ran past the end of its segment and was faded out. It counts as aired."
+    },
+    {
+      "term": "Not aired",
+      "text": "The item was due during a broadcast interruption and did not reach the air. Its resolution shows what was decided: Open (nothing yet), Rescheduled, or Dismissed."
+    },
+    {
+      "term": "On air",
+      "text": "The item playing now, with how long it has played of its length."
+    },
+    {
+      "term": "In Liquidsoap",
+      "text": "The item is planned next and already handed to the playout engine."
+    },
+    {
+      "term": "Planned",
+      "text": "The item is in the track plan but not yet handed to the playout engine."
+    }
+  ],
+  "usage": "Open the page to see what just played and what comes next. The list follows the air by itself: it reloads when a track starts or ends, when the plan changes, and when an outage marks items as not aired. How many rows it shows is set in Settings, group Air window.",
+  "steps": [
+    "Check the On air row and its progress.",
+    "Look above it for Not aired rows and open them on the Missed items page to reschedule or dismiss them.",
+    "Look below it for the next items; In Liquidsoap rows are already handed to the playout engine.",
+    "Change the number of rows in Settings, group Air window, if you need more or fewer."
+  ],
+  "mistakes": [
+    "Reading an empty On air row as silence while the warning about Liquidsoap is shown. Without the control link the panel does not know what is playing.",
+    "Reading times as your computer's time. All times are station time."
+  ],
+  "example": {
+    "title": "After a short Icecast drop",
+    "text": "Icecast was down from 14:05 to 14:12. Above the On air row the 14:10 news shows Not aired, Open. Choose Reschedule or dismiss, then reschedule the news to the start of the 16:00 hour on the Missed items page. Back here, the news row now shows Rescheduled."
+  },
+  "operations": {},
+  "fields": {}
+}

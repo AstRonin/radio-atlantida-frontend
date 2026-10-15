@@ -12,6 +12,7 @@ import { HelpPanelComponent } from '../../shared/ui/help-panel.component';
 import { MissedItemsService } from '../alerts/missed-items.service';
 import { OutageBannerComponent } from '../alerts/outage-banner.component';
 import { OutageService } from '../alerts/outage.service';
+import { BroadcastStatusComponent } from '../broadcast/broadcast-status.component';
 import { RuntimeConfigService } from '../config/runtime-config.service';
 import { HelpService } from '../help/help.service';
 import { LanguageSwitchComponent } from '../i18n/language-switch.component';
@@ -22,10 +23,8 @@ import { PlayerBarComponent } from '../player/player-bar.component';
 import { ConnectionStatusComponent } from '../realtime/connection-status.component';
 import { FillerRemindersService } from '../rotation/filler-reminders.service';
 import { SettingsService } from '../settings/settings.service';
+import { NARROW_QUERY } from './layout';
 import { navigationItems } from './navigation';
-
-// Below this width the navigation overlays the content instead of taking a column.
-const NARROW_QUERY = '(max-width: 959.98px)';
 
 @Component({
   selector: 'app-shell',
@@ -38,6 +37,7 @@ const NARROW_QUERY = '(max-width: 959.98px)';
     RouterLink,
     RouterLinkActive,
     RouterOutlet,
+    BroadcastStatusComponent,
     ConnectionStatusComponent,
     HelpPanelComponent,
     LanguageSwitchComponent,

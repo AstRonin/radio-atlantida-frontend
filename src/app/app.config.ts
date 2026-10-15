@@ -15,6 +15,7 @@ import {
 import { AlertsService } from './core/alerts/alerts.service';
 import { GlobalErrorHandler } from './core/alerts/global-error-handler';
 import { OutageService } from './core/alerts/outage.service';
+import { BroadcastService } from './core/broadcast/broadcast.service';
 import { apiProblemInterceptor, apiTimeoutInterceptor } from './core/api/api.interceptors';
 import { RuntimeConfigService } from './core/config/runtime-config.service';
 import { provideI18n } from './core/i18n/i18n.providers';
@@ -45,6 +46,7 @@ export const appConfig: ApplicationConfig = {
       inject(OperationsService);
       inject(AlertsService);
       inject(OutageService);
+      inject(BroadcastService);
       inject(PlanWarningsService);
       inject(FillerRemindersService);
       inject(LiveVoiceService);

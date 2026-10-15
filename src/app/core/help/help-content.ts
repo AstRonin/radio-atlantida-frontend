@@ -5,6 +5,7 @@
  */
 export const HELP_PAGE_IDS = [
   'help.live',
+  'help.air-window',
   'help.library',
   'help.import',
   'help.playlists',

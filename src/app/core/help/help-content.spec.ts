@@ -1,4 +1,5 @@
 import live from '../../../assets/help/en/live.json';
+import airWindow from '../../../assets/help/en/air-window.json';
 import library from '../../../assets/help/en/library.json';
 import importHelp from '../../../assets/help/en/import.json';
 import playlists from '../../../assets/help/en/playlists.json';
@@ -19,6 +20,7 @@ import { HELP_PAGE_IDS, HelpPageId, helpFileName, isHelpContent } from './help-c
 // file fails the import.
 const ENGLISH: Record<HelpPageId, unknown> = {
   'help.live': live,
+  'help.air-window': airWindow,
   'help.library': library,
   'help.import': importHelp,
   'help.playlists': playlists,

@@ -59,6 +59,21 @@
       "reconnecting": "Reconnecting…"
     }
   },
+  "broadcast": {
+    "state": {
+      "connected": "Broadcasting",
+      "reconnecting": "Reconnecting to Icecast",
+      "unreachable": "Stream down",
+      "unknown": "No status"
+    },
+    "since": "Since {time}",
+    "reason": "Reason: {reason}",
+    "mount": {
+      "ok": "Icecast mount found, checked {time}",
+      "failed": "Icecast mount not found, checked {time}",
+      "unchecked": "Icecast mount not checked yet"
+    }
+  },
   "operations": {
     "button": "Operations ({count} running)",
     "empty": "No operations yet.",
@@ -119,6 +134,7 @@
       "outage": "Outage detection",
       "retention": "Retention",
       "playout": "Playout and emergency playlist",
+      "air": "Air window",
       "import": "Import and broadcast standard"
     },
     "apply": {
@@ -197,6 +213,10 @@
       "playout": {
         "emergency_playlist_id": "Emergency playlist",
         "prepush_minutes": "Pre-push"
+      },
+      "air": {
+        "played_count": "Played rows",
+        "queued_count": "Queued rows"
       },
       "import": {
         "inbox_dir": "Inbox folder",
@@ -432,6 +452,7 @@
   },
   "nav": {
     "live": "Live",
+    "airWindow": "Air window",
     "library": "Library",
     "import": "Import",
     "artists": "Artists",
@@ -1093,6 +1114,44 @@
       "queued": "Waiting in the playout engine",
       "queueEmpty": "No tracks are waiting."
     }
+  },
+  "airWindow": {
+    "title": "Air window",
+    "note": "Times are station time ({zone}).",
+    "listLabel": "Air window: played, on air, and next items",
+    "playoutUnknown": "Playout status is unknown: Liquidsoap is not connected. The list may not show what is on air.",
+    "empty": "No plan for this time.",
+    "trackPlanLink": "Open the track plan",
+    "nothingOnAir": "Nothing on air.",
+    "columns": {
+      "start": "Start",
+      "end": "End",
+      "status": "Status",
+      "artist": "Artist",
+      "title": "Title",
+      "source": "Source"
+    },
+    "statuses": {
+      "aired": "Aired",
+      "truncated": "Truncated",
+      "missed": "Not aired",
+      "now": "On air",
+      "queued": "In Liquidsoap",
+      "planned": "Planned"
+    },
+    "resolutions": {
+      "open": "Open",
+      "rescheduled": "Rescheduled",
+      "dismissed": "Dismissed"
+    },
+    "resolve": "Reschedule or dismiss",
+    "sources": {
+      "plan": "Plan",
+      "emergency": "Emergency playlist",
+      "live": "Live"
+    },
+    "fade": "Cut with a fade",
+    "progress": "Progress of the current track"
   },
   "operationStatus": {
     "running": "Running…",
