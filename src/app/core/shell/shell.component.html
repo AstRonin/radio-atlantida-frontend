@@ -14,10 +14,16 @@
       ☰
     </button>
   }
-  <span class="station-name">{{ 'shell.stationName' | translate }}</span>
+  <span class="station-name">{{ stationName() ?? ('shell.stationName' | translate) }}</span>
   <span class="spacer"></span>
+  <app-connection-status />
+  <app-operations-menu />
   <app-language-switch />
 </mat-toolbar>
+
+@if (openOutage(); as outage) {
+  <app-outage-banner [outage]="outage" />
+}
 
 <mat-sidenav-container class="body">
   <mat-sidenav

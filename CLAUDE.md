@@ -36,8 +36,8 @@ streams it, and PostgreSQL stores the data.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
-Phase status: F1 (skeleton) and F2 (API client and contract pipeline) done. Next: F3 (realtime,
-operations, alerts, settings core).
+Phase status: F1 (skeleton), F2 (API client and contract pipeline), and F3 (realtime, operations,
+alerts, settings core) done. Next: F4 (shared UI: help, validation, pickers, player).
 
 ## Ground rules
 
@@ -47,7 +47,10 @@ operations, alerts, settings core).
   generated from the backend OpenAPI snapshot (`api/openapi.json`) with `openapi-typescript`, and
   requests go through Angular `HttpClient` (no `openapi-fetch`, no other HTTP library).
   Use `ApiClient` (`core/api`) with spec paths (`api.get('/api/tracks/{id}', { path: { id } })`)
-  and `ApiSchema<'Track'>` for DTO types. Errors arrive as `ApiProblem`; show them with
+  and `ApiSchema<'Track'>` for DTO types. Live events come from `RealtimeService.on('<type>')`;
+  start asynchronous operations with `OperationsService.runOperation()` (or `waitFor(id)` for an
+  operation ID in a response, such as `build_operation_id`). A failed operation already raises an
+  `error.alert` popup, so callers do not show their own. Errors arrive as `ApiProblem`; show them with
   `problemMessage()` and put field errors on forms with `applyServerErrors()` (`shared/forms`).
   Form control names match the DTO's JSON names. Format API times with the `stationTime` pipe or
   `StationTimeService`, never `DatePipe` or `toLocaleString` without the station zone.

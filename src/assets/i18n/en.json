@@ -1,4 +1,7 @@
 {
+  "common": {
+    "close": "Close"
+  },
   "shell": {
     "stationName": "Radio Atlantida",
     "navigation": "Main navigation",
@@ -12,6 +15,62 @@
   "home": {
     "title": "Radio Atlantida",
     "intro": "This is the station management panel. Pages for the library, playlists, play rules, and settings will appear in the navigation as they are added."
+  },
+  "realtime": {
+    "state": {
+      "idle": "Live updates off",
+      "connecting": "Connecting…",
+      "connected": "Live updates on",
+      "reconnecting": "Reconnecting…"
+    }
+  },
+  "operations": {
+    "button": "Operations ({count} running)",
+    "empty": "No operations yet.",
+    "progress": "{done} of {total}",
+    "status": {
+      "accepted": "Started",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "kinds": {
+      "unknown": "Operation {id}",
+      "retention": "Clean-up of old records",
+      "track_plan": "Track plan update",
+      "clock_build": "Clock rebuild",
+      "missed_items": "Marking missed items",
+      "playout_reconcile": "Playout reconciliation",
+      "reschedule": "Rescheduling a missed item",
+      "import": "Import",
+      "analyse": "Audio analysis",
+      "transcode": "Transcoding"
+    }
+  },
+  "alerts": {
+    "panelError": "The panel had an unexpected error.",
+    "dialog": {
+      "title": "Errors ({count})",
+      "component": "Component: {component}",
+      "requestId": "Request ID: {id}"
+    },
+    "outage": {
+      "title": "Broadcast interrupted.",
+      "since": "Since {time}. Failed part: {component}.",
+      "components": {
+        "icecast": "Icecast stream server",
+        "liquidsoap": "Liquidsoap playout",
+        "backend": "Backend",
+        "network": "Network"
+      }
+    }
+  },
+  "settings": {
+    "reconnectNotice": "Saved. The new value takes effect when the connection is opened again. Changing the stream server briefly interrupts the stream."
+  },
+  "time": {
+    "zoneLabel": "Timezone",
+    "zoneRequired": "Choose a timezone."
   },
   "problems": {
     "bad_request": "The request could not be read.",
@@ -41,6 +100,23 @@
     "play_rule_not_found": "The play rule was not found.",
     "play_rule_in_use": "The play rule is in use and cannot be deleted.",
     "separation_rule_not_found": "The separation rule was not found.",
+    "clock_not_found": "The clock was not found.",
+    "clock_in_use": "The clock is used in the grid and cannot be deleted.",
+    "clock_has_history": "The clock has play history and cannot be deleted.",
+    "grid_slot_not_found": "The grid slot was not found.",
+    "grid_conflict": "Another change to the same grid hours was saved at the same time. Reload the grid and try again.",
+    "filler_request_not_found": "The filler reminder was not found.",
+    "filler_request_closed": "The filler reminder is already closed.",
+    "filler_request_not_answerable": "This reminder is closed by refilling the clock's filler pool, not by choosing a track.",
+    "hour_started": "This hour is on air, over, or about to start, so its plan cannot be changed.",
+    "liquidsoap_unavailable": "Liquidsoap cannot be reached. Try again when the playout is connected.",
+    "missed_item_not_found": "The missed item was not found.",
+    "missed_item_resolved": "The missed item was already rescheduled or dismissed.",
+    "media_operation_running": "Another import, analysis, or transcoding is running. Wait until it finishes.",
+    "media_tools_unavailable": "The audio tools (ffmpeg) are not available on the server.",
+    "live_session_active": "A live session is already running. Take it over to start a new one.",
+    "live_offer_invalid": "The browser's live connection request was not accepted.",
+    "live_unavailable": "The live voice bridge is not available on the server.",
     "network_error": "The server cannot be reached. Check that the backend is running.",
     "timeout": "The server did not answer in time. Try again.",
     "unexpected_response": "The server sent an unexpected answer. Try again in a moment."

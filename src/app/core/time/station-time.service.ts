@@ -35,7 +35,7 @@ export function isValidTimeZone(name: string): boolean {
 
 /**
  * Formats instants in the station timezone, never in the browser's zone (design §10.2). The zone
- * starts at the default and is set from the station settings once they are loaded (Phase F3).
+ * starts at the default; SettingsService sets it from `station.timezone` once settings are loaded.
  */
 @Injectable({ providedIn: 'root' })
 export class StationTimeService {

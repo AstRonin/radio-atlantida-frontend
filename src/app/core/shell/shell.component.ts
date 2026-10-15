@@ -7,8 +7,13 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
+import { OutageBannerComponent } from '../alerts/outage-banner.component';
+import { OutageService } from '../alerts/outage.service';
 import { LanguageSwitchComponent } from '../i18n/language-switch.component';
 import { TranslatePipe } from '../i18n/translate.pipe';
+import { OperationsMenuComponent } from '../operations/operations-menu.component';
+import { ConnectionStatusComponent } from '../realtime/connection-status.component';
+import { SettingsService } from '../settings/settings.service';
 import { navigationItems } from './navigation';
 
 // Below this width the navigation overlays the content instead of taking a column.
@@ -24,7 +29,10 @@ const NARROW_QUERY = '(max-width: 959.98px)';
     RouterLink,
     RouterLinkActive,
     RouterOutlet,
+    ConnectionStatusComponent,
     LanguageSwitchComponent,
+    OperationsMenuComponent,
+    OutageBannerComponent,
     TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,4 +48,6 @@ export class ShellComponent {
   );
   // The route config is fixed after bootstrap, so the list is computed once.
   protected readonly navigation = navigationItems(inject(Router).config);
+  protected readonly stationName = inject(SettingsService).stationName;
+  protected readonly openOutage = inject(OutageService).openOutage;
 }

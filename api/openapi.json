@@ -1,11 +1,36 @@
 {
   "components": {
     "schemas": {
+      "AnalyseBody": {
+        "additionalProperties": false,
+        "properties": {
+          "force": {
+            "description": "Decode files that have not changed since their last analysis. Without it, their issues are only checked again against the current settings.",
+            "type": "boolean"
+          },
+          "track_ids": {
+            "description": "Tracks to analyse; absent or empty: every track never analysed.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          }
+        },
+        "type": "object"
+      },
       "Artist": {
         "additionalProperties": false,
         "properties": {
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "name": {
@@ -58,6 +83,7 @@
         "properties": {
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "name": {
@@ -67,6 +93,527 @@
         "required": [
           "id",
           "name"
+        ],
+        "type": "object"
+      },
+      "Clock": {
+        "additionalProperties": false,
+        "properties": {
+          "default_filler_mode": {
+            "description": "Used when the pool is empty or a reminder expires; absent: the global setting filler.fallback.",
+            "enum": [
+              "random",
+              "playlist",
+              "artist"
+            ],
+            "type": "string"
+          },
+          "default_filler_source_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "elements": {
+            "description": "In position order.",
+            "items": {
+              "$ref": "#/components/schemas/ClockElement"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/ClockLayout"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "description": "incomplete: a short segment has no filler mode.",
+            "enum": [
+              "complete",
+              "incomplete"
+            ],
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "elements",
+          "layout",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "ClockBody": {
+        "additionalProperties": false,
+        "properties": {
+          "default_filler_mode": {
+            "description": "Leave out for the global setting filler.fallback.",
+            "enum": [
+              "random",
+              "playlist",
+              "artist"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default_filler_source_id": {
+            "format": "int64",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/components/schemas/ClockElementBody"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "elements"
+        ],
+        "type": "object"
+      },
+      "ClockCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "replaced_elements": {
+            "description": "Fixed elements removed because a new fixed element overlaps them.",
+            "items": {
+              "$ref": "#/components/schemas/ClockElement"
+            },
+            "type": "array"
+          },
+          "requires_filler_choice": {
+            "description": "Open the blocking filler dialog for short_segments.",
+            "type": "boolean"
+          },
+          "short_segments": {
+            "description": "Short segments without a filler mode.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "shortfall_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ClockWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "shortfall_ms",
+          "requires_filler_choice",
+          "short_segments",
+          "warnings",
+          "replaced_elements"
+        ],
+        "type": "object"
+      },
+      "ClockElement": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_tolerance_ms": {
+            "description": "A chosen track lasts nominal ± tolerance.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "filler_mode": {
+            "description": "Filler of the segment this element holds (see ClockSegment.holder_index).",
+            "enum": [
+              "none",
+              "ask",
+              "random",
+              "playlist",
+              "artist",
+              "pool"
+            ],
+            "type": "string"
+          },
+          "filler_source_id": {
+            "description": "Playlist ID for playlist, artist ID for artist.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fixed_minute": {
+            "description": "Target start minute of a fixed element.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "fixed_tolerance_ms": {
+            "description": "A fixed element may start this much before or after its minute.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nominal_duration_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "placement": {
+            "enum": [
+              "flow",
+              "start",
+              "end",
+              "fixed"
+            ],
+            "type": "string"
+          },
+          "playlist_ids": {
+            "description": "The track is chosen from the union of their tracks, in ID order.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "placement",
+          "fixed_tolerance_ms",
+          "nominal_duration_ms",
+          "duration_tolerance_ms",
+          "filler_mode",
+          "playlist_ids"
+        ],
+        "type": "object"
+      },
+      "ClockElementBody": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_tolerance_ms": {
+            "description": "Default: setting rotation.default_duration_tolerance_ms.",
+            "format": "int64",
+            "maximum": 600000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "filler_mode": {
+            "default": "none",
+            "enum": [
+              "none",
+              "ask",
+              "random",
+              "playlist",
+              "artist",
+              "pool"
+            ],
+            "type": "string"
+          },
+          "filler_source_id": {
+            "description": "Playlist ID for playlist, artist ID for artist; absent otherwise.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "fixed_minute": {
+            "description": "Required for a fixed element only.",
+            "format": "int64",
+            "maximum": 59,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fixed_tolerance_ms": {
+            "description": "Default: setting rotation.default_fixed_tolerance_ms.",
+            "format": "int64",
+            "maximum": 600000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "description": "An existing element of the clock; leave out for a new one. A new fixed element whose window overlaps an existing one replaces it.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "nominal_duration_ms": {
+            "format": "int64",
+            "maximum": 3600000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "placement": {
+            "default": "flow",
+            "enum": [
+              "flow",
+              "start",
+              "end",
+              "fixed"
+            ],
+            "type": "string"
+          },
+          "playlist_ids": {
+            "description": "One or more playlists of any type.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "nominal_duration_ms",
+          "playlist_ids"
+        ],
+        "type": "object"
+      },
+      "ClockLayout": {
+        "additionalProperties": false,
+        "properties": {
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/ClockSegment"
+            },
+            "type": "array"
+          },
+          "shortfall_ms": {
+            "description": "Sum of the segments' shortfalls.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "shortfall_ms",
+          "segments"
+        ],
+        "type": "object"
+      },
+      "ClockList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClockSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "ClockSaveResult": {
+        "additionalProperties": false,
+        "properties": {
+          "build_operation_id": {
+            "description": "The clock_build operation that rebuilds the clock's planned hours (clock_build.completed or .failed).",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "check": {
+            "$ref": "#/components/schemas/ClockCheck"
+          },
+          "clock": {
+            "$ref": "#/components/schemas/Clock"
+          }
+        },
+        "required": [
+          "clock",
+          "check"
+        ],
+        "type": "object"
+      },
+      "ClockSegment": {
+        "additionalProperties": false,
+        "properties": {
+          "closed_by_index": {
+            "description": "The fixed element that ends the segment; absent for the last segment.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "content_ms": {
+            "description": "Sum of the nominal durations of its elements.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "element_indexes": {
+            "description": "Indexes into elements, in play order: start, flow, end elements.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "end_ms": {
+            "description": "Target end: the minute of the fixed element that closes it, or 3600000.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "filler_mode": {
+            "description": "The holder's filler mode.",
+            "enum": [
+              "none",
+              "ask",
+              "random",
+              "playlist",
+              "artist",
+              "pool"
+            ],
+            "type": "string"
+          },
+          "fixed_start_ms": {
+            "description": "Where the closing fixed element starts, as close to its minute as its tolerance allows.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "holder_index": {
+            "description": "The element whose filler_mode fills this segment: its last element, else the fixed element that opens it, else the one that closes it.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "overflow_ms": {
+            "description": "How far the last segment runs past the hour; the crossing track is cut and faded out.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "shortfall_ms": {
+            "description": "Time left unfilled; a fixed element may start up to its tolerance early, so its segment is short only beyond that.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "start_ms": {
+            "description": "Where its content starts: the start of the hour or the end of the fixed element before it.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "start_ms",
+          "end_ms",
+          "content_ms",
+          "shortfall_ms",
+          "overflow_ms",
+          "element_indexes",
+          "holder_index",
+          "filler_mode"
+        ],
+        "type": "object"
+      },
+      "ClockSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "element_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "incomplete"
+            ],
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "element_count",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "ClockWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "element_no_tracks",
+              "element_no_fitting_track",
+              "element_few_tracks",
+              "element_blocked_by_play_rules",
+              "segment_overflow"
+            ],
+            "type": "string"
+          },
+          "element_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "hours": {
+            "description": "The grid hours in which play rules block every fitting track.",
+            "items": {
+              "$ref": "#/components/schemas/WeekdayHour"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "English message for developers.",
+            "type": "string"
+          },
+          "segment_index": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "message"
         ],
         "type": "object"
       },
@@ -96,6 +643,7 @@
         "properties": {
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "kind": {
@@ -168,10 +716,42 @@
         "description": "Any event sent over the WebSocket at GET /api/ws.",
         "discriminator": {
           "mapping": {
+            "analyse.completed": "#/components/schemas/OperationCompletedEvent",
+            "analyse.failed": "#/components/schemas/OperationFailedEvent",
+            "analyse.progress": "#/components/schemas/OperationProgressEvent",
+            "broadcast_outage.ended": "#/components/schemas/OutageEndedEvent",
+            "broadcast_outage.started": "#/components/schemas/OutageStartedEvent",
+            "clock_build.completed": "#/components/schemas/OperationCompletedEvent",
+            "clock_build.failed": "#/components/schemas/OperationFailedEvent",
+            "clock_build.progress": "#/components/schemas/OperationProgressEvent",
             "error.alert": "#/components/schemas/ErrorAlertEvent",
+            "filler_request.created": "#/components/schemas/FillerRequestCreatedEvent",
+            "icecast.state": "#/components/schemas/IcecastStateEvent",
+            "import.completed": "#/components/schemas/OperationCompletedEvent",
+            "import.failed": "#/components/schemas/OperationFailedEvent",
+            "import.progress": "#/components/schemas/OperationProgressEvent",
+            "liquidsoap.state": "#/components/schemas/LiquidsoapStateEvent",
+            "live.state": "#/components/schemas/LiveStateEvent",
+            "missed_items.completed": "#/components/schemas/OperationCompletedEvent",
+            "missed_items.failed": "#/components/schemas/OperationFailedEvent",
+            "missed_items.progress": "#/components/schemas/OperationProgressEvent",
+            "playout.now_playing": "#/components/schemas/NowPlayingEvent",
+            "playout_reconcile.completed": "#/components/schemas/OperationCompletedEvent",
+            "playout_reconcile.failed": "#/components/schemas/OperationFailedEvent",
+            "playout_reconcile.progress": "#/components/schemas/OperationProgressEvent",
+            "reschedule.completed": "#/components/schemas/OperationCompletedEvent",
+            "reschedule.failed": "#/components/schemas/OperationFailedEvent",
+            "reschedule.progress": "#/components/schemas/OperationProgressEvent",
             "retention.completed": "#/components/schemas/OperationCompletedEvent",
             "retention.failed": "#/components/schemas/OperationFailedEvent",
-            "retention.progress": "#/components/schemas/OperationProgressEvent"
+            "retention.progress": "#/components/schemas/OperationProgressEvent",
+            "track_plan.completed": "#/components/schemas/OperationCompletedEvent",
+            "track_plan.failed": "#/components/schemas/OperationFailedEvent",
+            "track_plan.progress": "#/components/schemas/OperationProgressEvent",
+            "track_plan.warning": "#/components/schemas/TrackPlanWarningEvent",
+            "transcode.completed": "#/components/schemas/OperationCompletedEvent",
+            "transcode.failed": "#/components/schemas/OperationFailedEvent",
+            "transcode.progress": "#/components/schemas/OperationProgressEvent"
           },
           "propertyName": "type"
         },
@@ -187,6 +767,30 @@
           },
           {
             "$ref": "#/components/schemas/OperationProgressEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TrackPlanWarningEvent"
+          },
+          {
+            "$ref": "#/components/schemas/FillerRequestCreatedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/NowPlayingEvent"
+          },
+          {
+            "$ref": "#/components/schemas/LiquidsoapStateEvent"
+          },
+          {
+            "$ref": "#/components/schemas/IcecastStateEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OutageStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/OutageEndedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/LiveStateEvent"
           }
         ]
       },
@@ -226,22 +830,859 @@
           "unique",
           "invalid",
           "taken",
-          "unknown_id"
+          "unknown_id",
+          "overlap",
+          "does_not_fit",
+          "order",
+          "blocked"
         ],
         "type": "string"
+      },
+      "FillerAnswerBody": {
+        "additionalProperties": false,
+        "properties": {
+          "track_id": {
+            "description": "Fills the hour's first waiting segment; the clock's default filler mode fills the others.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id"
+        ],
+        "type": "object"
+      },
+      "FillerPool": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FillerPoolEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "FillerPoolEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "position": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "used_at": {
+            "description": "When it was taken for filler; used tracks stay as history.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id",
+          "title",
+          "position"
+        ],
+        "type": "object"
+      },
+      "FillerRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "clock_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "clock_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deadline_at": {
+            "description": "Without an answer by then, the clock's default filler mode applies.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "hour_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mode": {
+            "description": "none: the clock is incomplete; ask: the holder asks at air time; pool: the pool is empty.",
+            "enum": [
+              "none",
+              "ask",
+              "pool"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "short_clock",
+              "pool_empty"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "answered",
+              "defaulted",
+              "expired"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "clock_id",
+          "clock_name",
+          "hour_start_utc",
+          "reason",
+          "mode",
+          "status",
+          "created_at",
+          "deadline_at"
+        ],
+        "type": "object"
+      },
+      "FillerRequestCreatedData": {
+        "additionalProperties": false,
+        "properties": {
+          "clock_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "clock_name": {
+            "type": "string"
+          },
+          "deadline_at": {
+            "description": "Without an answer by then, the clock's default filler mode applies.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "hour_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reason": {
+            "enum": [
+              "short_clock",
+              "pool_empty"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "clock_id",
+          "clock_name",
+          "hour_start_utc",
+          "reason",
+          "deadline_at"
+        ],
+        "type": "object"
+      },
+      "FillerRequestCreatedEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FillerRequestCreatedData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always filler_request.created.",
+            "enum": [
+              "filler_request.created"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "FillerRequestList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FillerRequest"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "GridAssignBody": {
+        "additionalProperties": false,
+        "properties": {
+          "clock_id": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "hours": {
+            "description": "Station local hours.",
+            "items": {
+              "format": "int64",
+              "maximum": 23,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 24,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          },
+          "valid_from": {
+            "description": "Station local date, from today to the grid horizon (setting rotation.grid_horizon_days).",
+            "format": "date",
+            "type": "string"
+          },
+          "valid_to": {
+            "description": "Inclusive; leave out for an open end.",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "weekdays": {
+            "description": "1 = Monday ... 7 = Sunday.",
+            "items": {
+              "format": "int64",
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "maxItems": 7,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "clock_id",
+          "weekdays",
+          "hours",
+          "valid_from"
+        ],
+        "type": "object"
+      },
+      "GridAssignResult": {
+        "additionalProperties": false,
+        "properties": {
+          "build_operation_id": {
+            "description": "The clock_build operation that rebuilds the changed planned hours.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/GridSlot"
+            },
+            "type": "array"
+          },
+          "replaced": {
+            "items": {
+              "$ref": "#/components/schemas/GridReplacedSlot"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "created",
+          "replaced"
+        ],
+        "type": "object"
+      },
+      "GridClockRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "incomplete"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "type": "object"
+      },
+      "GridHour": {
+        "additionalProperties": false,
+        "properties": {
+          "clock": {
+            "$ref": "#/components/schemas/GridClockRef"
+          },
+          "date": {
+            "description": "Station local date.",
+            "format": "date",
+            "type": "string"
+          },
+          "hour": {
+            "description": "Station local hour.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "slot_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "weekday": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "hour",
+          "start_utc",
+          "slot_id",
+          "clock"
+        ],
+        "type": "object"
+      },
+      "GridReplacedSlot": {
+        "additionalProperties": false,
+        "properties": {
+          "change": {
+            "enum": [
+              "trimmed",
+              "split",
+              "deleted"
+            ],
+            "type": "string"
+          },
+          "remaining": {
+            "description": "What is left of it; split leaves two slots, the later one new.",
+            "items": {
+              "$ref": "#/components/schemas/GridSlot"
+            },
+            "type": "array"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/GridSlot",
+            "description": "The slot as it was."
+          }
+        },
+        "required": [
+          "slot",
+          "change",
+          "remaining"
+        ],
+        "type": "object"
+      },
+      "GridSchedule": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GridHour"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "GridSlot": {
+        "additionalProperties": false,
+        "properties": {
+          "clock": {
+            "$ref": "#/components/schemas/GridClockRef"
+          },
+          "hour": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "valid_from": {
+            "format": "date",
+            "type": "string"
+          },
+          "valid_to": {
+            "description": "Absent for an open end.",
+            "format": "date",
+            "type": "string"
+          },
+          "weekday": {
+            "description": "1 = Monday ... 7 = Sunday.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "weekday",
+          "hour",
+          "clock",
+          "valid_from"
+        ],
+        "type": "object"
+      },
+      "GridSlotList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GridSlot"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "GridUnassignBody": {
+        "additionalProperties": false,
+        "properties": {
+          "hours": {
+            "items": {
+              "format": "int64",
+              "maximum": 23,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 24,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          },
+          "valid_from": {
+            "format": "date",
+            "type": "string"
+          },
+          "valid_to": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "weekdays": {
+            "items": {
+              "format": "int64",
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "maxItems": 7,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "weekdays",
+          "hours",
+          "valid_from"
+        ],
+        "type": "object"
+      },
+      "IcecastStateData": {
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "enum": [
+              "connected",
+              "disconnected"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "IcecastStateEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IcecastStateData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always icecast.state.",
+            "enum": [
+              "icecast.state"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ImportBody": {
+        "additionalProperties": false,
+        "properties": {
+          "playlist_ids": {
+            "description": "Playlists every imported track joins.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true
+          },
+          "type_id": {
+            "description": "Playlist type of every imported track.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "type_id"
+        ],
+        "type": "object"
+      },
+      "Inbox": {
+        "additionalProperties": false,
+        "properties": {
+          "dir": {
+            "description": "The inbox folder relative to the media root (setting import.inbox_dir).",
+            "type": "string"
+          },
+          "items": {
+            "description": "In path order. Hidden files are not listed; files that are not audio are listed and skipped by an import.",
+            "items": {
+              "$ref": "#/components/schemas/InboxFile"
+            },
+            "type": "array"
+          },
+          "more": {
+            "description": "The folder holds more files than listed.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "dir",
+          "items",
+          "more"
+        ],
+        "type": "object"
+      },
+      "InboxFile": {
+        "additionalProperties": false,
+        "properties": {
+          "modified_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "path": {
+            "description": "Relative to the media root, with forward slashes.",
+            "type": "string"
+          },
+          "size": {
+            "description": "Bytes.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "size",
+          "modified_at"
+        ],
+        "type": "object"
+      },
+      "LiquidsoapStateData": {
+        "additionalProperties": false,
+        "properties": {
+          "connected": {
+            "description": "The backend reaches Liquidsoap's control interface.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "type": "object"
+      },
+      "LiquidsoapStateEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LiquidsoapStateData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always liquidsoap.state.",
+            "enum": [
+              "liquidsoap.state"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "LiveInput": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "description": "The bridge's UDP port is open; without it no session can start.",
+            "type": "boolean"
+          },
+          "harbor_connected": {
+            "description": "The bridge is connected to Liquidsoap's live input.",
+            "type": "boolean"
+          },
+          "last_packet_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "on_air_since": {
+            "description": "When audio first reached Liquidsoap in this session.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "packets": {
+            "description": "Audio packets received in this session.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "session_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "state": {
+            "description": "connecting: waiting for audio; on_air: audio reaches Liquidsoap; reconnecting: audio arrives but Liquidsoap's live input is not reachable.",
+            "enum": [
+              "off",
+              "connecting",
+              "on_air",
+              "reconnecting"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "state",
+          "harbor_connected",
+          "packets"
+        ],
+        "type": "object"
+      },
+      "LiveSession": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "description": "The backend's WebRTC answer (SDP) with its candidates.",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "answer"
+        ],
+        "type": "object"
+      },
+      "LiveSessionBody": {
+        "additionalProperties": false,
+        "properties": {
+          "offer": {
+            "description": "The browser's WebRTC offer (SDP) with all its ICE candidates gathered; the backend does not trickle.",
+            "maxLength": 65536,
+            "minLength": 1,
+            "type": "string"
+          },
+          "takeover": {
+            "description": "End a running session and start this one (for example after the panel was reloaded). Without it, a running session refuses the offer with live_session_active.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "offer"
+        ],
+        "type": "object"
+      },
+      "LiveStateData": {
+        "additionalProperties": false,
+        "properties": {
+          "on_air_since": {
+            "description": "When audio first reached Liquidsoap in this session.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why the session ended; only with state off.",
+            "enum": [
+              "stopped",
+              "replaced",
+              "no_audio",
+              "dropout",
+              "shutdown"
+            ],
+            "type": "string"
+          },
+          "session_id": {
+            "description": "Absent when off.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "state": {
+            "description": "connecting: waiting for audio; on_air: audio reaches Liquidsoap; reconnecting: audio arrives but Liquidsoap's live input is not reachable.",
+            "enum": [
+              "off",
+              "connecting",
+              "on_air",
+              "reconnecting"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "LiveStateEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LiveStateData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always live.state.",
+            "enum": [
+              "live.state"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
       },
       "LiveStatus": {
         "additionalProperties": false,
         "properties": {
           "current_clock": {
-            "description": "Name of the clock playing this hour. Null means unknown.",
+            "description": "Name of the clock the grid assigns to the current station hour. Null means none or unknown.",
             "type": [
               "string",
               "null"
             ]
           },
           "on_air": {
-            "description": "Whether a broadcast is on air. Null means unknown; treat it as on air.",
+            "description": "Whether the station is live: a live voice session sends audio. Null means unknown; treat it as on air.",
             "type": [
               "boolean",
               "null"
@@ -250,6 +1691,7 @@
           "open_outage_id": {
             "description": "ID of the open outage, if any. Null means none or unknown.",
             "format": "int64",
+            "minimum": 0,
             "type": [
               "integer",
               "null"
@@ -369,6 +1811,177 @@
         ],
         "type": "object"
       },
+      "MissedItemList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlayHistoryEntry"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "MusicGain": {
+        "additionalProperties": false,
+        "properties": {
+          "gain": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "gain"
+        ],
+        "type": "object"
+      },
+      "MusicGainBody": {
+        "additionalProperties": false,
+        "properties": {
+          "gain": {
+            "description": "1 normal, 0.2 under voice, 0 off.",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "gain"
+        ],
+        "type": "object"
+      },
+      "NowPlaying": {
+        "additionalProperties": false,
+        "properties": {
+          "artist_name": {
+            "type": "string"
+          },
+          "item_id": {
+            "description": "Plan item; absent for an emergency track.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "out_ms": {
+            "description": "Planned out point (plan items) or duration (emergency tracks), in ms.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "plan",
+              "emergency"
+            ],
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "track_id",
+          "title",
+          "source",
+          "started_at",
+          "truncated"
+        ],
+        "type": "object"
+      },
+      "NowPlayingData": {
+        "additionalProperties": false,
+        "properties": {
+          "artist_name": {
+            "type": "string"
+          },
+          "item_id": {
+            "description": "Plan item; absent for an emergency track.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "out_ms": {
+            "description": "Planned out point (plan items) or duration (emergency tracks), in ms.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "plan",
+              "emergency"
+            ],
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "The plan cuts the track at out_ms with a fade-out.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "track_id",
+          "title",
+          "source",
+          "started_at",
+          "truncated"
+        ],
+        "type": "object"
+      },
+      "NowPlayingEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NowPlayingData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always playout.now_playing.",
+            "enum": [
+              "playout.now_playing"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
       "Operation": {
         "additionalProperties": false,
         "properties": {
@@ -383,6 +1996,7 @@
           },
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "kind": {
@@ -414,6 +2028,21 @@
         ],
         "type": "object"
       },
+      "OperationAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "description": "Its outcome arrives as \u003ckind\u003e.completed or \u003ckind\u003e.failed, and through GET /api/operations/{id}.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation_id"
+        ],
+        "type": "object"
+      },
       "OperationCompletedData": {
         "additionalProperties": false,
         "properties": {
@@ -440,6 +2069,7 @@
           },
           "operation_id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "time": {
@@ -450,7 +2080,15 @@
           "type": {
             "description": "\u003ckind\u003e.completed",
             "enum": [
-              "retention.completed"
+              "retention.completed",
+              "track_plan.completed",
+              "clock_build.completed",
+              "missed_items.completed",
+              "playout_reconcile.completed",
+              "reschedule.completed",
+              "import.completed",
+              "analyse.completed",
+              "transcode.completed"
             ],
             "type": "string"
           }
@@ -494,6 +2132,7 @@
           },
           "operation_id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "time": {
@@ -504,7 +2143,15 @@
           "type": {
             "description": "\u003ckind\u003e.failed",
             "enum": [
-              "retention.failed"
+              "retention.failed",
+              "track_plan.failed",
+              "clock_build.failed",
+              "missed_items.failed",
+              "playout_reconcile.failed",
+              "reschedule.failed",
+              "import.failed",
+              "analyse.failed",
+              "transcode.failed"
             ],
             "type": "string"
           }
@@ -569,6 +2216,7 @@
           },
           "operation_id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "time": {
@@ -578,7 +2226,15 @@
           "type": {
             "description": "\u003ckind\u003e.progress",
             "enum": [
-              "retention.progress"
+              "retention.progress",
+              "track_plan.progress",
+              "clock_build.progress",
+              "missed_items.progress",
+              "playout_reconcile.progress",
+              "reschedule.progress",
+              "import.progress",
+              "analyse.progress",
+              "transcode.progress"
             ],
             "type": "string"
           }
@@ -591,6 +2247,369 @@
         ],
         "type": "object"
       },
+      "Outage": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "enum": [
+              "icecast",
+              "liquidsoap",
+              "backend",
+              "network"
+            ],
+            "type": "string"
+          },
+          "detected_by": {
+            "enum": [
+              "icecast",
+              "liquidsoap_callback",
+              "liquidsoap_control",
+              "backend"
+            ],
+            "type": "string"
+          },
+          "ended_at": {
+            "description": "Absent while the outage is open.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "missed_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "reconciled_at": {
+            "description": "When its missed items were marked.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "detected_by",
+          "component",
+          "missed_count"
+        ],
+        "type": "object"
+      },
+      "OutageEndedData": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "enum": [
+              "icecast",
+              "liquidsoap",
+              "backend",
+              "network"
+            ],
+            "type": "string"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "missed_count": {
+            "description": "Items marked missed; absent when the marking failed (it is retried).",
+            "format": "int64",
+            "type": "integer"
+          },
+          "outage_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outage_id",
+          "started_at",
+          "ended_at",
+          "component"
+        ],
+        "type": "object"
+      },
+      "OutageEndedEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OutageEndedData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always broadcast_outage.ended.",
+            "enum": [
+              "broadcast_outage.ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "OutageList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Outage"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "OutageRef": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "enum": [
+              "icecast",
+              "liquidsoap",
+              "backend",
+              "network"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "component"
+        ],
+        "type": "object"
+      },
+      "OutageStartedData": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "enum": [
+              "icecast",
+              "liquidsoap",
+              "backend",
+              "network"
+            ],
+            "type": "string"
+          },
+          "detected_by": {
+            "enum": [
+              "icecast",
+              "liquidsoap_callback",
+              "liquidsoap_control",
+              "backend"
+            ],
+            "type": "string"
+          },
+          "outage_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outage_id",
+          "started_at",
+          "component",
+          "detected_by"
+        ],
+        "type": "object"
+      },
+      "OutageStartedEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OutageStartedData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always broadcast_outage.started.",
+            "enum": [
+              "broadcast_outage.started"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "PlayHistory": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlayHistoryEntry"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "description": "Pass as cursor for the next (older) page; absent on the last page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "PlayHistoryClock": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "description": "Absent when the clock was deleted.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "PlayHistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_duration_ms": {
+            "description": "How long it played; absent for missed items.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "artist_name": {
+            "type": "string"
+          },
+          "clock": {
+            "$ref": "#/components/schemas/PlayHistoryClock"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "outage": {
+            "$ref": "#/components/schemas/OutageRef",
+            "description": "Missed items: the outage that kept them off the air."
+          },
+          "planned_out_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "planned_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "resolution": {
+            "description": "Missed items only.",
+            "enum": [
+              "open",
+              "rescheduled",
+              "dismissed"
+            ],
+            "type": "string"
+          },
+          "resolved_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "resolved_item_id": {
+            "description": "The plan item that airs a rescheduled item again.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "auto",
+              "live",
+              "emergency"
+            ],
+            "type": "string"
+          },
+          "started_at": {
+            "description": "Absent for missed items.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "description": "missed: planned but not aired (shown as \"Not aired\").",
+            "enum": [
+              "aired",
+              "truncated",
+              "missed"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "source",
+          "track_id",
+          "title"
+        ],
+        "type": "object"
+      },
       "PlayRule": {
         "additionalProperties": false,
         "properties": {
@@ -600,6 +2619,7 @@
           },
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "max_per_hour": {
@@ -626,6 +2646,7 @@
             "description": "Playlists the rule is applied to, in ID order; it applies to each of their tracks.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "type": "array"
@@ -638,6 +2659,7 @@
             "description": "Tracks the rule is applied to, in ID order.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "type": "array"
@@ -744,6 +2766,7 @@
             "description": "In ID order.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "type": "array"
@@ -778,6 +2801,7 @@
           },
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "name": {
@@ -787,6 +2811,7 @@
             "description": "Play rules applied to every track of the playlist, in ID order.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "type": "array"
@@ -858,6 +2883,7 @@
           },
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "is_system": {
@@ -902,6 +2928,202 @@
         },
         "required": [
           "items"
+        ],
+        "type": "object"
+      },
+      "PlayoutCallbackBody": {
+        "additionalProperties": false,
+        "properties": {
+          "connected": {
+            "description": "output: the Icecast output is connected.",
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "description": "end: how long the track played.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event": {
+            "description": "heartbeat: sent every few seconds while Liquidsoap runs (not journaled).",
+            "enum": [
+              "start",
+              "end",
+              "output",
+              "heartbeat"
+            ],
+            "type": "string"
+          },
+          "filename": {
+            "description": "The resolved file.",
+            "type": "string"
+          },
+          "item_id": {
+            "description": "Plan item (source plan); empty otherwise.",
+            "pattern": "^[0-9]*$",
+            "type": "string"
+          },
+          "rid": {
+            "description": "Liquidsoap request ID.",
+            "type": "string"
+          },
+          "source": {
+            "description": "start and end: a plan item or an emergency track.",
+            "enum": [
+              "plan",
+              "emergency"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "description": "When Liquidsoap wrote the event (UTC).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "track_id": {
+            "description": "Emergency track (source emergency); empty otherwise.",
+            "pattern": "^[0-9]*$",
+            "type": "string"
+          },
+          "uri": {
+            "description": "The request as pushed.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "time"
+        ],
+        "type": "object"
+      },
+      "PlayoutLink": {
+        "additionalProperties": false,
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "last_ok_at": {
+            "description": "Last successful command.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "since": {
+            "description": "When the link last changed state.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "type": "object"
+      },
+      "PlayoutOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "since": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "connected",
+              "disconnected"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "since"
+        ],
+        "type": "object"
+      },
+      "PlayoutQueuedItem": {
+        "additionalProperties": false,
+        "properties": {
+          "artist_name": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "planned_out_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "planned_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "queue": {
+            "description": "The Liquidsoap queue of its hour.",
+            "enum": [
+              "hour_0",
+              "hour_1"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "track_id",
+          "title",
+          "planned_start_utc",
+          "planned_out_ms",
+          "truncated",
+          "queue"
+        ],
+        "type": "object"
+      },
+      "PlayoutStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "control_link": {
+            "$ref": "#/components/schemas/PlayoutLink"
+          },
+          "last_callback_at": {
+            "description": "When the last callback from Liquidsoap arrived.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "music_gain": {
+            "description": "The gain last set; absent before the first connect.",
+            "format": "double",
+            "type": "number"
+          },
+          "now_playing": {
+            "$ref": "#/components/schemas/NowPlaying",
+            "description": "Absent between tracks or when nothing is known."
+          },
+          "output": {
+            "$ref": "#/components/schemas/PlayoutOutput",
+            "description": "Absent until Liquidsoap reports it."
+          },
+          "queued": {
+            "description": "In planned order.",
+            "items": {
+              "$ref": "#/components/schemas/PlayoutQueuedItem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "control_link",
+          "queued"
         ],
         "type": "object"
       },
@@ -979,7 +3201,24 @@
           "track_file_not_found",
           "play_rule_not_found",
           "play_rule_in_use",
-          "separation_rule_not_found"
+          "separation_rule_not_found",
+          "clock_not_found",
+          "clock_in_use",
+          "clock_has_history",
+          "grid_slot_not_found",
+          "grid_conflict",
+          "filler_request_not_found",
+          "filler_request_closed",
+          "filler_request_not_answerable",
+          "hour_started",
+          "liquidsoap_unavailable",
+          "missed_item_not_found",
+          "missed_item_resolved",
+          "media_operation_running",
+          "media_tools_unavailable",
+          "live_session_active",
+          "live_offer_invalid",
+          "live_unavailable"
         ],
         "type": "string"
       },
@@ -995,6 +3234,75 @@
         },
         "required": [
           "name"
+        ],
+        "type": "object"
+      },
+      "RescheduleBody": {
+        "additionalProperties": false,
+        "properties": {
+          "fixed_minute": {
+            "description": "Required for placement fixed.",
+            "format": "int64",
+            "maximum": 59,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fixed_tolerance_ms": {
+            "description": "Start tolerance of a fixed placement; default rotation.default_fixed_tolerance_ms.",
+            "format": "int64",
+            "maximum": 600000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "placement": {
+            "enum": [
+              "start",
+              "end",
+              "fixed"
+            ],
+            "type": "string"
+          },
+          "target_hour_start_utc": {
+            "description": "Start of a future station hour within the track plan.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_hour_start_utc",
+          "placement"
+        ],
+        "type": "object"
+      },
+      "SaveWithFillerBody": {
+        "additionalProperties": false,
+        "properties": {
+          "pool_track_ids": {
+            "description": "Replaces the unused tracks of the clock's filler pool, in this order. Leave out to keep the pool.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "segments": {
+            "description": "A choice for every short segment; segments filled by the same element need the same choice.",
+            "items": {
+              "$ref": "#/components/schemas/SegmentFillerChoice"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "segments"
         ],
         "type": "object"
       },
@@ -1028,7 +3336,8 @@
               "filler",
               "outage",
               "retention",
-              "playout"
+              "playout",
+              "import"
             ],
             "type": "string"
           },
@@ -1048,11 +3357,44 @@
         ],
         "type": "object"
       },
+      "SegmentFillerChoice": {
+        "additionalProperties": false,
+        "properties": {
+          "filler_mode": {
+            "enum": [
+              "ask",
+              "random",
+              "playlist",
+              "artist",
+              "pool"
+            ],
+            "type": "string"
+          },
+          "filler_source_id": {
+            "description": "Playlist ID for playlist, artist ID for artist.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "segment": {
+            "description": "Index of the segment.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "segment",
+          "filler_mode"
+        ],
+        "type": "object"
+      },
       "SeparationRule": {
         "additionalProperties": false,
         "properties": {
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "min_interval_hours": {
@@ -1093,6 +3435,26 @@
         ],
         "type": "object"
       },
+      "SetFillerPool": {
+        "additionalProperties": false,
+        "properties": {
+          "track_ids": {
+            "description": "Replaces the unused tracks, in this order; used ones stay.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids"
+        ],
+        "type": "object"
+      },
       "SetPlayRuleTargets": {
         "additionalProperties": false,
         "properties": {
@@ -1100,6 +3462,7 @@
             "description": "Every playlist the rule applies to; playlists not listed lose it.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "maxItems": 1000,
@@ -1110,6 +3473,7 @@
             "description": "Every track the rule applies to; tracks not listed lose it.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "maxItems": 100000,
@@ -1130,6 +3494,7 @@
             "description": "Every play rule of the target; rules not listed are removed from it.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "maxItems": 1000,
@@ -1149,6 +3514,7 @@
             "description": "Every track of the playlist; tracks not listed are removed from it. The order is not stored.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "maxItems": 100000,
@@ -1210,7 +3576,8 @@
               "filler",
               "outage",
               "retention",
-              "playout"
+              "playout",
+              "import"
             ],
             "type": "string"
           },
@@ -1292,6 +3659,11 @@
       "Track": {
         "additionalProperties": false,
         "properties": {
+          "analyzed_at": {
+            "description": "Absent until the file is analysed.",
+            "format": "date-time",
+            "type": "string"
+          },
           "artist": {
             "$ref": "#/components/schemas/ArtistRef",
             "description": "Absent for material without an artist (jingles, station IDs)."
@@ -1300,6 +3672,14 @@
             "description": "Bits per second.",
             "format": "int64",
             "type": "integer"
+          },
+          "channels": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "codec": {
+            "description": "Codec of the audio stream as ffprobe names it (mp3, aac, vorbis, flac, pcm_s16le, ...). Absent until analysed.",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -1317,6 +3697,17 @@
             "description": "Relative to the media root, with forward slashes.",
             "type": "string"
           },
+          "fixes": {
+            "description": "Transcodes that remove at least one issue: the buttons Fix loudness and Optimize track (POST /api/tracks/transcode).",
+            "items": {
+              "enum": [
+                "loudness",
+                "optimize"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
           "format": {
             "enum": [
               "mp3",
@@ -1330,12 +3721,23 @@
           },
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
+          },
+          "loudness_lufs": {
+            "description": "Integrated loudness (EBU R128). Absent until analysed, and for a silent file.",
+            "format": "double",
+            "type": "number"
+          },
+          "loudness_range_lu": {
+            "format": "double",
+            "type": "number"
           },
           "play_rule_ids": {
             "description": "Rules of the track itself, in ID order. The rules of its playlists apply too.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "type": "array"
@@ -1344,7 +3746,24 @@
             "description": "In ID order.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
+            },
+            "type": "array"
+          },
+          "quality_issues": {
+            "description": "Problems found by the last analysis against the broadcast standard (settings import.*). low_bitrate and file_missing cannot be fixed by a transcode.",
+            "items": {
+              "enum": [
+                "format",
+                "sample_rate",
+                "channels",
+                "loudness",
+                "true_peak",
+                "low_bitrate",
+                "file_missing"
+              ],
+              "type": "string"
             },
             "type": "array"
           },
@@ -1360,8 +3779,17 @@
             "format": "int64",
             "type": "integer"
           },
+          "source_bitrate": {
+            "description": "Bits per second of the lossy file this one was transcoded from; it keeps the low_bitrate issue.",
+            "format": "int64",
+            "type": "integer"
+          },
           "title": {
             "type": "string"
+          },
+          "true_peak_dbtp": {
+            "format": "double",
+            "type": "number"
           },
           "type": {
             "$ref": "#/components/schemas/TypeRef"
@@ -1375,7 +3803,9 @@
           "type",
           "playlist_ids",
           "play_rule_ids",
-          "created_at"
+          "created_at",
+          "quality_issues",
+          "fixes"
         ],
         "type": "object"
       },
@@ -1434,6 +3864,7 @@
             "description": "Every playlist of the track; playlists not listed lose it.",
             "items": {
               "format": "int64",
+              "minimum": 0,
               "type": "integer"
             },
             "maxItems": 1000,
@@ -1500,6 +3931,322 @@
         ],
         "type": "object"
       },
+      "TrackPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackPlanHour"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "TrackPlanClock": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "TrackPlanHour": {
+        "additionalProperties": false,
+        "properties": {
+          "built_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "clock": {
+            "$ref": "#/components/schemas/TrackPlanClock"
+          },
+          "filler_request_id": {
+            "description": "The filler reminder of this build.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grid_slot_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hour_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "items": {
+            "description": "In time order.",
+            "items": {
+              "$ref": "#/components/schemas/TrackPlanItem"
+            },
+            "type": "array"
+          },
+          "seed": {
+            "description": "Seed of the build; the same input and seed give the same plan.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hour_start_utc",
+          "clock",
+          "seed",
+          "built_at",
+          "items"
+        ],
+        "type": "object"
+      },
+      "TrackPlanItem": {
+        "additionalProperties": false,
+        "properties": {
+          "artist_name": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "description": "Length of the track file.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "element_id": {
+            "description": "The clock element it was planned for; absent for filler or a removed element.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "planned_out_ms": {
+            "description": "Out point from the start of the track; shorter than duration_ms when truncated.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "planned_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "clock",
+              "filler_pool",
+              "filler_random",
+              "filler_playlist",
+              "filler_artist",
+              "filler_answer",
+              "reschedule"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "queued",
+              "aired",
+              "missed",
+              "replaced"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "The track crosses its segment end; it fades out and ends there.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "track_id",
+          "title",
+          "duration_ms",
+          "planned_start_utc",
+          "planned_out_ms",
+          "truncated",
+          "source",
+          "status"
+        ],
+        "type": "object"
+      },
+      "TrackPlanRebuildBody": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "description": "Hours that start at or after this instant.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "to": {
+            "description": "... and before this one; at most 7 days after from. Hours that have started are never rebuilt.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object"
+      },
+      "TrackPlanWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "element_blocked_by_play_rules",
+              "element_tolerance_relaxed",
+              "element_general_pool",
+              "element_emergency",
+              "pool_track_refused",
+              "pool_empty",
+              "filler_waiting",
+              "gap_unfilled",
+              "element_replaced",
+              "reschedule_dropped"
+            ],
+            "type": "string"
+          },
+          "element_index": {
+            "description": "Index into the clock's elements.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "message": {
+            "description": "English message for developers.",
+            "type": "string"
+          },
+          "segment_index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "TrackPlanWarningData": {
+        "additionalProperties": false,
+        "properties": {
+          "clock_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "clock_name": {
+            "type": "string"
+          },
+          "hour_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/TrackPlanWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "hour_start_utc",
+          "clock_id",
+          "clock_name",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "TrackPlanWarningEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TrackPlanWarningData"
+          },
+          "time": {
+            "description": "UTC time of the build.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always track_plan.warning.",
+            "enum": [
+              "track_plan.warning"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "TranscodeBody": {
+        "additionalProperties": false,
+        "properties": {
+          "fix": {
+            "description": "loudness: bring the loudness to stream.loudness_target_lufs, keeping the format. optimize: convert to the broadcast standard (settings import.target_*) and fix the loudness.",
+            "enum": [
+              "loudness",
+              "optimize"
+            ],
+            "type": "string"
+          },
+          "output": {
+            "description": "replace: the new file replaces the original. copy: the new file is written as \u003cname\u003e.optimal.\u003cext\u003e next to the original, which stays on disk; the track then plays the copy.",
+            "enum": [
+              "replace",
+              "copy"
+            ],
+            "type": "string"
+          },
+          "track_ids": {
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids",
+          "fix",
+          "output"
+        ],
+        "type": "object"
+      },
       "TypeRef": {
         "additionalProperties": false,
         "properties": {
@@ -1508,6 +4255,7 @@
           },
           "id": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "name": {
@@ -1537,6 +4285,25 @@
         },
         "required": [
           "min_interval_hours"
+        ],
+        "type": "object"
+      },
+      "WeekdayHour": {
+        "additionalProperties": false,
+        "properties": {
+          "hour": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "weekday": {
+            "description": "1 = Monday ... 7 = Sunday.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weekday",
+          "hour"
         ],
         "type": "object"
       }
@@ -1852,6 +4619,1265 @@
         ]
       }
     },
+    "/api/clocks": {
+      "get": {
+        "description": "Clocks with their status and element count, in name order.",
+        "operationId": "list-clocks",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List clocks",
+        "tags": [
+          "Clocks"
+        ]
+      },
+      "post": {
+        "description": "Runs the dry check and saves the clock (§6.0). A refusal names the element field. A short clock is saved incomplete with requires_filler_choice: the panel then opens the filler dialog and calls save-with-filler or save-incomplete.",
+        "operationId": "create-clock",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClockBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockSaveResult"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create a clock",
+        "tags": [
+          "Clocks"
+        ]
+      }
+    },
+    "/api/clocks/{id}": {
+      "delete": {
+        "description": "Refused while grid slots assign the clock (clock_in_use, with used_by naming the slots) and for good once it has play history (clock_has_history).",
+        "operationId": "delete-clock",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete a clock",
+        "tags": [
+          "Clocks"
+        ]
+      },
+      "get": {
+        "description": "The clock with its elements and its layout on nominal durations: segments, shortfall, and the element that holds each segment's filler.",
+        "operationId": "get-clock",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Clock"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get a clock",
+        "tags": [
+          "Clocks"
+        ]
+      },
+      "put": {
+        "description": "Replaces the clock and runs the dry check, like create. Elements are matched by id; elements left out are removed. A new fixed element whose start window overlaps an existing one replaces it (check.replaced_elements).",
+        "operationId": "update-clock",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClockBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockSaveResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update a clock",
+        "tags": [
+          "Clocks"
+        ]
+      }
+    },
+    "/api/clocks/{id}/filler-pool": {
+      "get": {
+        "description": "Specific tracks used in order when the clock needs filler in pool mode. Used tracks stay as history.",
+        "operationId": "get-clock-filler-pool",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FillerPool"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the filler pool of a clock",
+        "tags": [
+          "Clocks"
+        ]
+      },
+      "put": {
+        "description": "Replaces the unused tracks of the pool, in the given order; used ones stay.",
+        "operationId": "set-clock-filler-pool",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFillerPool"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FillerPool"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Set the filler pool of a clock",
+        "tags": [
+          "Clocks"
+        ]
+      }
+    },
+    "/api/clocks/{id}/save-incomplete": {
+      "post": {
+        "description": "Closes the filler dialog without a choice: the clock stays incomplete and shows its warning. Reminders for its short hours in the plan horizon are created by the rebuild.",
+        "operationId": "save-clock-incomplete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockSaveResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Keep a short clock incomplete",
+        "tags": [
+          "Clocks"
+        ]
+      }
+    },
+    "/api/clocks/{id}/save-with-filler": {
+      "post": {
+        "description": "Stores the filler of each short segment on the element that holds it, and the pool if given. Every short segment must have a filler afterwards, so the clock becomes complete.",
+        "operationId": "save-clock-with-filler",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWithFillerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockSaveResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Save the filler choice of a short clock",
+        "tags": [
+          "Clocks"
+        ]
+      }
+    },
+    "/api/filler-requests": {
+      "get": {
+        "description": "Reminders of short hours that wait for the operator, and of empty filler pools (§7), newest hour first.",
+        "operationId": "list-filler-requests",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "default": "pending",
+              "enum": [
+                "pending",
+                "answered",
+                "defaulted",
+                "expired",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FillerRequestList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List filler reminders",
+        "tags": [
+          "Track plan"
+        ]
+      }
+    },
+    "/api/filler-requests/{id}/answer": {
+      "post": {
+        "description": "The track fills the hour's first waiting segment, the clock's default filler mode the others, and the hour is rebuilt. Refused (track_id: blocked) when the track breaks separation or a play rule at that time; a pool_empty reminder is closed by refilling the pool instead.",
+        "operationId": "answer-filler-request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FillerAnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FillerRequest"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Answer a filler reminder",
+        "tags": [
+          "Track plan"
+        ]
+      }
+    },
+    "/api/grid": {
+      "get": {
+        "description": "The assigned hours of the station local dates from ... to, with the UTC start of each hour and its clock. Hours without a clock are left out.",
+        "operationId": "get-grid-schedule",
+        "parameters": [
+          {
+            "description": "First station local date.",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "First station local date.",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last station local date, inclusive; at most 62 days after from.",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "Last station local date, inclusive; at most 62 days after from.",
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GridSchedule"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Grid by hour",
+        "tags": [
+          "Grid"
+        ]
+      }
+    },
+    "/api/grid/assign": {
+      "post": {
+        "description": "Creates one slot per weekday and hour, in one transaction. Slots that overlap the new dates are trimmed, split, or deleted (replaced lists them). valid_from lies between today and the grid horizon, station local.",
+        "operationId": "assign-grid",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GridAssignBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GridAssignResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Assign a clock to grid hours",
+        "tags": [
+          "Grid"
+        ]
+      }
+    },
+    "/api/grid/slots": {
+      "get": {
+        "description": "Slots in weekday, hour, valid_from order. Weekday, hour, and dates are station local.",
+        "operationId": "list-grid-slots",
+        "parameters": [
+          {
+            "description": "Only the slots of this clock.",
+            "explode": false,
+            "in": "query",
+            "name": "clock_id",
+            "schema": {
+              "description": "Only the slots of this clock.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only slots valid on some date from this one (station local).",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "description": "Only slots valid on some date from this one (station local).",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only slots valid on some date up to this one.",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "description": "Only slots valid on some date up to this one.",
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GridSlotList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List grid slots",
+        "tags": [
+          "Grid"
+        ]
+      }
+    },
+    "/api/grid/slots/{id}": {
+      "delete": {
+        "description": "The play history of the slot keeps its clock and loses only the slot. Its planned hours are cleared by a clock_build operation.",
+        "operationId": "delete-grid-slot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete a grid slot",
+        "tags": [
+          "Grid"
+        ]
+      }
+    },
+    "/api/grid/unassign": {
+      "post": {
+        "description": "Removes every clock from the weekdays and hours for the dates: overlapping slots are trimmed, split, or deleted.",
+        "operationId": "unassign-grid",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GridUnassignBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GridAssignResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Clear grid hours",
+        "tags": [
+          "Grid"
+        ]
+      }
+    },
+    "/api/import": {
+      "post": {
+        "description": "Starts an import operation: every audio file of the inbox is analysed, moved to the library folder (setting import.library_dir), and registered as a track with the given type and playlists. Title and artist come from the file's tags, else from its name. A file already in the library (same checksum) or not readable as audio stays in the inbox. Refused with media_operation_running while another import, analysis, or transcode runs, and with media_tools_unavailable when ffmpeg is missing.",
+        "operationId": "start-import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Import the inbox",
+        "tags": [
+          "Import"
+        ]
+      }
+    },
+    "/api/import/inbox": {
+      "get": {
+        "description": "The files waiting in the inbox folder under the media root (setting import.inbox_dir), at most 1,000.",
+        "operationId": "get-import-inbox",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Inbox"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the inbox",
+        "tags": [
+          "Import"
+        ]
+      }
+    },
+    "/api/live/session": {
+      "delete": {
+        "description": "Ends the live voice session, if any; the music returns to its level.",
+        "operationId": "stop-live-session",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "End the live session",
+        "tags": [
+          "Live"
+        ]
+      },
+      "post": {
+        "description": "Starts a live voice session (§8.4): the browser sends its WebRTC offer and gets the answer; its microphone then goes to air over the music, which is lowered while the session lasts (§8.5). One session at a time. The state is sent as live.state events.",
+        "operationId": "start-live-session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveSessionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveSession"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Go live",
+        "tags": [
+          "Live"
+        ]
+      }
+    },
+    "/api/live/status": {
+      "get": {
+        "description": "The state of the live voice input and its session.",
+        "operationId": "get-live-input",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveInput"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the live voice state",
+        "tags": [
+          "Live"
+        ]
+      }
+    },
     "/api/logs/files": {
       "get": {
         "description": "Daily log files (one per UTC date), newest first.",
@@ -1932,7 +5958,8 @@
                 "webrtc",
                 "retention",
                 "outage",
-                "reconcile"
+                "reconcile",
+                "media"
               ],
               "type": "string"
             }
@@ -2007,6 +6034,222 @@
         "summary": "Read a log file",
         "tags": [
           "Logs"
+        ]
+      }
+    },
+    "/api/missed-items": {
+      "get": {
+        "description": "Items that did not air because of an outage (§7.1), newest planned first. Open items wait for the manager to reschedule or dismiss them.",
+        "operationId": "list-missed-items",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "resolution",
+            "schema": {
+              "default": "open",
+              "enum": [
+                "open",
+                "rescheduled",
+                "dismissed"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissedItemList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List missed items",
+        "tags": [
+          "Outages"
+        ]
+      }
+    },
+    "/api/missed-items/{id}/dismiss": {
+      "post": {
+        "description": "The item will not be broadcast again. Its row is then kept for the play log retention period.",
+        "operationId": "dismiss-missed-item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayHistoryEntry"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Dismiss a missed item",
+        "tags": [
+          "Outages"
+        ]
+      }
+    },
+    "/api/missed-items/{id}/reschedule": {
+      "post": {
+        "description": "Places the item into a later hour, at its start, its end, or a fixed minute, for that hour only; the clock template is not changed (§7.1, §7.2). Checks that need no build are refused per field; the hour is then rebuilt by a reschedule operation, which fails when the track breaks separation or a play rule at its place or does not fit whole.",
+        "operationId": "reschedule-missed-item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Reschedule a missed item",
+        "tags": [
+          "Outages"
         ]
       }
     },
@@ -2150,6 +6393,179 @@
         "summary": "Get an operation",
         "tags": [
           "Operations"
+        ]
+      }
+    },
+    "/api/outages": {
+      "get": {
+        "description": "Broadcast interruptions that overlap the range, newest first, with the number of items they kept off the air (§7.1). An open outage has no ended_at.",
+        "operationId": "list-outages",
+        "parameters": [
+          {
+            "description": "Outages that end at or after this instant (UTC), or are open.",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "Outages that end at or after this instant (UTC), or are open.",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "... and start before this one; at most 7 days after from.",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "... and start before this one; at most 7 days after from.",
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List outages",
+        "tags": [
+          "Outages"
+        ]
+      }
+    },
+    "/api/play-history": {
+      "get": {
+        "description": "Aired, truncated, and missed items in one list, newest first (§7.1). Missed items carry their outage and resolution. Paginated by cursor.",
+        "operationId": "get-play-history",
+        "parameters": [
+          {
+            "description": "Rows that aired (or were planned, for missed items) at or after this instant (UTC).",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "Rows that aired (or were planned, for missed items) at or after this instant (UTC).",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "... and before this one; at most 31 days after from.",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "... and before this one; at most 31 days after from.",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only rows with this status.",
+            "explode": false,
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "description": "Only rows with this status.",
+              "enum": [
+                "aired",
+                "truncated",
+                "missed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "format": "int64",
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "next_cursor of the previous page.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "next_cursor of the previous page.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayHistory"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the played-tracks list",
+        "tags": [
+          "Outages"
         ]
       }
     },
@@ -3245,6 +7661,187 @@
         ]
       }
     },
+    "/api/playout/callback": {
+      "post": {
+        "description": "Called by Liquidsoap only: a track start or end, or the Icecast output state (§8.3). A started plan item moves to the play log; the first end of an item records its actual duration. Repeated events change nothing.",
+        "operationId": "playout-callback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayoutCallbackBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Liquidsoap callback",
+        "tags": [
+          "Playout"
+        ]
+      }
+    },
+    "/api/playout/emergency/next": {
+      "get": {
+        "description": "Called by Liquidsoap only, when the plan has nothing to play (§8.2, §8.6): a Liquidsoap request for a random track of the emergency playlist (setting playout.emergency_playlist_id), or 204 when there is none.",
+        "operationId": "playout-emergency-next",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The request to play, for example annotate:track_id=\"5\":/media/a.mp3.",
+            "headers": {
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No emergency playlist, or it has no playable track."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Next emergency track",
+        "tags": [
+          "Playout"
+        ]
+      }
+    },
+    "/api/playout/music-gain": {
+      "put": {
+        "description": "Sets the live music gain in Liquidsoap (§8.5), for example 0 for an interview and 1 afterwards. The value is kept until changed and set again after a reconnect; the setting liquidsoap.music_gain is the value at startup.",
+        "operationId": "set-music-gain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MusicGainBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MusicGain"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Set the music gain",
+        "tags": [
+          "Playout"
+        ]
+      }
+    },
+    "/api/playout/status": {
+      "get": {
+        "description": "The Liquidsoap control link, the Icecast output, the track on air, the items waiting in Liquidsoap's queues, and the music gain.",
+        "operationId": "get-playout-status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayoutStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the playout state",
+        "tags": [
+          "Playout"
+        ]
+      }
+    },
     "/api/separation-rules": {
       "get": {
         "description": "The rules are seeded by the database; their values are copied from the reference software and edited here.",
@@ -3502,7 +8099,7 @@
     },
     "/api/status/live": {
       "get": {
-        "description": "Whether the station is on air and whether an outage is open. The update script checks it before restarting services. A null field means unknown and must be treated as on air. Until playout and outage detection exist, on_air, open_outage_id and current_clock are always null.",
+        "description": "Whether the station is on air live (a live voice session sends audio), whether an outage is open, and the clock of the current hour. The update script checks it before restarting services. A null field means unknown and must be treated as on air.",
         "operationId": "get-live-status",
         "responses": {
           "200": {
@@ -3529,6 +8126,126 @@
         "summary": "Get the live status",
         "tags": [
           "Status"
+        ]
+      }
+    },
+    "/api/track-plan": {
+      "get": {
+        "description": "The built hours that start in the range, with their tracks in time order (§7). The plan covers the next rotation.plan_horizon_hours.",
+        "operationId": "get-track-plan",
+        "parameters": [
+          {
+            "description": "Hours that start at or after this instant (UTC).",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "Hours that start at or after this instant (UTC).",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "... and before this one; at most 7 days after from.",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "... and before this one; at most 7 days after from.",
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackPlan"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the track plan",
+        "tags": [
+          "Track plan"
+        ]
+      }
+    },
+    "/api/track-plan/rebuild": {
+      "post": {
+        "description": "Rebuilds every future hour of the range, even when it is current, as a clock_build operation. Hours that have started are not touched. Pending reminders of the rebuilt hours expire, and new ones are created.",
+        "operationId": "rebuild-track-plan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackPlanRebuildBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Rebuild the track plan",
+        "tags": [
+          "Track plan"
         ]
       }
     },
@@ -3581,6 +8298,21 @@
             "schema": {
               "description": "Only tracks whose title or artist name contains this text (case-insensitive).",
               "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tracks analysed without issues, with issues, or never analysed.",
+            "explode": false,
+            "in": "query",
+            "name": "quality",
+            "schema": {
+              "description": "Only tracks analysed without issues, with issues, or never analysed.",
+              "enum": [
+                "ok",
+                "issues",
+                "unanalysed"
+              ],
               "type": "string"
             }
           },
@@ -3691,6 +8423,150 @@
           }
         },
         "summary": "Register a track",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/analyse": {
+      "post": {
+        "description": "Starts an analysis operation: reads format, bitrate, sample rate, channels, duration, and loudness of the files and checks them against the broadcast standard (quality_issues). A missing file gets file_missing. Refused with media_operation_running while another import, analysis, or transcode runs, and with media_tools_unavailable when ffmpeg is missing.",
+        "operationId": "analyse-tracks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Analyse track files",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/transcode": {
+      "post": {
+        "description": "Starts a transcode operation (Fix loudness, Optimize track). A track is skipped when the fix removes none of its issues, while it is queued, on air, or planned to start within playout.prepush_minutes + 5 minutes, and when the target path belongs to another track. Refused with media_operation_running while another import, analysis, or transcode runs, and with media_tools_unavailable when ffmpeg is missing.",
+        "operationId": "transcode-tracks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Fix track files",
         "tags": [
           "Tracks"
         ]
