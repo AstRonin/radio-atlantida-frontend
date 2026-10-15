@@ -1,0 +1,81 @@
+{
+  "title": "Play rules",
+  "summary": "A play rule limits when a track may play. You create named rules here and apply them to tracks (mostly jingles) or to whole playlists.",
+  "entities": [
+    {
+      "term": "Time window",
+      "text": "From and to, in station time, with optional weekdays. A window may cross midnight, for example 22:00 to 02:00."
+    },
+    {
+      "term": "Minimum interval",
+      "text": "The track does not start again until this many minutes after its last start."
+    },
+    {
+      "term": "Plays per hour",
+      "text": "The most times the track may start within the same clock hour."
+    },
+    {
+      "term": "Targets",
+      "text": "The tracks and playlists the rule applies to. A playlist rule is checked for each of its tracks separately."
+    }
+  ],
+  "usage": "A rule can combine a time window, a minimum interval, and a per-hour limit; at least one must be set, and all set parts must pass. A track follows its own rules and the rules of its playlists. A rule only limits: how often a jingle slot appears in the hour is set by the clock.",
+  "steps": [
+    "Click Add rule and enter a name that says what it does.",
+    "Set a time window, a minimum interval, a per-hour limit, or a combination.",
+    "Save, then choose the tracks and playlists the rule applies to.",
+    "Check the clock dry check for hours in which no track passes."
+  ],
+  "mistakes": [
+    "Setting only one end of the time window. Set both times or neither.",
+    "Expecting a rule to make a track play more often. Rules only block; clocks create the slots.",
+    "Restricting every jingle of a playlist to the same window. Outside it, the jingle slots stay empty and you get warnings."
+  ],
+  "example": {
+    "title": "Morning and midday jingles",
+    "text": "Rule \"Morning\": 06:00 to 08:00, applied to jingle A. Rule \"Midday\": 10:00 to 12:00, and rule \"Once per hour\": 1 play per hour, both applied to jingle B. At 07:15 only jingle A may play. At 11:00 jingle B plays once, then other jingles fill the remaining slots of that hour."
+  },
+  "operations": {
+    "create": "At least one limit is required.",
+    "edit": "Changes apply to hours planned from now on.",
+    "delete": "A rule applied to any track or playlist cannot be deleted. The message lists them; remove the rule from them first."
+  },
+  "fields": {
+    "name": {
+      "label": "Name",
+      "text": "Say what the rule does, for example \"Morning 06:00 to 10:00\"."
+    },
+    "window_from": {
+      "label": "From",
+      "text": "Start of the allowed time, HH:MM in station time. Set together with To."
+    },
+    "window_to": {
+      "label": "To",
+      "text": "End of the allowed time. Earlier than From when the window crosses midnight."
+    },
+    "weekdays": {
+      "label": "Weekdays",
+      "text": "Days on which the window applies. None chosen means every day. For a window across midnight, the day it starts."
+    },
+    "min_interval_minutes": {
+      "label": "Minimum interval",
+      "text": "Minutes between two starts of the same track. At most 7 days."
+    },
+    "max_per_hour": {
+      "label": "Plays per hour",
+      "text": "The most starts of the same track within one clock hour."
+    },
+    "notes": {
+      "label": "Notes",
+      "text": "Why the rule exists, for your own reference."
+    },
+    "track_ids": {
+      "label": "Tracks",
+      "text": "Tracks the rule applies to directly."
+    },
+    "playlist_ids": {
+      "label": "Playlists",
+      "text": "Playlists whose every track follows the rule."
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "title": "Played tracks",
+  "summary": "The played-tracks list shows what aired, what was cut short, and what did not air because of a broadcast interruption, newest first.",
+  "entities": [
+    {
+      "term": "Aired",
+      "text": "The track played in full."
+    },
+    {
+      "term": "Truncated",
+      "text": "The track ran past the end of its segment and was faded out. It counts as aired, with its real duration."
+    },
+    {
+      "term": "Not aired (missed)",
+      "text": "The item was planned during an outage and did not reach the air. It stays here until you reschedule or dismiss it."
+    },
+    {
+      "term": "Outage",
+      "text": "A period when the stream was interrupted, with the part that failed: Icecast, Liquidsoap, the backend, or the network."
+    }
+  ],
+  "usage": "Choose a time range (up to 31 days) and, if you want, a status. Missed items carry a \"Not aired\" label; open them to reschedule them into a later hour or dismiss them. Times are shown in the station timezone.",
+  "steps": [
+    "Choose the date range to look at.",
+    "Filter by status to see only missed items, if needed.",
+    "For a missed item, choose Reschedule or Dismiss.",
+    "Check the outage periods to see why items were missed."
+  ],
+  "mistakes": [
+    "Expecting missed items to vanish after 10 days. Aired history is deleted after the retention period; missed items stay until you resolve them.",
+    "Reading times as your computer's time. All times are station time."
+  ],
+  "example": {
+    "title": "After an Icecast drop",
+    "text": "Icecast was down from 14:05 to 14:12. The list shows two songs and the 14:10 news as Not aired. Reschedule the news to the start of the 16:00 hour and dismiss the two songs."
+  },
+  "operations": {},
+  "fields": {
+    "from": {
+      "label": "From",
+      "text": "Start of the range, station time."
+    },
+    "to": {
+      "label": "To",
+      "text": "End of the range, at most 31 days after the start."
+    },
+    "status": {
+      "label": "Status",
+      "text": "Show only aired, truncated, or missed items. Empty shows all."
+    }
+  }
+}

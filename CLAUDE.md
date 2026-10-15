@@ -36,8 +36,9 @@ streams it, and PostgreSQL stores the data.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
-Phase status: F1 (skeleton), F2 (API client and contract pipeline), and F3 (realtime, operations,
-alerts, settings core) done. Next: F4 (shared UI: help, validation, pickers, player).
+Phase status: F1 (skeleton), F2 (API client and contract pipeline), F3 (realtime, operations,
+alerts, settings core), and F4 (shared UI: help, validation, pickers, player) done. Next: F5
+(settings and library pages).
 
 ## Ground rules
 
@@ -54,6 +55,12 @@ alerts, settings core) done. Next: F4 (shared UI: help, validation, pickers, pla
   `problemMessage()` and put field errors on forms with `applyServerErrors()` (`shared/forms`).
   Form control names match the DTO's JSON names. Format API times with the `stationTime` pipe or
   `StationTimeService`, never `DatePipe` or `toLocaleString` without the station zone.
+- **Shared UI (F4).** Pages use these instead of their own: `app-page-header` (title and help
+  button; page IDs are `HelpPageId` in `core/help`), `app-field-hint`, the inputs in `shared/forms`
+  (number, time, date, weekdays, filler mode, playlist type) with `shared/forms/validators.ts`, the
+  pickers in `shared/pickers`, `app-play-button` for track preview, `ConfirmService` for deletes (it
+  shows `used_by` refusals), and `FillerDialogService` for the blocking filler dialog. Shared lists
+  are read through `CatalogService` (`core/catalog`), so `shared/` never calls HTTP itself.
 - **No secrets in the frontend.** The panel only shows whether a secret is set.
 - **Times.** The API sends ISO 8601 UTC (`...Z`). Display them in the station timezone from settings
   (IANA name, default `Asia/Yerevan`), never in the browser's zone.
@@ -110,13 +117,13 @@ docker/nginx.conf            static files, SPA fallback, /api and /api/ws proxy,
 docs/                        context documents (kept verbatim, not formatted by Prettier)
 scripts/sync-api.mjs         copies the backend specification into api/
 src/app/core/                app-wide services: api, realtime, operations, alerts, settings, time,
-                             player, help, i18n, shell
+                             player, help, catalog (lists for pickers), i18n, shell
 src/app/shared/              ui, forms, pickers (presentational only)
 src/app/features/            one folder per domain, created when its phase starts
 src/app/app.routes.ts        lazy routes; a route with data.navLabel appears in the navigation
 src/app/app.config.ts        router, HttpClient with interceptors, error handler, translations
 src/assets/i18n/             <lang>.json translations and languages.json
-src/assets/help/<lang>/      help JSON per page ID (from F4)
+src/assets/help/<lang>/      help JSON per page ID: help.play-rules -> play-rules.json
 proxy.conf.json              dev proxy: /api (and /api/ws) -> http://127.0.0.1:8080
 ```
 

@@ -1,0 +1,52 @@
+{
+  "title": "Playlist types",
+  "summary": "Playlist types are labels for playlists and tracks, such as music, jingle, news, and segment. They help you filter and recognize content. You can add your own types.",
+  "entities": [
+    {
+      "term": "System type",
+      "text": "music, jingle, news, and segment. They always exist. You can rename them, but not delete them, and their code never changes."
+    },
+    {
+      "term": "Custom type",
+      "text": "A type you add, for example \"podcast\" or \"advert\". It can be deleted while nothing uses it."
+    },
+    {
+      "term": "Code",
+      "text": "A short unique name in lower case, for example podcast. It is set once when the type is created and cannot be changed."
+    },
+    {
+      "term": "Usage",
+      "text": "How many playlists and tracks have the type. A type in use cannot be deleted."
+    }
+  ],
+  "usage": "Add a type when you need a new kind of content label. Rename a type to change how it is shown. A type is only a label: it does not limit what a clock element can combine.",
+  "steps": [
+    "Click Add type.",
+    "Enter a code (lower case letters, digits, dashes, or underscores) and a display name.",
+    "Save. The new type appears at once in the type lists of playlists and tracks."
+  ],
+  "mistakes": [
+    "Choosing a code with a typo. The code cannot be changed later; only the name can.",
+    "Expecting a type to change rotation. Clocks and rules decide what plays; the type is a label.",
+    "Trying to delete a type that playlists or tracks still use. Change their type first."
+  ],
+  "example": {
+    "title": "Adding adverts",
+    "text": "Add a type with code advert and name \"Advert\". Create the playlist \"Spring campaign\" with type Advert. In the clock list, the playlist now shows an Advert badge, and the library can be filtered to show only adverts."
+  },
+  "operations": {
+    "create": "The code must be unique and cannot be changed later.",
+    "edit": "Only the display name changes. The code stays the same.",
+    "delete": "System types cannot be deleted. A type used by any playlist or track cannot be deleted; the message lists what uses it."
+  },
+  "fields": {
+    "code": {
+      "label": "Code",
+      "text": "A short unique name in lower case, for example advert. Fixed after creation."
+    },
+    "name": {
+      "label": "Name",
+      "text": "The name shown in lists and badges. You can change it at any time."
+    }
+  }
+}

@@ -45,6 +45,10 @@
   border-right: 1px solid var(--mat-sys-outline-variant);
 }
 
+.help {
+  width: min(28rem, 100vw);
+}
+
 .empty-navigation {
   margin: 1rem;
   color: var(--mat-sys-on-surface-variant);

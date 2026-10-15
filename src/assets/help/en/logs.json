@@ -1,0 +1,48 @@
+{
+  "title": "Logs",
+  "summary": "The logs show the backend's diagnostic messages: errors, warnings, and connection changes. Use them when something did not work as expected.",
+  "entities": [
+    {
+      "term": "Log file",
+      "text": "One file per day (UTC date), kept for 10 days by default."
+    },
+    {
+      "term": "Level",
+      "text": "ERROR and WARN are problems; INFO notes connection changes and actions."
+    },
+    {
+      "term": "Component",
+      "text": "The part of the system that wrote the entry, for example icecast, liquidsoap, rotation, or api."
+    },
+    {
+      "term": "Request ID",
+      "text": "Links an error popup in the panel to its entry in the log."
+    }
+  ],
+  "usage": "Choose a day, then filter by level and component. Times are converted to the station timezone. Errors also appear as popups when they happen, so you rarely need to search.",
+  "steps": [
+    "Choose the log file of the day.",
+    "Set the level to WARN to see only problems.",
+    "Filter by component, for example icecast for stream problems.",
+    "Use the request ID from an error popup to find its entry."
+  ],
+  "mistakes": [
+    "Looking in the wrong day's file near midnight: file dates are UTC, not station time.",
+    "Expecting secrets in the log. Passwords are always masked."
+  ],
+  "example": {
+    "title": "Why did the stream stop?",
+    "text": "An outage banner appeared at 14:05. Open today's log, set level WARN and component icecast. The entries show \"connection lost\" at 14:05 and \"connected\" at 14:12, with reconnect attempts in between."
+  },
+  "operations": {},
+  "fields": {
+    "level": {
+      "label": "Level",
+      "text": "Minimum level: WARN shows warnings and errors."
+    },
+    "component": {
+      "label": "Component",
+      "text": "Show only entries from one part of the system."
+    }
+  }
+}

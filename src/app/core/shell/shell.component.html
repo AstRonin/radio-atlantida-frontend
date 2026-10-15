@@ -56,9 +56,25 @@
     </nav>
   </mat-sidenav>
 
+  <mat-sidenav
+    class="help"
+    position="end"
+    mode="over"
+    role="dialog"
+    aria-labelledby="help-panel-title"
+    [opened]="help.panelPage() !== null"
+    (closedStart)="help.close()"
+  >
+    @if (help.panelPage()) {
+      <app-help-panel [content]="help.panelContent()" (closed)="help.close()" />
+    }
+  </mat-sidenav>
+
   <mat-sidenav-content>
     <main id="main-content" class="content" tabindex="-1">
       <router-outlet />
     </main>
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+<app-player-bar />

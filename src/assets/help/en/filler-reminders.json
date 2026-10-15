@@ -1,0 +1,39 @@
+{
+  "title": "Filler reminders",
+  "summary": "A filler reminder asks you to choose a track for an hour whose clock is short and has no filler choice, or whose filler pool is empty.",
+  "entities": [
+    {
+      "term": "Reminder",
+      "text": "One open question for one hour of one clock, with a deadline before air."
+    },
+    {
+      "term": "Deadline",
+      "text": "When the reminder closes by itself. The clock's default filler mode, or the global fallback, is then used."
+    },
+    {
+      "term": "Pool empty",
+      "text": "The clock's filler pool has no unused tracks left. Refill the pool on the clock; choosing a track here is not possible."
+    }
+  ],
+  "usage": "Answer a reminder by choosing a track for the hour. The track is checked against separation and play rules; a refused track shows why. Air never waits for an answer.",
+  "steps": [
+    "Open a pending reminder.",
+    "Search for a track that fits the shortfall and listen to it with the play button.",
+    "Choose it and save."
+  ],
+  "mistakes": [
+    "Waiting until the hour is about to start. Hours close to air are frozen and their reminders can no longer be answered.",
+    "Choosing a track that played recently. Separation refuses it."
+  ],
+  "example": {
+    "title": "A short evening hour",
+    "text": "The clock \"Evening\" is short by 2 minutes at 20:00 tomorrow. Open the reminder, search for \"interlude\", listen to a 1:55 instrumental, and choose it. The 20:00 hour is rebuilt with it."
+  },
+  "operations": {},
+  "fields": {
+    "track_id": {
+      "label": "Track",
+      "text": "The track that fills the hour's waiting segment. It must pass separation and play rules."
+    }
+  }
+}

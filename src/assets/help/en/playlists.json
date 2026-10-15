@@ -1,0 +1,61 @@
+{
+  "title": "Playlists",
+  "summary": "A playlist is a pool of tracks that clock elements take tracks from. It is not a queue: the order of tracks does not matter, and the system chooses which track plays.",
+  "entities": [
+    {
+      "term": "Playlist",
+      "text": "A named set of tracks with a type, for example \"Pop hits\" of type music. Clock elements refer to playlists."
+    },
+    {
+      "term": "Pool, not a queue",
+      "text": "The system picks a track from the playlist by the rotation rules: separation, play rules, and how well its length fits. You never set an order."
+    },
+    {
+      "term": "Membership",
+      "text": "A track can be in several playlists at once. Removing it from one playlist does not remove it from the library."
+    },
+    {
+      "term": "Playlist play rules",
+      "text": "Rules set on a playlist apply to each of its tracks separately, together with the track's own rules."
+    }
+  ],
+  "usage": "Filter the list by type. Open a playlist to rename it, change its type, add or remove tracks, and set its play rules. Use the play button next to a track to listen to it.",
+  "steps": [
+    "Click Add playlist, enter a name, and choose a type.",
+    "Add tracks with the track picker. Search by title or artist and tick the tracks you want.",
+    "Optionally add play rules that every track of the playlist must follow.",
+    "Use the playlist in a clock element on the Clocks page."
+  ],
+  "mistakes": [
+    "Trying to put tracks in order. The order is not stored; use clock elements to shape the hour.",
+    "Making a playlist so small that separation rules block every track. With a 3-day track separation, a playlist used every hour needs many tracks.",
+    "Deleting a playlist that clocks still use. Remove it from the clock elements first."
+  ],
+  "example": {
+    "title": "A pop playlist for the daytime clock",
+    "text": "Create \"Pop hits\" of type music and add 300 pop songs. In the daytime clock, an element uses \"Pop hits\" and \"New releases\" together. Every time that element plays, the system picks one fitting track from both playlists, skipping songs that played in the last three days."
+  },
+  "operations": {
+    "create": "The type is required. You can change it later.",
+    "edit": "Track changes apply to hours that are planned from now on.",
+    "delete": "A playlist used by a clock element or as a filler source cannot be deleted. The message lists the clocks that use it."
+  },
+  "fields": {
+    "name": {
+      "label": "Name",
+      "text": "A name you will recognize in clock elements, for example \"Pop hits\"."
+    },
+    "type_id": {
+      "label": "Playlist type",
+      "text": "A label for filters and badges. One clock element may combine playlists of different types."
+    },
+    "track_ids": {
+      "label": "Tracks",
+      "text": "The tracks of the pool. Their order is not stored."
+    },
+    "rule_ids": {
+      "label": "Play rules",
+      "text": "Rules that apply to every track of this playlist, checked for each track separately."
+    }
+  }
+}

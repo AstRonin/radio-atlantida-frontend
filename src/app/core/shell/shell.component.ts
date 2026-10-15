@@ -7,11 +7,14 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
+import { HelpPanelComponent } from '../../shared/ui/help-panel.component';
 import { OutageBannerComponent } from '../alerts/outage-banner.component';
 import { OutageService } from '../alerts/outage.service';
+import { HelpService } from '../help/help.service';
 import { LanguageSwitchComponent } from '../i18n/language-switch.component';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { OperationsMenuComponent } from '../operations/operations-menu.component';
+import { PlayerBarComponent } from '../player/player-bar.component';
 import { ConnectionStatusComponent } from '../realtime/connection-status.component';
 import { SettingsService } from '../settings/settings.service';
 import { navigationItems } from './navigation';
@@ -30,9 +33,11 @@ const NARROW_QUERY = '(max-width: 959.98px)';
     RouterLinkActive,
     RouterOutlet,
     ConnectionStatusComponent,
+    HelpPanelComponent,
     LanguageSwitchComponent,
     OperationsMenuComponent,
     OutageBannerComponent,
+    PlayerBarComponent,
     TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,4 +55,5 @@ export class ShellComponent {
   protected readonly navigation = navigationItems(inject(Router).config);
   protected readonly stationName = inject(SettingsService).stationName;
   protected readonly openOutage = inject(OutageService).openOutage;
+  protected readonly help = inject(HelpService);
 }

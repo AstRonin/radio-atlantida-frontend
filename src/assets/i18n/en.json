@@ -1,6 +1,9 @@
 {
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete"
   },
   "shell": {
     "stationName": "Radio Atlantida",
@@ -11,6 +14,25 @@
   },
   "language": {
     "label": "Language"
+  },
+  "help": {
+    "button": "Help",
+    "fieldHint": "Help for {field}: {hint}",
+    "panel": {
+      "title": "Help",
+      "entities": "Terms",
+      "usage": "How to use this page",
+      "steps": "Typical steps",
+      "mistakes": "Common mistakes",
+      "example": "Example",
+      "operations": "Notes on actions",
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "fields": "Fields",
+      "loading": "Loading help…",
+      "unavailable": "The help for this page cannot be loaded."
+    }
   },
   "home": {
     "title": "Radio Atlantida",
@@ -71,6 +93,131 @@
   "time": {
     "zoneLabel": "Timezone",
     "zoneRequired": "Choose a timezone."
+  },
+  "player": {
+    "region": "Track preview",
+    "play": "Play {title}",
+    "pause": "Pause {title}",
+    "seek": "Position",
+    "volume": "Volume",
+    "close": "Close player",
+    "errors": {
+      "unsupported": "This browser cannot play the audio format of \"{title}\".",
+      "not_found": "The audio file of \"{title}\" was not found.",
+      "failed": "\"{title}\" could not be played. Try again."
+    }
+  },
+  "forms": {
+    "errors": {
+      "required": "This field is required.",
+      "range": "Enter a number between {min} and {max}.",
+      "step": "Enter a number between {min} and {max}, in steps of {step}.",
+      "min": "Enter {value} or more.",
+      "max": "Enter {value} or less.",
+      "minlength": "Enter at least {length} characters.",
+      "maxlength": "Enter at most {length} characters.",
+      "timeOfDay": "Enter a time as HH:MM, from 00:00 to 23:59.",
+      "weekdays": "Choose days from Monday to Sunday.",
+      "bothOrNone": "Fill in both fields or leave both empty.",
+      "atLeastOne": "Set at least one of these fields.",
+      "pattern": "The value does not have the expected form.",
+      "invalid": "The value is not valid."
+    },
+    "serverErrors": {
+      "required": "This field is required.",
+      "unknown_field": "The server does not know this field.",
+      "type": "The value has the wrong type.",
+      "range": "The value is out of the allowed range.",
+      "length": "The value is too short or too long.",
+      "pattern": "The value does not have the expected form.",
+      "format": "The value is not in the expected format.",
+      "enum": "Choose one of the offered values.",
+      "unique": "The list contains the same item twice.",
+      "invalid": "The value is not valid.",
+      "taken": "This value is already used. Choose another one.",
+      "unknown_id": "The chosen item no longer exists.",
+      "overlap": "The value overlaps with another one.",
+      "does_not_fit": "It does not fit into the available time.",
+      "order": "The values are in the wrong order.",
+      "blocked": "A separation or play rule blocks this choice."
+    },
+    "weekdays": {
+      "label": "Weekdays"
+    },
+    "playlistType": "Playlist type",
+    "units": {
+      "ms": "ms",
+      "seconds": "s",
+      "minutes": "min",
+      "hours": "h",
+      "kbps": "kbps",
+      "hz": "Hz",
+      "percent": "%"
+    }
+  },
+  "filler": {
+    "modeLabel": "Filler mode",
+    "modes": {
+      "none": "None",
+      "ask": "Ask at air time",
+      "random": "Random track",
+      "playlist": "From a playlist",
+      "artist": "By an artist",
+      "pool": "From the clock's pool",
+      "global": "Global fallback (settings)"
+    },
+    "dialog": {
+      "title": "The clock \"{clock}\" is short",
+      "intro": "Choose how to fill each short segment. Short segments: {count}.",
+      "segment": "Segment {number}: {from} to {to}",
+      "shortfall": "Short by {duration}",
+      "sourcePlaylist": "Playlist for the filler",
+      "sourceArtist": "Artist for the filler",
+      "pool": "Tracks for the clock's pool",
+      "poolNote": "Pool tracks are used in this order. Leave the list empty to keep the clock's current pool.",
+      "save": "Save with filler",
+      "saveIncomplete": "Save incomplete"
+    }
+  },
+  "pickers": {
+    "playlists": "Playlists",
+    "playlist": "Playlist",
+    "playRules": "Play rules",
+    "artist": "Artist",
+    "trackCount": "tracks: {count}",
+    "ruleUses": "uses: {count}",
+    "noMatches": "No matches.",
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "tracks": {
+      "label": "Tracks",
+      "selected": "Chosen tracks",
+      "search": "Search by title or artist",
+      "results": "Search results",
+      "loadingTrack": "Track {id}…",
+      "moveUp": "Move \"{title}\" up",
+      "moveDown": "Move \"{title}\" down",
+      "remove": "Remove \"{title}\""
+    }
+  },
+  "dialogs": {
+    "delete": {
+      "title": "Delete \"{name}\"?",
+      "message": "\"{name}\" will be deleted. This cannot be undone."
+    },
+    "usedBy": {
+      "intro": "It is used by:",
+      "kinds": {
+        "playlist": "Playlist",
+        "track": "Track",
+        "clock": "Clock",
+        "clock_element": "Clock element",
+        "play_rule": "Play rule",
+        "playlist_type": "Playlist type",
+        "artist": "Artist",
+        "grid_slot": "Grid slot"
+      }
+    }
   },
   "problems": {
     "bad_request": "The request could not be read.",

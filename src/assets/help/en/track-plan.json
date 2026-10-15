@@ -1,0 +1,50 @@
+{
+  "title": "Track plan",
+  "summary": "The track plan shows the concrete tracks planned for the coming hours. The system builds it from the grid and keeps it 24 to 48 hours ahead.",
+  "entities": [
+    {
+      "term": "Planned hour",
+      "text": "An hour whose tracks are chosen. It is rebuilt automatically when its clock or the grid changes."
+    },
+    {
+      "term": "Frozen hour",
+      "text": "An hour that is on air or about to start. Its first items are already sent to Liquidsoap, so it is not rebuilt."
+    },
+    {
+      "term": "Source",
+      "text": "Why an item is there: the clock, filler (pool, playlist, artist, random, or an answer to a reminder), or a rescheduled missed item."
+    },
+    {
+      "term": "Warning",
+      "text": "A problem the engine found while planning, for example an element skipped because play rules blocked every track."
+    }
+  ],
+  "usage": "Look ahead to check what will play. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
+  "steps": [
+    "Choose the hours to look at (up to 7 days).",
+    "Read the warnings of each hour.",
+    "Fix the cause on the Clocks, Playlists, or Play rules page.",
+    "Rebuild the range and follow the operation in the header."
+  ],
+  "mistakes": [
+    "Trying to change the hour on air. Frozen hours keep their plan.",
+    "Rebuilding without fixing the cause. The same warning comes back."
+  ],
+  "example": {
+    "title": "A skipped jingle",
+    "text": "Tomorrow 09:15 shows the warning \"element skipped: blocked by play rules\". Both jingles of \"Jingles\" are limited to 06:00 to 08:00 and 10:00 to 12:00. Add a jingle without a window to the playlist and rebuild tomorrow; the 09:15 slot is now filled."
+  },
+  "operations": {
+    "edit": "A rebuild changes only planned items in hours that have not started."
+  },
+  "fields": {
+    "from": {
+      "label": "From",
+      "text": "First hour to show or rebuild, station time."
+    },
+    "to": {
+      "label": "To",
+      "text": "Last hour, at most 7 days after the first."
+    }
+  }
+}
