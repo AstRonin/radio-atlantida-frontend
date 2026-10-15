@@ -7,13 +7,13 @@ design documents live in the sibling repositories and in `docs/`.
 
 - Node.js 24 LTS (see `.nvmrc`) and npm
 - Docker (for the container image)
-- The backend running on `http://127.0.0.1:8080` for live data in development
+- The backend running on `http://127.0.0.1:8090` for live data in development
 
 ## Development
 
 ```sh
 npm ci
-npm run dev          # http://localhost:4200, /api is proxied to 127.0.0.1:8080
+npm run dev          # http://localhost:4200, /api is proxied to 127.0.0.1:8090
 npm run lint
 npm run format:check
 npm test

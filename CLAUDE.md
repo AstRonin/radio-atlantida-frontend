@@ -150,7 +150,7 @@ src/app/app.routes.ts        lazy routes; a route with data.navLabel appears in 
 src/app/app.config.ts        router, HttpClient with interceptors, error handler, translations
 src/assets/i18n/             <lang>.json translations and languages.json
 src/assets/help/<lang>/      help JSON per page ID: help.play-rules -> play-rules.json
-proxy.conf.json              dev proxy: /api (and /api/ws) -> http://127.0.0.1:8080
+proxy.conf.json              dev proxy: /api (and /api/ws) -> http://127.0.0.1:8090
 ```
 
 Empty folders are not committed. Register a route only in the phase that builds its page.

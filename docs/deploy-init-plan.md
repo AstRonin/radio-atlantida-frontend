@@ -101,7 +101,7 @@ Tasks:
    - Secrets: `ICECAST_SOURCE_PASSWORD`, `ICECAST_ADMIN_PASSWORD`, `ICECAST_RELAY_PASSWORD`, `LIQUIDSOAP_CONTROL_USER`, `LIQUIDSOAP_CONTROL_PASSWORD`.
    - Network: `PANEL_BIND_ADDRESS` (default `127.0.0.1`, see 8.1), `PANEL_PORT` (default `8080`), `ICECAST_PUBLIC_PORT` (default `8000`).
    - Pinned infrastructure tags: `POSTGRES_IMAGE`, `ICECAST_IMAGE`, `LIQUIDSOAP_IMAGE`, so a change is an explicit commit.
-   - Callback URL: `BACKEND_CALLBACK_URL` is fixed to `http://backend:8080/api/playout/callback` in the compose file, not in `.env` (it is a service-name fact, not a deployment choice).
+   - Callback URL: `BACKEND_CALLBACK_URL` is fixed to `http://backend:8090/api/playout/callback` in the compose file, not in `.env` (it is a service-name fact, not a deployment choice).
 5. `docs/`: the four context files copied from the Claude project (`base.md`, `tech-design.md`, `backend-init-plan.md`, `frontend-init-plan.md`) and this plan.
 6. `README.md`: a short placeholder that points to the runbook section to be written in D5.
 
@@ -130,10 +130,10 @@ Tasks:
    - `migrate` runs with `depends_on: db: condition: service_healthy` and exits `0`. `backend` depends on `migrate: condition: service_completed_successfully`.
    - `backend` healthy (`/healthz`) before `frontend` starts (`condition: service_healthy`).
    - `liquidsoap` depends on `icecast: condition: service_healthy`.
-4. Environment values for every service are set in the compose file through `environment:` with values from `.env`, the same way the dev stack does it (backend plan §3, task 9). The Liquidsoap startup values match the dev script exactly: `ICECAST_HOST=icecast`, `ICECAST_PORT=8000`, `ICECAST_MOUNT=/radio`, `TELNET_PORT=1234`, `HARBOR_PORT=8005`, `JOURNAL_DIR=/journal`, `BACKEND_CALLBACK_URL=http://backend:8080/api/playout/callback`.
+4. Environment values for every service are set in the compose file through `environment:` with values from `.env`, the same way the dev stack does it (backend plan §3, task 9). The Liquidsoap startup values match the dev script exactly: `ICECAST_HOST=icecast`, `ICECAST_PORT=8000`, `ICECAST_MOUNT=/radio`, `TELNET_PORT=1234`, `HARBOR_PORT=8005`, `JOURNAL_DIR=/journal`, `BACKEND_CALLBACK_URL=http://backend:8090/api/playout/callback`.
 5. Health checks:
    - `db`: `pg_isready`.
-   - `backend`: `/healthz` on port 8080 (from inside the container).
+   - `backend`: `/healthz` on port 8090 (from inside the container).
    - `frontend`: `/` on port 8080.
    - `icecast`: `/status-json.xsl`.
    - `liquidsoap`: the telnet port answers.
