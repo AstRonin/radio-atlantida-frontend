@@ -37,7 +37,7 @@ Last updated: 2026-10-13
 - Components use `ChangeDetectionStrategy.OnPush`.
 - Features are organized by domain, not by type: `features/library`, `features/playlists`, `features/play-rules`, `features/settings`. No `shared/utils` dumping ground; shared code lives in `core/` (app-wide services) or `shared/` (presentational building blocks only).
 - Smart components (routes, data loading) and presentational components (inputs and outputs only, no HTTP) are kept separate.
-- Lazy-loaded routes for every feature page.
+- Lazy-loaded routes for every feature page. The router preloads all lazy chunks in the background after the first render (`withPreloading(PreloadAllModules)`), so navigation stays fast if the panel is later served from a remote host. Heavy parts inside a page that are not needed for the first view (for example, editors opened on demand) use `@defer`.
 - Public API of a feature is its routes file. Other features import from `core` or `shared`, not from each other's internals.
 
 **State and reactivity**

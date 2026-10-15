@@ -82,8 +82,10 @@ alerts, settings core), and F4 (shared UI: help, validation, pickers, player) do
 - Organize by domain (`features/library`, `features/playlists`, ...). App-wide services live in
   `core/`, presentational building blocks in `shared/`. No `shared/utils` dumping ground.
 - Keep smart (routes, data loading) and presentational (inputs and outputs, no HTTP) components apart.
-- Every feature page is a lazy route. A feature's public API is its routes file; features import
-  only from `core` or `shared`, never from each other.
+- Every feature page is a lazy route; the router preloads all lazy chunks after the first render
+  (`PreloadAllModules`). Use `@defer` for heavy parts of a page not needed for its first view.
+  A feature's public API is its routes file; features import only from `core` or `shared`, never
+  from each other.
 - Signals for state, `computed` for derived values, RxJS for streams (WebSocket, cancellable HTTP,
   debounced input). No `subscribe` without teardown (`takeUntilDestroyed`, `async`, `toSignal`).
   Cancel HTTP calls when leaving a page.

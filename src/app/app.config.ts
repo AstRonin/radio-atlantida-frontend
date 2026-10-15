@@ -6,7 +6,12 @@ import {
   provideBrowserGlobalErrorListeners,
   provideEnvironmentInitializer,
 } from '@angular/core';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import {
+  PreloadAllModules,
+  provideRouter,
+  withComponentInputBinding,
+  withPreloading,
+} from '@angular/router';
 import { AlertsService } from './core/alerts/alerts.service';
 import { GlobalErrorHandler } from './core/alerts/global-error-handler';
 import { OutageService } from './core/alerts/outage.service';
@@ -21,7 +26,9 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
-    provideRouter(routes, withComponentInputBinding()),
+    // Feature chunks are fetched in the background after the first page renders, so a later
+    // navigation does not wait for the network when the panel is served from a remote host.
+    provideRouter(routes, withComponentInputBinding(), withPreloading(PreloadAllModules)),
     // The problem interceptor wraps the timeout one, so a timeout becomes an ApiProblem too.
     provideHttpClient(
       withFetch(),
