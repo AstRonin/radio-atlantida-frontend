@@ -8,7 +8,8 @@ import { I18nService } from '../../core/i18n/i18n.service';
 
 /**
  * A field's short hint from the page help (design §6.1): a tooltip on hover or focus, and a click
- * opens the full page help. Place it in the field's `matSuffix` or next to its label.
+ * opens the full page help. Place it beside a form field in a `.field-row` (global styles), or next
+ * to its label.
  */
 @Component({
   selector: 'app-field-hint',

@@ -57,6 +57,25 @@ body {
   margin-top: 0.5rem;
 }
 
+// A form field with its help hint beside it, not inside it: a suffix crowds the field's own
+// icons (a select arrow, a calendar button). The hint is centred on the field's box, not on the
+// error line below it.
+.field-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.field-row > mat-form-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field-row > app-field-hint {
+  flex: none;
+  margin-top: calc((var(--mat-form-field-container-height, 56px) - 1.5rem) / 2);
+}
+
 .list-filters {
   display: flex;
   flex-wrap: wrap;

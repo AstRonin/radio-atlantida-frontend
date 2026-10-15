@@ -24,26 +24,30 @@ import { FieldHintComponent } from '../ui/field-hint.component';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      <mat-select multiple [formControl]="control()">
-        @for (rule of rules().items; track rule.id) {
-          <mat-option [value]="rule.id">
-            {{ rule.name }}
-            <span class="meta">· {{ 'pickers.ruleUses' | translate: { count: uses(rule) } }}</span>
-          </mat-option>
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        <mat-select multiple [formControl]="control()">
+          @for (rule of rules().items; track rule.id) {
+            <mat-option [value]="rule.id">
+              {{ rule.name }}
+              <span class="meta"
+                >· {{ 'pickers.ruleUses' | translate: { count: uses(rule) } }}</span
+              >
+            </mat-option>
+          }
+        </mat-select>
+        @if (rules().error; as message) {
+          <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
         }
-      </mat-select>
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (rules().error; as message) {
-        <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
-      }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

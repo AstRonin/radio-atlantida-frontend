@@ -22,27 +22,29 @@ import { controlErrorMessage } from './field-errors';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      <input
-        matInput
-        type="number"
-        inputmode="decimal"
-        [formControl]="control()"
-        [attr.min]="min()"
-        [attr.max]="max()"
-        [attr.step]="step()"
-      />
-      @if (suffix(); as unit) {
-        <span matTextSuffix>{{ unit | translate }}</span>
-      }
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        <input
+          matInput
+          type="number"
+          inputmode="decimal"
+          [formControl]="control()"
+          [attr.min]="min()"
+          [attr.max]="max()"
+          [attr.step]="step()"
+        />
+        @if (suffix(); as unit) {
+          <span matTextSuffix>{{ unit | translate }}</span>
+        }
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

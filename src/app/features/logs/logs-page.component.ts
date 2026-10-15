@@ -115,38 +115,44 @@ interface LogRow {
         <p class="muted">{{ 'logs.noFiles' | translate }}</p>
       }
       <form class="filters" [formGroup]="form" (ngSubmit)="refresh()">
-        <mat-form-field>
-          <mat-label>{{ 'logs.fields.file' | translate }}</mat-label>
-          <mat-select formControlName="file">
-            @for (file of fileList(); track file.name) {
-              <mat-option [value]="file.name">
-                {{ 'logs.fileOption' | translate: { date: file.date } }} ·
-                {{ file.size_bytes | fileSize }}
-              </mat-option>
-            }
-          </mat-select>
-          <app-field-hint matSuffix page="help.logs" field="file" />
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>{{ 'logs.fields.level' | translate }}</mat-label>
-          <mat-select formControlName="level">
-            <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
-            @for (level of levels; track level) {
-              <mat-option [value]="level">{{ 'logs.levels.' + level | translate }}</mat-option>
-            }
-          </mat-select>
-          <app-field-hint matSuffix page="help.logs" field="level" />
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>{{ 'logs.fields.component' | translate }}</mat-label>
-          <mat-select formControlName="component">
-            <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
-            @for (component of components; track component) {
-              <mat-option [value]="component">{{ component }}</mat-option>
-            }
-          </mat-select>
-          <app-field-hint matSuffix page="help.logs" field="component" />
-        </mat-form-field>
+        <div class="field-row">
+          <mat-form-field>
+            <mat-label>{{ 'logs.fields.file' | translate }}</mat-label>
+            <mat-select formControlName="file">
+              @for (file of fileList(); track file.name) {
+                <mat-option [value]="file.name">
+                  {{ 'logs.fileOption' | translate: { date: file.date } }} ·
+                  {{ file.size_bytes | fileSize }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <app-field-hint page="help.logs" field="file" />
+        </div>
+        <div class="field-row">
+          <mat-form-field>
+            <mat-label>{{ 'logs.fields.level' | translate }}</mat-label>
+            <mat-select formControlName="level">
+              <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+              @for (level of levels; track level) {
+                <mat-option [value]="level">{{ 'logs.levels.' + level | translate }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <app-field-hint page="help.logs" field="level" />
+        </div>
+        <div class="field-row">
+          <mat-form-field>
+            <mat-label>{{ 'logs.fields.component' | translate }}</mat-label>
+            <mat-select formControlName="component">
+              <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+              @for (component of components; track component) {
+                <mat-option [value]="component">{{ component }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <app-field-hint page="help.logs" field="component" />
+        </div>
         <div class="form-actions">
           <button matButton="filled" type="submit" [disabled]="files.isLoading() || loading()">
             {{ 'logs.refresh' | translate }}

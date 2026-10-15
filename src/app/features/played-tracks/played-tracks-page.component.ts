@@ -118,18 +118,20 @@ export function outageChunks(range: HistoryRange): HistoryRange[] {
           hintPage="help.played-tracks"
           hintField="to"
         />
-        <mat-form-field>
-          <mat-label>{{ 'playedTracks.fields.status' | translate }}</mat-label>
-          <mat-select [formControl]="form.controls.status">
-            <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
-            @for (status of statuses; track status) {
-              <mat-option [value]="status">
-                {{ 'playedTracks.statuses.' + status | translate }}
-              </mat-option>
-            }
-          </mat-select>
-          <app-field-hint matSuffix page="help.played-tracks" field="status" />
-        </mat-form-field>
+        <div class="field-row">
+          <mat-form-field>
+            <mat-label>{{ 'playedTracks.fields.status' | translate }}</mat-label>
+            <mat-select [formControl]="form.controls.status">
+              <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+              @for (status of statuses; track status) {
+                <mat-option [value]="status">
+                  {{ 'playedTracks.statuses.' + status | translate }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <app-field-hint page="help.played-tracks" field="status" />
+        </div>
         <div class="form-actions">
           <button matButton type="button" (click)="showRecent()">
             {{ 'playedTracks.range.reset' | translate }}

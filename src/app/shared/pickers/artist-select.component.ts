@@ -39,40 +39,42 @@ const SHOWN = 50;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      <input
-        matInput
-        type="search"
-        [value]="text()"
-        [matAutocomplete]="auto"
-        [disabled]="control().disabled"
-        (input)="onInput($event)"
-        (blur)="control().markAsTouched()"
-      />
-      <mat-autocomplete
-        #auto="matAutocomplete"
-        [displayWith]="displayName"
-        (optionSelected)="select($event)"
-      >
-        @for (artist of matches(); track artist.id) {
-          <mat-option [value]="artist.id">{{ artist.name }}</mat-option>
-        } @empty {
-          @if (artists().status === 'ready') {
-            <mat-option disabled>{{ 'pickers.noMatches' | translate }}</mat-option>
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        <input
+          matInput
+          type="search"
+          [value]="text()"
+          [matAutocomplete]="auto"
+          [disabled]="control().disabled"
+          (input)="onInput($event)"
+          (blur)="control().markAsTouched()"
+        />
+        <mat-autocomplete
+          #auto="matAutocomplete"
+          [displayWith]="displayName"
+          (optionSelected)="select($event)"
+        >
+          @for (artist of matches(); track artist.id) {
+            <mat-option [value]="artist.id">{{ artist.name }}</mat-option>
+          } @empty {
+            @if (artists().status === 'ready') {
+              <mat-option disabled>{{ 'pickers.noMatches' | translate }}</mat-option>
+            }
           }
+        </mat-autocomplete>
+        @if (artists().error; as message) {
+          <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
         }
-      </mat-autocomplete>
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (artists().error; as message) {
-        <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
-      }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

@@ -23,29 +23,31 @@ import { FieldHintComponent } from '../ui/field-hint.component';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      <mat-select multiple [formControl]="control()">
-        @for (playlist of playlists().items; track playlist.id) {
-          <mat-option [value]="playlist.id">
-            {{ playlist.name }}
-            <span class="meta">
-              · {{ playlist.type.name }} ·
-              {{ 'pickers.trackCount' | translate: { count: playlist.track_count } }}
-            </span>
-          </mat-option>
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        <mat-select multiple [formControl]="control()">
+          @for (playlist of playlists().items; track playlist.id) {
+            <mat-option [value]="playlist.id">
+              {{ playlist.name }}
+              <span class="meta">
+                · {{ playlist.type.name }} ·
+                {{ 'pickers.trackCount' | translate: { count: playlist.track_count } }}
+              </span>
+            </mat-option>
+          }
+        </mat-select>
+        @if (playlists().error; as message) {
+          <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
         }
-      </mat-select>
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (playlists().error; as message) {
-        <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
-      }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

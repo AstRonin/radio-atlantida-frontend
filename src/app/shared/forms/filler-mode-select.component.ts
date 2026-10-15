@@ -42,23 +42,25 @@ const MODES: Readonly<Record<FillerModeSet, readonly ElementFillerMode[]>> = {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      <mat-select [formControl]="control()">
-        @if (modes() === 'default') {
-          <mat-option [value]="null">{{ 'filler.modes.global' | translate }}</mat-option>
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        <mat-select [formControl]="control()">
+          @if (modes() === 'default') {
+            <mat-option [value]="null">{{ 'filler.modes.global' | translate }}</mat-option>
+          }
+          @for (mode of options(); track mode) {
+            <mat-option [value]="mode">{{ 'filler.modes.' + mode | translate }}</mat-option>
+          }
+        </mat-select>
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
         }
-        @for (mode of options(); track mode) {
-          <mat-option [value]="mode">{{ 'filler.modes.' + mode | translate }}</mat-option>
-        }
-      </mat-select>
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

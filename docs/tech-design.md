@@ -274,8 +274,8 @@ Validation happens in two layers. The frontend gives immediate feedback, and the
 - Forms use Angular Reactive Forms with validators (`required`, `min`, `max`, `pattern`) on each control.
 - Fields use HTML5 input types so the browser restricts input where it can:
   - `type="number"` with `min`, `max`, and `step` for numeric values (nominal duration, tolerance, bitrate, sample rate, min interval hours, play rule interval in minutes, plays per hour, outage thresholds). Text cannot be typed into these fields.
-  - `type="time"` for the play rule `window_from` and `window_to`, so the value is always `HH:MM`.
-  - `type="date"` for `valid_from` and `valid_to` in grid slots.
+  - A Material timepicker (`MatTimepicker`, a list in 15-minute steps; any minute can be typed) for the play rule `window_from` and `window_to`. Its adapter keeps the value `HH:MM` or null, and text that is not a time fails validation.
+  - A Material datepicker (`MatDatepicker`) for `valid_from` and `valid_to` in grid slots and for the date ranges of the views, so a date can be typed or chosen in a calendar. Its adapter keeps the value a station date as `YYYY-MM-DD` (§10.2), never a `Date` in the browser's zone. (A native `type="date"` was used first; Angular Material hides its calendar button.)
   - Checkboxes or a multi-select for weekdays, instead of free text.
   - A select for the timezone, populated from IANA names, instead of typing.
   - A select for `filler_mode`, with options that match the backend enum.

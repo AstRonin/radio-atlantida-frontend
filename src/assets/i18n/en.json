@@ -245,7 +245,29 @@
       "invalid": "The value is not valid.",
       "relativePath": "Enter a path inside the media folder, such as music/song.mp3: no leading /, no drive letter, no \\, and no ..",
       "fallbackSource": "Choose the playlist or artist for this mode.",
-      "dateRange": "Choose a last date on or after the first one, at most {days} days in all."
+      "dateRange": "Choose a last date on or after the first one, at most {days} days in all.",
+      "date": "Enter a date as YYYY-MM-DD, or choose one in the calendar.",
+      "dateMin": "Choose {date} or a later date.",
+      "dateMax": "Choose {date} or an earlier date."
+    },
+    "timepicker": {
+      "format": "HH:MM",
+      "open": "Choose a time"
+    },
+    "datepicker": {
+      "format": "YYYY-MM-DD",
+      "calendar": "Calendar",
+      "open": "Open calendar",
+      "close": "Close calendar",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "prevYear": "Previous year",
+      "nextYear": "Next year",
+      "prevYears": "Previous 24 years",
+      "nextYears": "Next 24 years",
+      "chooseDate": "Choose date",
+      "chooseMonthAndYear": "Choose month and year",
+      "yearRange": "{start} to {end}"
     },
     "serverErrors": {
       "required": "This field is required.",
@@ -748,17 +770,20 @@
       "previous": "Previous week",
       "current": "This week",
       "next": "Next week",
-      "note": "Hours and dates are in the station timezone ({zone}). Use + in a cell to add its weekday and hour to the change below.",
+      "note": "Hours and dates are in the station timezone ({zone}). Use + in a cell to add its weekday and hour to the change below, and − next to a chosen day or hour to take it out.",
       "caption": "Clocks by hour for the week",
       "hour": "Hour",
       "today": "(today)",
-      "pick": "Add {day} {hour} to the change"
+      "pick": "Add {day} {hour} to the change",
+      "unpickWeekday": "Take {weekday} out of the change",
+      "unpickHour": "Take {hour} out of the change"
     },
     "change": {
       "title": "Change the grid",
       "note": "The clock is assigned to every chosen weekday at every chosen hour, for the dates given. Existing slots there are replaced for those dates.",
       "assign": "Assign clock",
-      "clear": "Clear these hours"
+      "clear": "Clear these hours",
+      "resetSelection": "Reset weekdays and hours"
     },
     "result": {
       "created": "Slots created: {count}.",

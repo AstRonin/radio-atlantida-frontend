@@ -72,20 +72,22 @@ import { CLOCK_LIMITS, ElementForm, PLACEMENTS } from './clock-form';
       </div>
 
       <div class="form-grid">
-        <mat-form-field>
-          <mat-label>{{ 'clocks.fields.placement' | translate }}</mat-label>
-          <mat-select [formControl]="group().controls.placement">
-            @for (placement of placements; track placement) {
-              <mat-option [value]="placement">
-                {{ 'clocks.placements.' + placement | translate }}
-              </mat-option>
+        <div class="field-row">
+          <mat-form-field>
+            <mat-label>{{ 'clocks.fields.placement' | translate }}</mat-label>
+            <mat-select [formControl]="group().controls.placement">
+              @for (placement of placements; track placement) {
+                <mat-option [value]="placement">
+                  {{ 'clocks.placements.' + placement | translate }}
+                </mat-option>
+              }
+            </mat-select>
+            @if (placementError(); as message) {
+              <mat-error>{{ message }}</mat-error>
             }
-          </mat-select>
-          <app-field-hint matSuffix page="help.clocks" field="placement" />
-          @if (placementError(); as message) {
-            <mat-error>{{ message }}</mat-error>
-          }
-        </mat-form-field>
+          </mat-form-field>
+          <app-field-hint page="help.clocks" field="placement" />
+        </div>
         @if (fixed()) {
           <app-number-input
             [control]="group().controls.fixed_minute"

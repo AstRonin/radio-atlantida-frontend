@@ -5,7 +5,7 @@ import type { HelpPageId } from '../../core/help/help-content';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { FieldHintComponent } from '../ui/field-hint.component';
-import { controlErrorMessage } from './field-errors';
+import { controlErrorMessage, controlVersion } from './field-errors';
 
 export const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -30,7 +30,7 @@ const MONDAY_UTC = Date.UTC(2024, 0, 1);
       </legend>
       @for (day of days(); track day.value) {
         <mat-checkbox
-          [checked]="isChecked(day.value)"
+          [checked]="selected().has(day.value)"
           [disabled]="control().disabled"
           (change)="toggle(day.value, $event.checked)"
         >
@@ -91,9 +91,13 @@ export class WeekdaysInputComponent {
     }));
   });
 
-  protected isChecked(day: number): boolean {
-    return this.control().value?.includes(day) ?? false;
-  }
+  // The value can change from outside, as the grid's cell buttons do; reading it through the
+  // control's events keeps the checkboxes in step in an OnPush view.
+  private readonly version = controlVersion(this.control);
+  protected readonly selected = computed(() => {
+    this.version();
+    return new Set(this.control().value ?? []);
+  });
 
   protected toggle(day: number, checked: boolean): void {
     const control = this.control();

@@ -109,6 +109,8 @@ const WEEK_DAYS = 7;
         [selectedWeekdays]="selectedWeekdays()"
         [selectedHours]="selectedHours()"
         (pick)="pick($event)"
+        (unpickWeekday)="unpick('weekdays', $event)"
+        (unpickHour)="unpick('hours', $event)"
       />
     </section>
 
@@ -160,6 +162,14 @@ const WEEK_DAYS = 7;
           </button>
           <button matButton type="button" [disabled]="busy() || !canClear()" (click)="clear()">
             {{ 'grid.change.clear' | translate }}
+          </button>
+          <button
+            matButton
+            type="button"
+            [disabled]="selectedWeekdays().length === 0 && selectedHours().length === 0"
+            (click)="resetSelection()"
+          >
+            {{ 'grid.change.resetSelection' | translate }}
           </button>
         </div>
       </form>
@@ -370,6 +380,20 @@ export default class GridPageComponent {
       valid_from.setValue(cell.date < this.today() ? this.today() : cell.date);
     }
     this.form.markAsDirty();
+  }
+
+  /** Takes a weekday or an hour out of the change, with every cell of its column or row. */
+  protected unpick(field: 'weekdays' | 'hours', value: number): void {
+    const control = this.form.controls[field];
+    control.setValue((control.value ?? []).filter((item) => item !== value));
+    this.form.markAsDirty();
+  }
+
+  /** Empties the chosen weekdays and hours; the clock and the dates stay for the next pick. */
+  protected resetSelection(): void {
+    this.form.patchValue({ weekdays: [], hours: [] });
+    this.form.controls.weekdays.markAsUntouched();
+    this.form.controls.hours.markAsUntouched();
   }
 
   protected assign(): void {

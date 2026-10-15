@@ -23,28 +23,30 @@ import { FieldHintComponent } from '../ui/field-hint.component';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      <mat-select [formControl]="control()">
-        @for (clock of clocks().items; track clock.id) {
-          <mat-option [value]="clock.id">
-            {{ clock.name }}
-            @if (clock.status === 'incomplete') {
-              <span class="meta">· {{ 'pickers.clockIncomplete' | translate }}</span>
-            }
-          </mat-option>
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        <mat-select [formControl]="control()">
+          @for (clock of clocks().items; track clock.id) {
+            <mat-option [value]="clock.id">
+              {{ clock.name }}
+              @if (clock.status === 'incomplete') {
+                <span class="meta">· {{ 'pickers.clockIncomplete' | translate }}</span>
+              }
+            </mat-option>
+          }
+        </mat-select>
+        @if (clocks().error; as message) {
+          <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
         }
-      </mat-select>
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (clocks().error; as message) {
-        <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
-      }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

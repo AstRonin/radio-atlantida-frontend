@@ -61,17 +61,19 @@ const OUTPUTS: readonly TranscodeOutput[] = ['copy', 'replace'];
         >
           {{ labelKey('library.media.optimize') | translate: { count: optimizeIds().length } }}
         </button>
-        <mat-form-field class="output" subscriptSizing="dynamic">
-          <mat-label>{{ 'library.media.output' | translate }}</mat-label>
-          <mat-select [formControl]="output">
-            @for (option of outputs; track option) {
-              <mat-option [value]="option">{{
-                'library.media.outputs.' + option | translate
-              }}</mat-option>
-            }
-          </mat-select>
-          <app-field-hint matSuffix page="help.library" field="output" />
-        </mat-form-field>
+        <div class="output field-row">
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'library.media.output' | translate }}</mat-label>
+            <mat-select [formControl]="output">
+              @for (option of outputs; track option) {
+                <mat-option [value]="option">{{
+                  'library.media.outputs.' + option | translate
+                }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <app-field-hint page="help.library" field="output" />
+        </div>
       </div>
       @if (disabledReason(); as reason) {
         <p class="muted">{{ reason | translate }}</p>

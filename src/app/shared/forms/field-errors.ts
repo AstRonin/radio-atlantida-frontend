@@ -16,10 +16,15 @@ const ORDER = [
   'minlength',
   'maxlength',
   'timeOfDay',
+  'matTimepickerParse',
   'weekdays',
   'bothOrNone',
   'relativePath',
   'pattern',
+  'matDatepickerParse',
+  'dateRange',
+  'matDatepickerMin',
+  'matDatepickerMax',
 ];
 
 /**
@@ -61,6 +66,20 @@ export function fieldErrorMessage(
   if (key === 'dateRange') {
     const range = detail as { maxDays?: number };
     return i18n.translate('forms.errors.dateRange', { days: range.maxDays ?? 0 });
+  }
+  if (key === 'matDatepickerMin' || key === 'matDatepickerMax') {
+    // The datepicker reports its limit as a station date, `YYYY-MM-DD`.
+    const limit = detail as { min?: string; max?: string };
+    const date = key === 'matDatepickerMin' ? limit.min : limit.max;
+    return i18n.translate(`forms.errors.${key === 'matDatepickerMin' ? 'dateMin' : 'dateMax'}`, {
+      date: date ?? '',
+    });
+  }
+  if (key === 'matTimepickerParse') {
+    return i18n.translate('forms.errors.timeOfDay');
+  }
+  if (key === 'matDatepickerParse') {
+    return i18n.translate('forms.errors.date');
   }
   if (key === 'minlength' || key === 'maxlength') {
     const length = detail as { requiredLength: number };

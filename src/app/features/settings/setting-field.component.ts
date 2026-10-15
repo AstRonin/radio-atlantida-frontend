@@ -50,18 +50,20 @@ import { FallbackGroup, settingKind } from './settings-form';
         />
       }
       @case ('select') {
-        <mat-form-field class="field">
-          <mat-label>{{ label() | translate }}</mat-label>
-          <mat-select [formControl]="valueControl()">
-            @for (option of setting().enum; track $index) {
-              <mat-option [value]="option">{{ optionLabel(option) }}</mat-option>
+        <div class="field field-row">
+          <mat-form-field>
+            <mat-label>{{ label() | translate }}</mat-label>
+            <mat-select [formControl]="valueControl()">
+              @for (option of setting().enum; track $index) {
+                <mat-option [value]="option">{{ optionLabel(option) }}</mat-option>
+              }
+            </mat-select>
+            @if (error(); as message) {
+              <mat-error>{{ message }}</mat-error>
             }
-          </mat-select>
-          <app-field-hint matSuffix page="help.settings" [field]="setting().key" />
-          @if (error(); as message) {
-            <mat-error>{{ message }}</mat-error>
-          }
-        </mat-form-field>
+          </mat-form-field>
+          <app-field-hint page="help.settings" [field]="setting().key" />
+        </div>
       }
       @case ('boolean') {
         <div class="checkbox">

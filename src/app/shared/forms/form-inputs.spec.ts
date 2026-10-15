@@ -82,25 +82,76 @@ describe('form inputs', () => {
     expect(error?.textContent).toContain('too large');
   });
 
-  it('time input is type=time in minutes', () => {
+  it('time input shows HH:MM with a time list toggle', async () => {
     const fixture = TestBed.createComponent(TimeInputComponent);
     fixture.componentRef.setInput('control', new FormControl<string | null>('06:00'));
     fixture.componentRef.setInput('label', 'playRules.from');
-    fixture.detectChanges();
-    const input = (fixture.nativeElement as HTMLElement).querySelector('input');
-    expect(input?.type).toBe('time');
-    expect(input?.step).toBe('60');
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('input')?.value).toBe('06:00');
+    expect(element.querySelector('mat-timepicker-toggle button')).not.toBeNull();
   });
 
-  it('date input is type=date', () => {
+  it('time input reads a typed time and refuses other text', async () => {
+    const control = new FormControl<string | null>(null);
+    const fixture = TestBed.createComponent(TimeInputComponent);
+    fixture.componentRef.setInput('control', control);
+    fixture.componentRef.setInput('label', 'playRules.from');
+    await fixture.whenStable();
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input');
+    if (!input) {
+      throw new Error('No input.');
+    }
+
+    input.value = '7:05';
+    input.dispatchEvent(new Event('input'));
+    expect(control.value).toBe('07:05');
+
+    input.value = '25:00';
+    input.dispatchEvent(new Event('input'));
+    // The timepicker updates its validity in an effect.
+    await fixture.whenStable();
+    expect(control.hasError('matTimepickerParse')).toBe(true);
+  });
+
+  it('date input shows the station date with a calendar toggle', async () => {
+    const control = new FormControl<string | null>('2026-11-01');
     const fixture = TestBed.createComponent(DateInputComponent);
-    fixture.componentRef.setInput('control', new FormControl<string | null>('2026-11-01'));
+    fixture.componentRef.setInput('control', control);
     fixture.componentRef.setInput('label', 'grid.validFrom');
     fixture.componentRef.setInput('min', '2026-10-15');
-    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const input = element.querySelector('input');
+    expect(input?.value).toBe('2026-11-01');
+    expect(element.querySelector('mat-datepicker-toggle button')).not.toBeNull();
+
+    control.setValue('2026-10-01');
+    expect(control.errors).toEqual({
+      matDatepickerMin: { min: '2026-10-15', actual: '2026-10-01' },
+    });
+  });
+
+  it('date input reads a typed date and refuses other text', async () => {
+    const control = new FormControl<string | null>(null);
+    const fixture = TestBed.createComponent(DateInputComponent);
+    fixture.componentRef.setInput('control', control);
+    fixture.componentRef.setInput('label', 'grid.validFrom');
+    await fixture.whenStable();
     const input = (fixture.nativeElement as HTMLElement).querySelector('input');
-    expect(input?.type).toBe('date');
-    expect(input?.getAttribute('min')).toBe('2026-10-15');
+    if (!input) {
+      throw new Error('No input.');
+    }
+
+    input.value = ' 2026-12-31 ';
+    input.dispatchEvent(new Event('input'));
+    expect(control.value).toBe('2026-12-31');
+
+    input.value = '31.12.2026';
+    input.dispatchEvent(new Event('input'));
+    expect(control.value).toBeNull();
+    expect(control.hasError('matDatepickerParse')).toBe(true);
   });
 
   it('weekdays input edits a sorted list of 1 to 7 with checkboxes', () => {
@@ -119,6 +170,24 @@ describe('form inputs', () => {
     boxes[0].click();
     expect(control.value).toEqual([1, 5]);
     expect(control.dirty).toBe(true);
+  });
+
+  it('weekdays input follows a value set from outside', async () => {
+    const control = new FormControl<number[] | null>([]);
+    const fixture = TestBed.createComponent(WeekdaysInputComponent);
+    fixture.componentRef.setInput('control', control);
+    await fixture.whenStable();
+
+    control.setValue([4]);
+    await fixture.whenStable();
+    const boxes = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>(
+      'input[type=checkbox]',
+    );
+    expect(boxes[3].checked).toBe(true);
+
+    control.setValue([]);
+    await fixture.whenStable();
+    expect(boxes[3].checked).toBe(false);
   });
 
   it('hours input edits a sorted list of 0 to 23 with toggle buttons', async () => {

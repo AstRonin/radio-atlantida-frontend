@@ -199,40 +199,40 @@ interface MissedRow {
                       <p class="muted">{{ 'missedItems.noTargets' | translate }}</p>
                     }
                     <div class="form-grid">
-                      <mat-form-field>
-                        <mat-label>{{
-                          'missedItems.fields.target_hour_start_utc' | translate
-                        }}</mat-label>
-                        <mat-select [formControl]="form.controls.target_hour_start_utc">
-                          @for (hour of targetHours(); track hour.hour_start_utc) {
-                            <mat-option [value]="hour.hour_start_utc">
-                              {{ hour.hour_start_utc | stationTime }} — {{ hour.clock.name }}
-                            </mat-option>
+                      <div class="field-row">
+                        <mat-form-field>
+                          <mat-label>{{
+                            'missedItems.fields.target_hour_start_utc' | translate
+                          }}</mat-label>
+                          <mat-select [formControl]="form.controls.target_hour_start_utc">
+                            @for (hour of targetHours(); track hour.hour_start_utc) {
+                              <mat-option [value]="hour.hour_start_utc">
+                                {{ hour.hour_start_utc | stationTime }} — {{ hour.clock.name }}
+                              </mat-option>
+                            }
+                          </mat-select>
+                          @if (targetError(); as message) {
+                            <mat-error>{{ message }}</mat-error>
                           }
-                        </mat-select>
-                        <app-field-hint
-                          matSuffix
-                          page="help.missed-items"
-                          field="target_hour_start_utc"
-                        />
-                        @if (targetError(); as message) {
-                          <mat-error>{{ message }}</mat-error>
-                        }
-                      </mat-form-field>
-                      <mat-form-field>
-                        <mat-label>{{ 'missedItems.fields.placement' | translate }}</mat-label>
-                        <mat-select [formControl]="form.controls.placement">
-                          @for (placement of placements; track placement) {
-                            <mat-option [value]="placement">
-                              {{ 'missedItems.placements.' + placement | translate }}
-                            </mat-option>
+                        </mat-form-field>
+                        <app-field-hint page="help.missed-items" field="target_hour_start_utc" />
+                      </div>
+                      <div class="field-row">
+                        <mat-form-field>
+                          <mat-label>{{ 'missedItems.fields.placement' | translate }}</mat-label>
+                          <mat-select [formControl]="form.controls.placement">
+                            @for (placement of placements; track placement) {
+                              <mat-option [value]="placement">
+                                {{ 'missedItems.placements.' + placement | translate }}
+                              </mat-option>
+                            }
+                          </mat-select>
+                          @if (placementError(); as message) {
+                            <mat-error>{{ message }}</mat-error>
                           }
-                        </mat-select>
-                        <app-field-hint matSuffix page="help.missed-items" field="placement" />
-                        @if (placementError(); as message) {
-                          <mat-error>{{ message }}</mat-error>
-                        }
-                      </mat-form-field>
+                        </mat-form-field>
+                        <app-field-hint page="help.missed-items" field="placement" />
+                      </div>
                       @if (fixed()) {
                         <app-number-input
                           [control]="form.controls.fixed_minute"

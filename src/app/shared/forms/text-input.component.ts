@@ -22,35 +22,37 @@ import { controlErrorMessage } from './field-errors';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      @if (multiline()) {
-        <textarea
-          matInput
-          rows="3"
-          [formControl]="control()"
-          [attr.maxlength]="maxLength()"
-        ></textarea>
-      } @else {
-        <input
-          matInput
-          type="text"
-          [formControl]="control()"
-          [attr.maxlength]="maxLength()"
-          [attr.spellcheck]="spellcheck()"
-          [attr.autocomplete]="'off'"
-        />
-      }
-      @if (hint(); as text) {
-        <mat-hint>{{ text | translate }}</mat-hint>
-      }
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        @if (multiline()) {
+          <textarea
+            matInput
+            rows="3"
+            [formControl]="control()"
+            [attr.maxlength]="maxLength()"
+          ></textarea>
+        } @else {
+          <input
+            matInput
+            type="text"
+            [formControl]="control()"
+            [attr.maxlength]="maxLength()"
+            [attr.spellcheck]="spellcheck()"
+            [attr.autocomplete]="'off'"
+          />
+        }
+        @if (hint(); as text) {
+          <mat-hint>{{ text | translate }}</mat-hint>
+        }
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

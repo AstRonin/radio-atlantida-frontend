@@ -23,23 +23,25 @@ import { controlErrorMessage } from './field-errors';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <mat-form-field class="field">
-      <mat-label>{{ label() | translate }}</mat-label>
-      <mat-select [formControl]="control()">
-        @for (type of types().items; track type.id) {
-          <mat-option [value]="type.id">{{ type.name }}</mat-option>
+    <div class="field field-row">
+      <mat-form-field>
+        <mat-label>{{ label() | translate }}</mat-label>
+        <mat-select [formControl]="control()">
+          @for (type of types().items; track type.id) {
+            <mat-option [value]="type.id">{{ type.name }}</mat-option>
+          }
+        </mat-select>
+        @if (types().error; as message) {
+          <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
         }
-      </mat-select>
+        @if (error(); as message) {
+          <mat-error>{{ message }}</mat-error>
+        }
+      </mat-form-field>
       @if (hintPage(); as page) {
-        <app-field-hint matSuffix [page]="page" [field]="hintField() ?? ''" />
+        <app-field-hint [page]="page" [field]="hintField() ?? ''" />
       }
-      @if (types().error; as message) {
-        <mat-hint class="load-error" role="alert">{{ message }}</mat-hint>
-      }
-      @if (error(); as message) {
-        <mat-error>{{ message }}</mat-error>
-      }
-    </mat-form-field>
+    </div>
   `,
   styles: `
     .field {

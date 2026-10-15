@@ -166,6 +166,33 @@ describe('GridPageComponent', () => {
     expect(waitFor).toHaveBeenCalledWith(41);
   });
 
+  it('takes a weekday or an hour out of the change, and resets both', async () => {
+    const fixture = await open();
+    const view = fixture.componentInstance as unknown as GridView;
+    const page = fixture.nativeElement as HTMLElement;
+    const picks = [...page.querySelectorAll<HTMLButtonElement>('button.pick')];
+    expect(page.querySelector('button.unpick')).toBeNull();
+
+    // Saturday at 11:00 and Sunday at 12:00: weekdays 6 and 7, hours 11 and 12.
+    picks[11 * 7 + 2].click();
+    picks[12 * 7 + 3].click();
+    await settlePage();
+    const unpicks = page.querySelectorAll<HTMLButtonElement>('button.unpick');
+    // One button per chosen day in the header, then one per chosen hour down the rows.
+    expect(unpicks).toHaveLength(4);
+
+    unpicks[0].click();
+    expect(view.form.controls.weekdays.value).toEqual([7]);
+    unpicks[3].click();
+    expect(view.form.controls.hours.value).toEqual([11]);
+
+    await settlePage();
+    button(page, 'grid.change.resetSelection')?.click();
+    expect(view.form.controls.weekdays.value).toEqual([]);
+    expect(view.form.controls.hours.value).toEqual([]);
+    expect(view.form.controls.valid_from.value).toBe('2026-10-17');
+  });
+
   it('clears hours without a clock', async () => {
     const fixture = await open();
     const view = fixture.componentInstance as unknown as GridView;

@@ -4,7 +4,7 @@ import type { ApiSchema } from '../../core/api/api-types';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { HOURS } from '../../shared/forms/hours-input.component';
-import { hourLabel, localDateAsUtcNoon, weekdayOf } from '../../core/time/local-date';
+import { hourLabel, localDateAsUtcNoon, weekdayName, weekdayOf } from '../../core/time/local-date';
 
 type GridHour = ApiSchema<'GridHour'>;
 
@@ -16,7 +16,9 @@ export interface GridCell {
 
 /**
  * One week of the grid: hours down, station local dates across, the clock of each hour as the
- * backend resolved it. A cell button adds its weekday and hour to the change form. Presentational.
+ * backend resolved it. A cell button adds its weekday and hour to the change form; a button in a
+ * chosen day's or hour's header removes that weekday or hour, since a change always covers every
+ * chosen weekday at every chosen hour and one cell alone cannot be taken out. Presentational.
  */
 @Component({
   selector: 'app-grid-week',
@@ -35,10 +37,26 @@ export interface GridCell {
             <th scope="col">{{ 'grid.week.hour' | translate }}</th>
             @for (day of days(); track day.date) {
               <th scope="col" [class.today]="day.date === today()">
-                {{ day.label }}
-                @if (day.date === today()) {
-                  <span class="cdk-visually-hidden">{{ 'grid.week.today' | translate }}</span>
-                }
+                <span class="heading">
+                  <span>
+                    {{ day.label }}
+                    @if (day.date === today()) {
+                      <span class="cdk-visually-hidden">{{ 'grid.week.today' | translate }}</span>
+                    }
+                  </span>
+                  @if (weekdaySet().has(day.weekday)) {
+                    <button
+                      type="button"
+                      class="unpick"
+                      [attr.aria-label]="
+                        'grid.week.unpickWeekday' | translate: { weekday: day.weekdayName }
+                      "
+                      (click)="unpickWeekday.emit(day.weekday)"
+                    >
+                      −
+                    </button>
+                  }
+                </span>
               </th>
             }
           </tr>
@@ -46,7 +64,23 @@ export interface GridCell {
         <tbody>
           @for (hour of hours; track hour) {
             <tr>
-              <th scope="row">{{ hourText(hour) }}</th>
+              <th scope="row">
+                <span class="heading">
+                  {{ hourText(hour) }}
+                  @if (hourSet().has(hour)) {
+                    <button
+                      type="button"
+                      class="unpick"
+                      [attr.aria-label]="
+                        'grid.week.unpickHour' | translate: { hour: hourText(hour) }
+                      "
+                      (click)="unpickHour.emit(hour)"
+                    >
+                      −
+                    </button>
+                  }
+                </span>
+              </th>
               @for (day of days(); track day.date) {
                 @let entry = cells().get(day.date + '|' + hour);
                 <td
@@ -98,7 +132,7 @@ export interface GridCell {
     }
 
     tbody th {
-      width: 3.5rem;
+      width: 4.5rem;
       font-variant-numeric: tabular-nums;
     }
 
@@ -127,11 +161,15 @@ export interface GridCell {
       white-space: nowrap;
     }
 
-    .pick {
-      position: absolute;
-      top: 50%;
-      inset-inline-end: 0.125rem;
-      transform: translateY(-50%);
+    .heading {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pick,
+    .unpick {
       width: 1.25rem;
       height: 1.25rem;
       padding: 0;
@@ -142,8 +180,23 @@ export interface GridCell {
       cursor: pointer;
     }
 
+    .unpick {
+      flex: none;
+      color: var(--mat-sys-primary);
+      font-weight: bold;
+    }
+
+    .pick {
+      position: absolute;
+      top: 50%;
+      inset-inline-end: 0.125rem;
+      transform: translateY(-50%);
+    }
+
     .pick:hover,
-    .pick:focus-visible {
+    .pick:focus-visible,
+    .unpick:hover,
+    .unpick:focus-visible {
       background: var(--mat-sys-surface-container-high);
     }
   `,
@@ -159,6 +212,9 @@ export class GridWeekComponent {
   readonly selectedHours = input<readonly number[]>([]);
 
   readonly pick = output<GridCell>();
+  /** A weekday, 1 = Monday, to take out of the change. */
+  readonly unpickWeekday = output<number>();
+  readonly unpickHour = output<number>();
 
   protected readonly hours = HOURS;
   protected readonly hourText = hourLabel;
@@ -170,19 +226,23 @@ export class GridWeekComponent {
       month: 'short',
       timeZone: 'UTC',
     });
-    return this.dates().map((date) => ({
-      date,
-      weekday: weekdayOf(date),
-      label: format.format(localDateAsUtcNoon(date)),
-    }));
+    return this.dates().map((date) => {
+      const weekday = weekdayOf(date);
+      return {
+        date,
+        weekday,
+        weekdayName: weekdayName(weekday, this.i18n.locale(), 'long'),
+        label: format.format(localDateAsUtcNoon(date)),
+      };
+    });
   });
 
   protected readonly cells = computed(
     () => new Map(this.entries().map((entry) => [`${entry.date}|${entry.hour}`, entry])),
   );
 
-  private readonly weekdaySet = computed(() => new Set(this.selectedWeekdays()));
-  private readonly hourSet = computed(() => new Set(this.selectedHours()));
+  protected readonly weekdaySet = computed(() => new Set(this.selectedWeekdays()));
+  protected readonly hourSet = computed(() => new Set(this.selectedHours()));
 
   protected isSelected(weekday: number, hour: number): boolean {
     return this.weekdaySet().has(weekday) && this.hourSet().has(hour);
