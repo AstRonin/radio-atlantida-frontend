@@ -32,13 +32,15 @@ streams it, and PostgreSQL stores the data.
 1. `docs/base.md`: the product requirements (the goal of every screen).
 2. `docs/tech-design.md`: the technical design. **It is the authority.** §6 (API, help, validation,
    settings, track preview), §6.4 (client generation), and §10 (time and logging) matter most.
-3. `docs/frontend-init-plan.md`: the task list. Work only on the current phase.
+3. `docs/frontend-init-plan.md`: the task list of F1 to F5. Later phases have their own plan in
+   `docs/` (F6: `docs/f6-clocks-grid-plan.md`). Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
 Phase status: F1 (skeleton), F2 (API client and contract pipeline), F3 (realtime, operations,
-alerts, settings core), F4 (shared UI: help, validation, pickers, player), and F5 (settings and
-library pages) done. The initialization plan ends with F5; later phases have their own plans.
+alerts, settings core), F4 (shared UI: help, validation, pickers, player), F5 (settings and
+library pages), and F6 (clocks and grid, `docs/f6-clocks-grid-plan.md`) done. The initialization
+plan ends with F5; later phases have their own plans.
 
 ## Ground rules
 
@@ -68,7 +70,8 @@ library pages) done. The initialization plan ends with F5; later phases have the
   `settlePage()` from `core/testing`; `whenStable()` hangs while a resource request is open.
 - **No secrets in the frontend.** The panel only shows whether a secret is set.
 - **Times.** The API sends ISO 8601 UTC (`...Z`). Display them in the station timezone from settings
-  (IANA name, default `Asia/Yerevan`), never in the browser's zone.
+  (IANA name, default `Asia/Yerevan`), never in the browser's zone. Station local dates
+  (`YYYY-MM-DD`, the grid) use `core/time/local-date.ts` (`stationToday`, `addDays`, `weekdayOf`).
 - **Show, never recompute** clock and station rules: send the template, show the backend's dry check,
   warnings, and filler choices.
 - **Forms validate twice:** reactive-form validators mirroring the DTO rules, then the backend's

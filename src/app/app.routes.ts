@@ -42,6 +42,16 @@ export const routes: Routes = [
     data: nav('nav.separationRules'),
   },
   {
+    path: 'clocks',
+    loadChildren: () => import('./features/clocks/clocks.routes'),
+    data: nav('nav.clocks'),
+  },
+  {
+    path: 'grid',
+    loadChildren: () => import('./features/grid/grid.routes'),
+    data: nav('nav.grid'),
+  },
+  {
     path: 'settings',
     loadChildren: () => import('./features/settings/settings.routes'),
     data: nav('nav.settings'),

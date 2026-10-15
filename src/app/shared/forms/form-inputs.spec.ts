@@ -6,11 +6,12 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { DateInputComponent } from './date-input.component';
 import { fieldErrorMessage } from './field-errors';
 import { FillerModeSelectComponent } from './filler-mode-select.component';
+import { HoursInputComponent } from './hours-input.component';
 import { NumberInputComponent } from './number-input.component';
 import { PlaylistTypeSelectComponent } from './playlist-type-select.component';
 import { applyServerErrors } from './server-errors';
 import { TimeInputComponent } from './time-input.component';
-import { rangeValidator } from './validators';
+import { nonEmptyValidator, rangeValidator } from './validators';
 import { WeekdaysInputComponent } from './weekdays-input.component';
 
 describe('form inputs', () => {
@@ -118,6 +119,28 @@ describe('form inputs', () => {
     boxes[0].click();
     expect(control.value).toEqual([1, 5]);
     expect(control.dirty).toBe(true);
+  });
+
+  it('hours input edits a sorted list of 0 to 23 with toggle buttons', async () => {
+    const control = new FormControl<number[] | null>([10], nonEmptyValidator);
+    const fixture = TestBed.createComponent(HoursInputComponent);
+    fixture.componentRef.setInput('control', control);
+    fixture.detectChanges();
+
+    const hours = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+      'button.hour',
+    );
+    expect(hours).toHaveLength(24);
+    expect(hours[10].getAttribute('aria-pressed')).toBe('true');
+
+    hours[6].click();
+    expect(control.value).toEqual([6, 10]);
+    hours[10].click();
+    hours[6].click();
+    expect(control.value).toEqual([]);
+    expect(control.hasError('required')).toBe(true);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.error')).not.toBeNull();
   });
 
   it('filler mode select offers only the fallback modes for a clock default', async () => {

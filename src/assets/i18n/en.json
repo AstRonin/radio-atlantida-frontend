@@ -277,6 +277,11 @@
       "lufs": "LUFS",
       "lu": "LU",
       "dbtp": "dBTP"
+    },
+    "hours": {
+      "label": "Hours",
+      "all": "All hours",
+      "none": "No hours"
     }
   },
   "filler": {
@@ -322,7 +327,9 @@
       "moveUp": "Move \"{title}\" up",
       "moveDown": "Move \"{title}\" down",
       "remove": "Remove \"{title}\""
-    }
+    },
+    "clock": "Clock",
+    "clockIncomplete": "incomplete"
   },
   "dialogs": {
     "delete": {
@@ -404,7 +411,9 @@
     "playlistTypes": "Playlist types",
     "playRules": "Play rules",
     "separationRules": "Separation rules",
-    "settings": "Settings"
+    "settings": "Settings",
+    "clocks": "Clocks",
+    "grid": "Grid"
   },
   "playlistTypes": {
     "title": "Playlist types",
@@ -569,6 +578,143 @@
       "add": "Add",
       "addOne": "Add \"{title}\"",
       "inPlaylist": "In playlist"
+    }
+  },
+  "clocks": {
+    "title": "Clocks",
+    "add": "Add clock",
+    "statusLabel": "Status",
+    "elementCount": "Elements",
+    "updatedAt": "Changed",
+    "status": {
+      "complete": "Complete",
+      "incomplete": "Incomplete"
+    },
+    "placements": {
+      "flow": "In flow",
+      "start": "At the start",
+      "end": "At the end",
+      "fixed": "At a fixed minute"
+    },
+    "fields": {
+      "name": "Name",
+      "default_filler_mode": "Default filler mode",
+      "filler_playlist": "Filler playlist",
+      "filler_artist": "Filler artist",
+      "placement": "Placement",
+      "fixed_minute": "Fixed minute",
+      "fixed_tolerance_ms": "Fixed tolerance",
+      "nominal_duration_ms": "Nominal duration",
+      "duration_tolerance_ms": "Tolerance",
+      "playlist_ids": "Playlists"
+    },
+    "edit": {
+      "createTitle": "New clock",
+      "editTitle": "Edit clock",
+      "elements": "Elements",
+      "elementsNote": "The order of flow elements is the order of play. Start and end elements open and close the hour; fixed elements start at their minute.",
+      "addElement": "Add element",
+      "noElements": "Add at least one element.",
+      "save": "Save and check"
+    },
+    "element": {
+      "title": "Element {number}",
+      "new": "new",
+      "moveUp": "Up",
+      "moveDown": "Down",
+      "remove": "Remove",
+      "moveUpLabel": "Move element {number} up",
+      "moveDownLabel": "Move element {number} down",
+      "removeLabel": "Remove element {number}",
+      "defaultTolerance": "Empty: the default from the settings"
+    },
+    "check": {
+      "title": "Dry check",
+      "incompleteNote": "A short segment has no filler. Reminders are created for its hours until you choose one.",
+      "shortfall": "The clock is short by {duration} in total.",
+      "full": "The clock fills the hour.",
+      "replaced": "These fixed elements were replaced by a new element at the same time:",
+      "replacedElement": "Fixed element at :{minute}, {duration}",
+      "warnings": "Warnings:"
+    },
+    "warnings": {
+      "element_no_tracks": "Element {element}: its playlists have no track with a known duration.",
+      "element_no_fitting_track": "Element {element}: no track fits the nominal duration within the tolerance.",
+      "element_few_tracks": "Element {element}: too few fitting tracks for the separation rules; tracks may repeat or be skipped.",
+      "element_blocked_by_play_rules": "Element {element}: play rules block every fitting track in these grid hours: {hours}.",
+      "segment_overflow": "Segment {segment} runs past the end of the hour; the last track is cut and faded out."
+    },
+    "build": {
+      "accepted": "Rebuilding the planned hours…",
+      "running": "Rebuilding the planned hours…",
+      "completed": "The planned hours are rebuilt.",
+      "failed": "Rebuilding the planned hours failed."
+    },
+    "layout": {
+      "title": "Layout of the hour (nominal durations)",
+      "stale": "This is the layout as saved. Save to check your changes.",
+      "caption": "Segments of the hour",
+      "segment": "Segment",
+      "time": "Time",
+      "elements": "Elements",
+      "content": "Content",
+      "fixed": "Fixed element",
+      "shortfall": "Short",
+      "overflow": "Overflow",
+      "filler": "Filler",
+      "overflowBy": "Over by {duration}",
+      "holder": "element {number}"
+    },
+    "pool": {
+      "title": "Filler pool",
+      "note": "Specific tracks used one after another when a segment in pool mode needs filler. Used tracks stay listed as history.",
+      "unused": "Tracks waiting in the pool",
+      "save": "Save pool",
+      "saved": "The pool is saved.",
+      "used": "Already used"
+    }
+  },
+  "grid": {
+    "title": "Grid",
+    "fields": {
+      "clock_id": "Clock",
+      "weekdays": "Weekdays",
+      "hours": "Hours",
+      "valid_from": "Valid from",
+      "valid_to": "Valid to"
+    },
+    "week": {
+      "title": "Week from {from} to {to}",
+      "previous": "Previous week",
+      "current": "This week",
+      "next": "Next week",
+      "note": "Hours and dates are in the station timezone ({zone}). Use + in a cell to add its weekday and hour to the change below.",
+      "caption": "Clocks by hour for the week",
+      "hour": "Hour",
+      "today": "(today)",
+      "pick": "Add {day} {hour} to the change"
+    },
+    "change": {
+      "title": "Change the grid",
+      "note": "The clock is assigned to every chosen weekday at every chosen hour, for the dates given. Existing slots there are replaced for those dates.",
+      "assign": "Assign clock",
+      "clear": "Clear these hours"
+    },
+    "result": {
+      "created": "Slots created: {count}.",
+      "replaced": "Replaced slots:",
+      "change": {
+        "trimmed": "shortened",
+        "split": "split around the new dates",
+        "deleted": "removed"
+      }
+    },
+    "slots": {
+      "title": "Slots from today",
+      "weekday": "Weekday",
+      "hour": "Hour",
+      "openEnd": "no end",
+      "describe": "{day} {hour} · {clock} · {from} to {to}"
     }
   }
 }

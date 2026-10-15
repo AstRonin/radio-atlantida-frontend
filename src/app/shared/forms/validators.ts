@@ -85,6 +85,15 @@ export const relativePathValidator: ValidatorFn = (control) => {
   return absolute || escapes || value.includes('\\') ? { relativePath: true } : null;
 };
 
+/**
+ * A list with at least one entry, for example the playlists of a clock element or the hours of a
+ * grid change. The error is `required`, so the message is "This field is required."
+ */
+export const nonEmptyValidator: ValidatorFn = (control) => {
+  const value: unknown = control.value;
+  return Array.isArray(value) && value.length > 0 ? null : { required: true };
+};
+
 function isEmpty(value: unknown): boolean {
   return (
     value === null ||

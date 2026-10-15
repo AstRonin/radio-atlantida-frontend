@@ -11,7 +11,7 @@ export type TrackQuery = NonNullable<ApiOperation<'/api/tracks', 'get'>['paramet
 
 /**
  * Read-only lists that the shared selects and pickers offer: playlist types, playlists, play
- * rules, artists, and tracks. The pickers stay free of HTTP, and each list is read when a picker
+ * rules, artists, tracks, and clocks. The pickers stay free of HTTP, and each list is read when a picker
  * opens, so a type or playlist added a moment ago is offered at once (design §6.2). Callers
  * unsubscribe on destroy, which cancels the request.
  */
@@ -39,6 +39,10 @@ export class CatalogService {
 
   tracks(query: TrackQuery): Observable<ApiSchema<'TrackPage'>> {
     return this.api.get('/api/tracks', { query });
+  }
+
+  clocks(): Observable<ApiSchema<'ClockSummary'>[]> {
+    return this.api.get('/api/clocks').pipe(map((list) => list.items));
   }
 
   track(id: number): Observable<ApiSchema<'Track'>> {
