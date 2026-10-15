@@ -96,6 +96,147 @@
         ],
         "type": "object"
       },
+      "BroadcastStateData": {
+        "additionalProperties": false,
+        "properties": {
+          "last_check_at": {
+            "description": "When the mount was last checked; null before the first check.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mount_ok": {
+            "description": "Result of the last Icecast mount check; null before the first.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "outage_id": {
+            "description": "The open outage (unreachable only).",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reason": {
+            "description": "The open outage's reason or component (unreachable only).",
+            "type": "string"
+          },
+          "since": {
+            "description": "When the state last changed (UTC); kept across restarts of the backend. Null while unknown.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "description": "connected: Liquidsoap streams to Icecast and no outage is open; reconnecting: Liquidsoap lost its Icecast output and no outage is open yet; unreachable: a broadcast outage is open; unknown: no evidence yet after a start of the backend, or no heartbeat from Liquidsoap.",
+            "enum": [
+              "connected",
+              "reconnecting",
+              "unreachable",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "since",
+          "mount_ok",
+          "last_check_at"
+        ],
+        "type": "object"
+      },
+      "BroadcastStateEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BroadcastStateData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always broadcast.state.",
+            "enum": [
+              "broadcast.state"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
+      "BroadcastStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "last_check_at": {
+            "description": "When the mount was last checked; null before the first check.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mount_ok": {
+            "description": "Result of the last Icecast mount check; null before the first.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "outage_id": {
+            "description": "The open outage (unreachable only).",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reason": {
+            "description": "The open outage's reason or component (unreachable only).",
+            "type": "string"
+          },
+          "since": {
+            "description": "When the state last changed (UTC); kept across restarts of the backend. Null while unknown.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "description": "connected: Liquidsoap streams to Icecast and no outage is open; reconnecting: Liquidsoap lost its Icecast output and no outage is open yet; unreachable: a broadcast outage is open; unknown: no evidence yet after a start of the backend, or no heartbeat from Liquidsoap.",
+            "enum": [
+              "connected",
+              "reconnecting",
+              "unreachable",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "description": "Server time (UTC) of this answer, so the panel can correct its clock for the timer.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "since",
+          "mount_ok",
+          "last_check_at",
+          "time"
+        ],
+        "type": "object"
+      },
       "Clock": {
         "additionalProperties": false,
         "properties": {
@@ -719,6 +860,7 @@
             "analyse.completed": "#/components/schemas/OperationCompletedEvent",
             "analyse.failed": "#/components/schemas/OperationFailedEvent",
             "analyse.progress": "#/components/schemas/OperationProgressEvent",
+            "broadcast.state": "#/components/schemas/BroadcastStateEvent",
             "broadcast_outage.ended": "#/components/schemas/OutageEndedEvent",
             "broadcast_outage.started": "#/components/schemas/OutageStartedEvent",
             "clock_build.completed": "#/components/schemas/OperationCompletedEvent",
@@ -782,6 +924,9 @@
           },
           {
             "$ref": "#/components/schemas/IcecastStateEvent"
+          },
+          {
+            "$ref": "#/components/schemas/BroadcastStateEvent"
           },
           {
             "$ref": "#/components/schemas/OutageStartedEvent"
@@ -4616,6 +4761,38 @@
         "summary": "Rename an artist",
         "tags": [
           "Artists"
+        ]
+      }
+    },
+    "/api/broadcast/status": {
+      "get": {
+        "description": "Whether the stream reaches Icecast (connected, reconnecting, unreachable, unknown) and since when (§7.1). The broadcast.state event reports each change; the panel reads this when its event connection opens.",
+        "operationId": "get-broadcast-status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the broadcast status",
+        "tags": [
+          "Status"
         ]
       }
     },

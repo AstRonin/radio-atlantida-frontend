@@ -59,6 +59,21 @@
       "reconnecting": "Reconnecting…"
     }
   },
+  "broadcast": {
+    "state": {
+      "connected": "Broadcasting",
+      "reconnecting": "Reconnecting to Icecast",
+      "unreachable": "Stream down",
+      "unknown": "No status"
+    },
+    "since": "Since {time}",
+    "reason": "Reason: {reason}",
+    "mount": {
+      "ok": "Icecast mount found, checked {time}",
+      "failed": "Icecast mount not found, checked {time}",
+      "unchecked": "Icecast mount not checked yet"
+    }
+  },
   "operations": {
     "button": "Operations ({count} running)",
     "empty": "No operations yet.",

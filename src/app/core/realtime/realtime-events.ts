@@ -32,6 +32,7 @@ const EVENT_TYPES: Readonly<Record<RealtimeEventType, true>> = {
   'broadcast_outage.started': true,
   'broadcast_outage.ended': true,
   'icecast.state': true,
+  'broadcast.state': true,
   'liquidsoap.state': true,
   'live.state': true,
   'playout.now_playing': true,
