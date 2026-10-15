@@ -1,0 +1,58 @@
+{
+  "title": "Logs",
+  "summary": "The logs show the backend's diagnostic messages: errors, warnings, and connection changes. Use them when something did not work as expected.",
+  "entities": [
+    {
+      "term": "Log file",
+      "text": "One file per day (UTC date), kept for 10 days by default."
+    },
+    {
+      "term": "Level",
+      "text": "ERROR and WARN are problems; INFO notes connection changes and actions."
+    },
+    {
+      "term": "Component",
+      "text": "The part of the system that wrote the entry, for example icecast, liquidsoap, rotation, or api."
+    },
+    {
+      "term": "Request ID",
+      "text": "Links an error popup in the panel to its entry in the log."
+    },
+    {
+      "term": "Grafana",
+      "text": "The station's monitoring tool, when it is switched on. Its Logs dashboard searches the text of the log and the playout journal across several days and shows errors per component over time. It asks for its own login."
+    }
+  ],
+  "usage": "Choose a day, then filter by level and component. File dates are UTC; times are converted to the station timezone. Errors also appear as popups when they happen, and each popup has an Open log link to its entry.",
+  "steps": [
+    "Choose the log file of the day.",
+    "Set the level to WARN to see only problems.",
+    "Filter by component, for example icecast for stream problems.",
+    "From an error popup, use Open log: the page opens that day's file and marks the entry with the popup's request ID.",
+    "Press Refresh to read new entries; the page does not update by itself.",
+    "For text search or several days at once, use Search in Grafana (shown only when monitoring is on). It opens in a new tab."
+  ],
+  "mistakes": [
+    "Looking in the wrong day's file near midnight: file dates are UTC, not station time.",
+    "Expecting secrets in the log. Passwords are always masked."
+  ],
+  "example": {
+    "title": "Why did the stream stop?",
+    "text": "An outage banner appeared at 14:05. Open today's log, set level WARN and component icecast. The entries show \"connection lost\" at 14:05 and \"connected\" at 14:12, with reconnect attempts in between."
+  },
+  "operations": {},
+  "fields": {
+    "file": {
+      "label": "Log file",
+      "text": "One file per UTC day, newest first, with its size."
+    },
+    "level": {
+      "label": "Level",
+      "text": "Minimum level: WARN shows warnings and errors."
+    },
+    "component": {
+      "label": "Component",
+      "text": "Show only entries from one part of the system."
+    }
+  }
+}

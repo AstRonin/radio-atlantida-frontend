@@ -1,0 +1,100 @@
+<a class="skip-link" href="#main-content">{{ 'shell.skipToContent' | translate }}</a>
+
+<mat-toolbar class="header" role="banner">
+  @if (narrow()) {
+    <button
+      matButton
+      type="button"
+      class="menu-button"
+      [attr.aria-label]="'shell.toggleNavigation' | translate"
+      [attr.aria-expanded]="drawer.opened"
+      aria-controls="main-navigation"
+      (click)="drawer.toggle()"
+    >
+      ☰
+    </button>
+  }
+  <span class="station-name">{{ stationName() ?? ('shell.stationName' | translate) }}</span>
+  <span class="spacer"></span>
+  <app-live-indicator />
+  @if (pendingReminders(); as count) {
+    <a matButton class="reminders" routerLink="/filler-reminders">
+      {{ 'rotation.pendingReminders' | translate: { count } }}
+    </a>
+  }
+  @if (openMissedItems(); as count) {
+    <a matButton class="missed" routerLink="/missed-items">
+      {{ 'outages.openMissed' | translate: { count } }}
+    </a>
+  }
+  <app-connection-status />
+  <app-operations-menu />
+  <app-language-switch />
+</mat-toolbar>
+
+@if (openOutage(); as outage) {
+  <app-outage-banner [outage]="outage" />
+}
+
+<mat-sidenav-container class="body">
+  <mat-sidenav
+    #drawer
+    id="main-navigation"
+    class="navigation"
+    [mode]="narrow() ? 'over' : 'side'"
+    [opened]="!narrow()"
+  >
+    <nav [attr.aria-label]="'shell.navigation' | translate">
+      @if (navigation.length > 0) {
+        <mat-nav-list>
+          @for (item of navigation; track item.path) {
+            <a
+              mat-list-item
+              [routerLink]="item.path"
+              routerLinkActive
+              #link="routerLinkActive"
+              [activated]="link.isActive"
+              [attr.aria-current]="link.isActive ? 'page' : null"
+              (click)="narrow() && drawer.close()"
+            >
+              {{ item.label | translate }}
+            </a>
+          }
+        </mat-nav-list>
+      } @else {
+        <p class="empty-navigation">{{ 'shell.noPages' | translate }}</p>
+      }
+      @if (grafanaUrl(); as grafana) {
+        <mat-divider />
+        <mat-nav-list>
+          <a mat-list-item [href]="grafana + '/'" target="_blank" rel="noopener noreferrer">
+            {{ 'shell.monitoring' | translate }} <span aria-hidden="true">↗</span>
+            <span class="cdk-visually-hidden">{{ 'common.opensInNewTab' | translate }}</span>
+          </a>
+        </mat-nav-list>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav
+    class="help"
+    position="end"
+    mode="over"
+    role="dialog"
+    aria-labelledby="help-panel-title"
+    [opened]="help.panelPage() !== null"
+    (closedStart)="help.close()"
+  >
+    @if (help.panelPage()) {
+      <app-help-panel [content]="help.panelContent()" (closed)="help.close()" />
+    }
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <main id="main-content" class="content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
+
+<app-player-bar />

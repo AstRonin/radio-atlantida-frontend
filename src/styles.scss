@@ -1,0 +1,123 @@
+@use '@angular/material' as mat;
+
+// Global theme for the panel. Fonts are system fonts: the CSP allows only self-hosted assets,
+// so nothing is loaded from Google Fonts.
+html {
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: (
+        plain-family: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        brand-family: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      ),
+      // Admin tables and forms are dense by nature.
+      density: -1,
+    )
+  );
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}
+
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+// Building blocks shared by the feature pages.
+.page-section {
+  margin-bottom: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0 1rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+// A form field with its help hint beside it, not inside it: a suffix crowds the field's own
+// icons (a select arrow, a calendar button). The hint is centred on the field's box, not on the
+// error line below it.
+.field-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.field-row > mat-form-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field-row > app-field-hint {
+  flex: none;
+  margin-top: calc((var(--mat-form-field-container-height, 56px) - 1.5rem) / 2);
+}
+
+.list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  align-items: baseline;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-scroll .mat-mdc-table {
+  min-width: 40rem;
+}
+
+.cell-actions {
+  white-space: nowrap;
+  text-align: end;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.form-error,
+.load-error {
+  color: var(--mat-sys-error);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 1rem;
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.badge.warn {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}

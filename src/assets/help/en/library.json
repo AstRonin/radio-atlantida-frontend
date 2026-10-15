@@ -1,0 +1,105 @@
+{
+  "title": "Library",
+  "summary": "The library lists every track the station can play: songs, jingles, news, and segments. Here you describe tracks, put them into playlists, listen to them before they go to air, and check and fix their sound quality.",
+  "entities": [
+    {
+      "term": "Track",
+      "text": "One audio file with its title, artist, length, and type. The file stays on disk in the media folder; the library only stores where it is."
+    },
+    {
+      "term": "File path",
+      "text": "Where the file is, relative to the media folder, with forward slashes, for example music/summer-song.mp3."
+    },
+    {
+      "term": "Type",
+      "text": "A label such as music, jingle, news, or segment. It helps you filter and find tracks. It does not change how the track is chosen."
+    },
+    {
+      "term": "Quality",
+      "text": "The result of the audio analysis: format, sample rate, channels, loudness, and peak compared with the broadcast standard in the settings."
+    },
+    {
+      "term": "Fix loudness and Optimize track",
+      "text": "Fix loudness brings the loudness to the station level and keeps the format. Optimize track also converts the file to the broadcast standard. A button appears only when it removes at least one issue. Choose whether the fixed file replaces the original or is kept as an optimal copy next to it."
+    },
+    {
+      "term": "Play button",
+      "text": "Plays the track in your browser only. A preview never goes to air and does not count as a play."
+    },
+    {
+      "term": "Artist",
+      "text": "The performer of a track, kept on the Artists page. Artist separation counts plays per artist, so each artist has one entry with a unique name. Jingles and station IDs need no artist."
+    }
+  ],
+  "usage": "Search by title or artist, or filter by playlist, type, or quality. Open a track to edit its details, its playlists, and its play rules, and to see what the analysis measured. Select tracks with the checkboxes to analyse them again or fix them. Use the play button on any row to check what a track sounds like.",
+  "steps": [
+    "Bring new files in through the Import page, or copy a file into the media folder and click Add track.",
+    "For a track added by hand, enter the title, the artist, the type, and the file path.",
+    "Choose the playlists the track belongs to.",
+    "Add play rules if the track may only play at certain times (mostly jingles).",
+    "Filter by quality Issues, select the tracks, and use Fix loudness or Optimize track where offered.",
+    "Press play to check the result."
+  ],
+  "mistakes": [
+    "Entering a full path such as C:\\media\\song.mp3 or /media/song.mp3. Enter only the part inside the media folder.",
+    "Forgetting the duration of a track whose file cannot be read: a track without a duration is never planned.",
+    "Expecting the type to control rotation. Only playlists, clocks, and rules decide when a track plays.",
+    "Choosing Replace the original when you may want the original back. Replace deletes it; an optimal copy keeps it on disk.",
+    "Expecting a fix for a low bitrate. Detail lost in the source cannot be restored; replace the file with a better one."
+  ],
+  "example": {
+    "title": "Adding a morning jingle",
+    "text": "The file jingles/good-morning.mp3 is in the media folder. Add a track titled \"Good morning\", type jingle, file path jingles/good-morning.mp3, playlist \"Jingles\", and the play rule \"Morning 06:00 to 10:00\". Press play to check it, then save. The jingle now fills jingle slots only in the morning."
+  },
+  "operations": {
+    "create": "The file must already be in the media folder. The panel does not upload files; use the Import page for new files.",
+    "edit": "Changing the playlists or rules affects only hours that are not planned yet or are rebuilt.",
+    "delete": "A track that has aired or is planned cannot be deleted, so the played-tracks list stays complete. Remove it from its playlists instead."
+  },
+  "fields": {
+    "title": {
+      "label": "Title",
+      "text": "The name shown in lists and in the stream metadata."
+    },
+    "artist_id": {
+      "label": "Artist",
+      "text": "Leave empty for material without an artist, such as jingles. Artist separation uses this field."
+    },
+    "type_id": {
+      "label": "Type",
+      "text": "A label for filtering and badges. It does not limit which clock elements can use the track."
+    },
+    "file_path": {
+      "label": "File path",
+      "text": "Relative to the media folder, with forward slashes, for example music/song.mp3. No drive letters and no \"..\"."
+    },
+    "duration_ms": {
+      "label": "Duration",
+      "text": "Length of the track in milliseconds. Read from the file when possible. A track without a duration is not planned."
+    },
+    "playlist_ids": {
+      "label": "Playlists",
+      "text": "Every playlist the track belongs to. A track can be in several playlists."
+    },
+    "rule_ids": {
+      "label": "Play rules",
+      "text": "Rules of this track only. The rules of its playlists apply as well, and all must pass."
+    },
+    "quality_ok": {
+      "label": "Quality OK",
+      "text": "Your own decision that the track is good enough, or not. It overrides the analysis result until the next analysis."
+    },
+    "quality_notes": {
+      "label": "Quality notes",
+      "text": "Your own notes about the file, for example \"quiet intro\"."
+    },
+    "force": {
+      "label": "Decode again",
+      "text": "Off: a file that has not changed is only checked again against the current settings, which is quick. On: every file is decoded and measured again."
+    },
+    "output": {
+      "label": "Fixed file",
+      "text": "Optimal copy: the fixed file is written next to the original as name.optimal.ext and the track plays it; the original stays on disk. Replace: the fixed file takes the original's place and the original is deleted."
+    }
+  }
+}

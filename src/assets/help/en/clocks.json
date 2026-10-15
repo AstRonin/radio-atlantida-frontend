@@ -1,0 +1,104 @@
+{
+  "title": "Clocks",
+  "summary": "A clock is a 60-minute template of an hour on air. It is a list of elements, and each element takes one track from one or more playlists. The grid decides which clock plays in which hour.",
+  "entities": [
+    {
+      "term": "Element",
+      "text": "One slot of the hour. It names its playlists, a nominal duration, a tolerance, and where it is placed."
+    },
+    {
+      "term": "Placement",
+      "text": "Start (before everything else), end (after everything else), in flow (in order among the others), or a fixed minute such as :30."
+    },
+    {
+      "term": "Fixed element",
+      "text": "Starts at its minute within ±1 minute. Fixed elements split the hour into segments, and each segment is filled separately. A new fixed element at the same time replaces the old one."
+    },
+    {
+      "term": "Nominal duration and tolerance",
+      "text": "The length the element aims for and how far a track may differ from it. Audio is never stretched: the system picks a track that fits."
+    },
+    {
+      "term": "Several playlists",
+      "text": "An element may use playlists of different types, for example music and jingle. The track is chosen from all of them together."
+    },
+    {
+      "term": "Filler mode",
+      "text": "What fills a segment that ends up short: a pool of chosen tracks, a playlist, an artist, a random track, or ask at air time."
+    },
+    {
+      "term": "Default filler mode",
+      "text": "Used when the clock's filler pool is empty or a filler reminder expires: random, a playlist, or an artist. If the clock has none, the global fallback from the settings applies."
+    }
+  ],
+  "usage": "Build the hour from elements, then save. Saving runs a dry check and shows how full each segment is, which tracks are available, and any warnings. If a segment is short, a dialog asks how to fill it before the clock is complete.",
+  "steps": [
+    "Click Add clock and enter a name.",
+    "Add elements: choose their playlists, nominal duration, tolerance, and placement.",
+    "Put news or station IDs at fixed minutes, for example :00 and :30.",
+    "Save and read the dry-check result and warnings.",
+    "If the filler dialog opens, choose a filler mode for each short segment, or save the clock incomplete.",
+    "Assign the clock to hours on the Grid page."
+  ],
+  "mistakes": [
+    "Placing two fixed elements so close that their ±1 minute windows overlap. The newer one replaces the older one.",
+    "Putting more material before a fixed element than fits before its minute. The clock is not saved, and the element is marked.",
+    "Using a tolerance of 0. Very few tracks then fit, and segments end up short.",
+    "Closing the filler dialog with \"save incomplete\" and forgetting it. Reminders are created for every affected hour until you choose a filler."
+  ],
+  "example": {
+    "title": "A news hour",
+    "text": "Element 1: news, fixed at :00, 5 minutes. Element 2: jingle, fixed at :30, 30 seconds. Elements 3 to 14: music from \"Pop hits\" and \"New releases\", in flow, 3:30 each with 30 seconds tolerance. Saving shows that the segment from :05 to :30 is short by 40 seconds, so the dialog asks for a filler; choose the playlist \"Short songs\"."
+  },
+  "operations": {
+    "create": "Saving runs the dry check first. Problems are shown at once, not at air time.",
+    "edit": "Only planned hours that have not started are rebuilt. Hours on air keep their plan.",
+    "delete": "A clock used in the grid or with play history cannot be deleted. Remove it from the grid first."
+  },
+  "fields": {
+    "name": {
+      "label": "Name",
+      "text": "A name you will recognize in the grid, for example \"Weekday morning\"."
+    },
+    "placement": {
+      "label": "Placement",
+      "text": "Start, end, in flow, or at a fixed minute of the hour."
+    },
+    "fixed_minute": {
+      "label": "Fixed minute",
+      "text": "Minute of the hour, 0 to 59. The element may start up to one minute before or after it."
+    },
+    "fixed_tolerance_ms": {
+      "label": "Fixed tolerance",
+      "text": "How far the start of a fixed element may move, in milliseconds. Default 60000 (one minute)."
+    },
+    "nominal_duration_ms": {
+      "label": "Nominal duration",
+      "text": "The length this element aims for, in milliseconds."
+    },
+    "duration_tolerance_ms": {
+      "label": "Tolerance",
+      "text": "How much shorter or longer the chosen track may be, in milliseconds. Larger values make it easier to find a track."
+    },
+    "playlist_ids": {
+      "label": "Playlists",
+      "text": "One or more playlists of any type. The track is chosen from all of them together."
+    },
+    "filler_mode": {
+      "label": "Filler mode",
+      "text": "How a short segment ending with this element is filled: pool, playlist, artist, random, or ask at air time."
+    },
+    "filler_source_id": {
+      "label": "Filler source",
+      "text": "The playlist or artist for the playlist and artist filler modes."
+    },
+    "default_filler_mode": {
+      "label": "Default filler mode",
+      "text": "Used when the pool is empty or a reminder expires. Empty means the global fallback from the settings."
+    },
+    "pool_track_ids": {
+      "label": "Filler pool",
+      "text": "Tracks chosen for this clock, used one after another when the clock needs filler."
+    }
+  }
+}

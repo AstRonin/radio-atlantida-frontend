@@ -1,0 +1,61 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 10;
+  padding: 0.5rem 1rem;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-primary);
+
+  &:focus {
+    left: 1rem;
+    top: 0.5rem;
+  }
+}
+
+.header {
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.station-name {
+  font: var(--mat-sys-title-large);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.menu-button {
+  min-width: 0;
+  font-size: 1.25rem;
+}
+
+.body {
+  flex: 1 1 auto;
+}
+
+.navigation {
+  width: 15rem;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+}
+
+.help {
+  width: min(28rem, 100vw);
+}
+
+.empty-navigation {
+  margin: 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.content {
+  padding: 1.5rem;
+  outline: none;
+}

@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # release.yml runs the full CI before it builds the image it pushes.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Development is on macOS and runtime on Windows, so CRLF must never reach the repository.
+      - name: Check line endings
+        run: |
+          if git ls-files --eol | grep 'i/crlf'; then
+            echo "Files above are committed with CRLF line endings."
+            exit 1
+          fi
+
+      # The image is built with the Node of the Dockerfile, the checks with the one of .nvmrc.
+      - name: Check Node version of the image
+        run: |
+          want=$(cat .nvmrc)
+          got=$(sed -n 's/^FROM node:\([^-]*\)-.* AS build$/\1/p' docker/Dockerfile)
+          if [ "$got" != "$want" ]; then
+            echo "docker/Dockerfile builds with Node '$got', .nvmrc says $want."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=high
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t radio-atlantida-frontend:ci .
+      - name: Serve the shell and the runtime configuration
+        run: |
+          docker run -d --name panel -p 8080:8080 -e GRAFANA_URL=http://127.0.0.1:3000 \
+            radio-atlantida-frontend:ci
+          served=false
+          for _ in $(seq 1 20); do
+            if curl -fsS -o /dev/null http://127.0.0.1:8080/; then served=true; break; fi
+            sleep 1
+          done
+          if [ "$served" != true ]; then
+            docker logs panel
+            exit 1
+          fi
+          want='{"grafana_url":"http://127.0.0.1:3000"}'
+          got=$(curl -fsS http://127.0.0.1:8080/config.json)
+          if [ "$got" != "$want" ]; then
+            echo "/config.json is '$got', expected '$want'."
+            docker logs panel
+            exit 1
+          fi

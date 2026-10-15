@@ -1,0 +1,231 @@
+{
+  "title": "Settings",
+  "summary": "The settings control the station: timezone, the stream server, Liquidsoap, rotation, filler, outage detection, retention, and import. Everything the backend needs is set here, except the database and secrets.",
+  "entities": [
+    {
+      "term": "Default",
+      "text": "Every setting has a value from the code until you save another. The page shows whether a value is the default."
+    },
+    {
+      "term": "Apply mode",
+      "text": "Immediate settings take effect at once. Reconnect settings take effect when their connection is opened again; changing the stream server briefly interrupts the stream."
+    },
+    {
+      "term": "Secrets",
+      "text": "Passwords such as the Icecast source password are set in the server environment. The panel only shows whether each one is set."
+    },
+    {
+      "term": "Changes to air",
+      "text": "Changes that affect what goes to air are logged with their time."
+    }
+  ],
+  "usage": "Open a section, change values, and save. A notice tells you when a value needs a reconnect. Leaving the page with unsaved changes asks for confirmation.",
+  "steps": [
+    "Set the station timezone and name first.",
+    "Enter the stream server details and check the stream.",
+    "Choose the emergency playlist.",
+    "Review the rotation and filler defaults."
+  ],
+  "mistakes": [
+    "Changing the stream server during an important program: the stream is interrupted briefly.",
+    "Looking for password fields. Secrets are changed in the server environment, followed by a restart.",
+    "Leaving the emergency playlist empty. Then nothing can play when the plan is empty."
+  ],
+  "example": {
+    "title": "Moving to a new stream server",
+    "text": "Enter the new Icecast host and mount and save. The notice says the change applies on reconnect. Right after saving, the stream reconnects to the new server, with a short gap."
+  },
+  "operations": {
+    "edit": "Each field shows its default and when a change takes effect."
+  },
+  "fields": {
+    "station.timezone": {
+      "label": "Station timezone",
+      "text": "All times in the panel and in the schedule use this zone. Default Asia/Yerevan."
+    },
+    "station.name": {
+      "label": "Station name",
+      "text": "Shown in the panel header."
+    },
+    "stream.icecast_host": {
+      "label": "Icecast host",
+      "text": "The stream server the station sends to. Changing it briefly interrupts the stream."
+    },
+    "stream.icecast_port": {
+      "label": "Icecast port",
+      "text": "The port of the stream server."
+    },
+    "stream.mount": {
+      "label": "Mount point",
+      "text": "The path of the stream on the server, for example /live."
+    },
+    "stream.codec": {
+      "label": "Codec",
+      "text": "The audio format of the stream."
+    },
+    "stream.bitrate_kbps": {
+      "label": "Bitrate",
+      "text": "Stream quality in kilobits per second."
+    },
+    "stream.sample_rate_hz": {
+      "label": "Sample rate",
+      "text": "Samples per second of the stream, for example 44100."
+    },
+    "stream.channels": {
+      "label": "Channels",
+      "text": "1 for mono, 2 for stereo."
+    },
+    "stream.loudness_target_lufs": {
+      "label": "Loudness target",
+      "text": "The target loudness of the stream in LUFS. The import checks tracks against it."
+    },
+    "stream.name": {
+      "label": "Stream name",
+      "text": "Shown to listeners in their player."
+    },
+    "stream.description": {
+      "label": "Stream description",
+      "text": "Shown to listeners in their player."
+    },
+    "stream.genre": {
+      "label": "Genre",
+      "text": "Shown in stream directories."
+    },
+    "stream.hls_enabled": {
+      "label": "HLS",
+      "text": "Also offer the stream as HLS for browsers and phones."
+    },
+    "liquidsoap.music_gain": {
+      "label": "Music gain",
+      "text": "The level of the music, 0 to 1."
+    },
+    "liquidsoap.duck_gain": {
+      "label": "Music under voice",
+      "text": "The music level while live voice is on air, 0 to 1. Default 0.2."
+    },
+    "liquidsoap.fade_out_ms": {
+      "label": "Fade out",
+      "text": "How long a track cut at a segment end fades out, 2000 to 3000 ms. Default 2500."
+    },
+    "liquidsoap.harbor_port": {
+      "label": "Harbor port",
+      "text": "The port on which Liquidsoap receives live voice."
+    },
+    "liquidsoap.control_host": {
+      "label": "Control host",
+      "text": "Where the backend reaches Liquidsoap's control interface."
+    },
+    "liquidsoap.control_port": {
+      "label": "Control port",
+      "text": "The port of Liquidsoap's control interface."
+    },
+    "liquidsoap.control_user": {
+      "label": "Control user",
+      "text": "The user name for Liquidsoap's control interface. The password is set outside the panel."
+    },
+    "liquidsoap.media_root": {
+      "label": "Media folder in Liquidsoap",
+      "text": "The media folder as Liquidsoap sees it. Default /media."
+    },
+    "playout.emergency_playlist_id": {
+      "label": "Emergency playlist",
+      "text": "Plays when no planned track is available, so the air is never silent."
+    },
+    "playout.prepush_minutes": {
+      "label": "Pre-push",
+      "text": "Minutes before an hour starts when its first items go to Liquidsoap. From then on the hour is frozen."
+    },
+    "rotation.grid_horizon_days": {
+      "label": "Grid horizon",
+      "text": "How many days ahead the grid can be edited. Up to 30."
+    },
+    "rotation.plan_horizon_hours": {
+      "label": "Plan horizon",
+      "text": "How many hours ahead tracks are planned, 24 to 48."
+    },
+    "rotation.lookahead_items": {
+      "label": "Lookahead",
+      "text": "How many tracks Liquidsoap holds in advance, 2 to 3."
+    },
+    "rotation.default_duration_tolerance_ms": {
+      "label": "Default tolerance",
+      "text": "The tolerance of a new clock element, in milliseconds."
+    },
+    "rotation.default_fixed_tolerance_ms": {
+      "label": "Default fixed tolerance",
+      "text": "How far a fixed element may move from its minute, in milliseconds. Default one minute."
+    },
+    "rotation.min_filler_gap_ms": {
+      "label": "Smallest filler gap",
+      "text": "Shorter gaps get no filler. Default 10 seconds."
+    },
+    "rotation.max_relaxed_tolerance_ms": {
+      "label": "Emergency tolerance limit",
+      "text": "How far the tolerance may be relaxed when no track fits, in milliseconds."
+    },
+    "filler.fallback": {
+      "label": "Global fallback filler",
+      "text": "The filler mode used when a clock has no default filler mode of its own. Usually random."
+    },
+    "filler.reminder_deadline_minutes": {
+      "label": "Reminder deadline",
+      "text": "How many minutes before air an open filler reminder closes. Default 120."
+    },
+    "outage.heartbeat_timeout_seconds": {
+      "label": "Heartbeat timeout",
+      "text": "Seconds without a sign from Liquidsoap before an outage is opened. Default 10."
+    },
+    "outage.icecast_check_interval_seconds": {
+      "label": "Icecast check interval",
+      "text": "Seconds between checks of the stream mount. Default 5."
+    },
+    "outage.failed_checks_to_open": {
+      "label": "Failed checks",
+      "text": "How many checks in a row must fail before an outage is opened. Default 2."
+    },
+    "retention.play_log_days": {
+      "label": "Play log days",
+      "text": "How long aired history is kept. Missed items stay until resolved."
+    },
+    "retention.log_days": {
+      "label": "Log days",
+      "text": "How long log files are kept."
+    },
+    "import.inbox_dir": {
+      "label": "Inbox folder",
+      "text": "Folder under the media folder where new files wait for import."
+    },
+    "import.library_dir": {
+      "label": "Library folder",
+      "text": "Folder under the media folder where imported files are moved."
+    },
+    "import.target_codec": {
+      "label": "Target codec",
+      "text": "The broadcast standard format for track files."
+    },
+    "import.target_bitrate_kbps": {
+      "label": "Target bitrate",
+      "text": "The broadcast standard bitrate in kbps. Default 320."
+    },
+    "import.target_sample_rate_hz": {
+      "label": "Target sample rate",
+      "text": "The broadcast standard sample rate. Default 44100."
+    },
+    "import.target_channels": {
+      "label": "Target channels",
+      "text": "The broadcast standard channel count. Default 2."
+    },
+    "import.min_bitrate_kbps": {
+      "label": "Lowest bitrate",
+      "text": "Lossy files below this bitrate get a quality warning. Default 128."
+    },
+    "import.loudness_tolerance_lu": {
+      "label": "Loudness tolerance",
+      "text": "How far a track may differ from the loudness target, in LU. Default 2."
+    },
+    "import.max_true_peak_dbtp": {
+      "label": "Highest true peak",
+      "text": "Tracks above this peak get a warning. Default -1 dBTP."
+    }
+  }
+}

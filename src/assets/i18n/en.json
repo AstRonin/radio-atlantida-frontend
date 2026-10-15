@@ -1,0 +1,1163 @@
+{
+  "common": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "save": "Save",
+    "edit": "Edit",
+    "back": "Back",
+    "retry": "Try again",
+    "actions": "Actions",
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No",
+    "loadMore": "Load more",
+    "opensInNewTab": "(opens in a new tab)"
+  },
+  "shell": {
+    "stationName": "Radio Atlantida",
+    "navigation": "Main navigation",
+    "toggleNavigation": "Show or hide navigation",
+    "noPages": "No pages are available yet.",
+    "skipToContent": "Skip to content",
+    "monitoring": "Monitoring (Grafana)"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "help": {
+    "button": "Help",
+    "fieldHint": "Help for {field}: {hint}",
+    "panel": {
+      "title": "Help",
+      "entities": "Terms",
+      "usage": "How to use this page",
+      "steps": "Typical steps",
+      "mistakes": "Common mistakes",
+      "example": "Example",
+      "operations": "Notes on actions",
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "fields": "Fields",
+      "loading": "Loading help…",
+      "unavailable": "The help for this page cannot be loaded."
+    }
+  },
+  "home": {
+    "title": "Radio Atlantida",
+    "intro": "This is the station management panel. Use the navigation to build the library, playlists, and play rules, and to configure the station."
+  },
+  "realtime": {
+    "state": {
+      "idle": "Live updates off",
+      "connecting": "Connecting…",
+      "connected": "Live updates on",
+      "reconnecting": "Reconnecting…"
+    }
+  },
+  "operations": {
+    "button": "Operations ({count} running)",
+    "empty": "No operations yet.",
+    "progress": "{done} of {total}",
+    "status": {
+      "accepted": "Started",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "kinds": {
+      "unknown": "Operation {id}",
+      "retention": "Clean-up of old records",
+      "track_plan": "Track plan update",
+      "clock_build": "Clock rebuild",
+      "missed_items": "Marking missed items",
+      "playout_reconcile": "Playout reconciliation",
+      "reschedule": "Rescheduling a missed item",
+      "import": "Import",
+      "analyse": "Audio analysis",
+      "transcode": "Transcoding"
+    }
+  },
+  "alerts": {
+    "panelError": "The panel had an unexpected error.",
+    "dialog": {
+      "title": "Errors ({count})",
+      "component": "Component: {component}",
+      "requestId": "Request ID: {id}",
+      "openLog": "Open log"
+    },
+    "outage": {
+      "title": "Broadcast interrupted.",
+      "since": "Since {time}. Failed part: {component}.",
+      "components": {
+        "icecast": "Icecast stream server",
+        "liquidsoap": "Liquidsoap playout",
+        "backend": "Backend",
+        "network": "Network"
+      }
+    }
+  },
+  "settings": {
+    "reconnectNotice": "Saved. The new value takes effect when the connection is opened again. Changing the stream server briefly interrupts the stream.",
+    "title": "Settings",
+    "playlistTypesLink": "Playlist types",
+    "discard": "Discard changes",
+    "unsaved": "Unsaved changes: {count}",
+    "saved": "Saved: {count}",
+    "none": "None",
+    "empty": "(empty)",
+    "groups": {
+      "station": "Station",
+      "stream": "Stream output (Icecast)",
+      "liquidsoap": "Liquidsoap",
+      "rotation": "Rotation",
+      "filler": "Filler",
+      "outage": "Outage detection",
+      "retention": "Retention",
+      "playout": "Playout and emergency playlist",
+      "import": "Import and broadcast standard"
+    },
+    "apply": {
+      "immediate": "Applies at once",
+      "reconnect": "Applies on reconnect"
+    },
+    "meta": {
+      "default": "Default: {value}",
+      "isDefault": "Default value",
+      "affectsAir": "Affects air"
+    },
+    "reconnect": {
+      "title": "Save and reconnect?",
+      "message": "These settings take effect when their connection is opened again: {settings}. Changing the stream server briefly interrupts the stream."
+    },
+    "secrets": {
+      "title": "Secrets",
+      "note": "Set in the server environment and changed by a restart, never in the panel.",
+      "set": "Set",
+      "notSet": "Not set"
+    },
+    "fallback": {
+      "playlist": "Fallback playlist",
+      "artist": "Fallback artist"
+    },
+    "fields": {
+      "station": {
+        "timezone": "Station timezone",
+        "name": "Station name"
+      },
+      "stream": {
+        "icecast_host": "Icecast host",
+        "icecast_port": "Icecast port",
+        "mount": "Mount point",
+        "codec": "Codec",
+        "bitrate_kbps": "Bitrate",
+        "sample_rate_hz": "Sample rate",
+        "channels": "Channels",
+        "loudness_target_lufs": "Loudness target",
+        "name": "Stream name",
+        "description": "Stream description",
+        "genre": "Genre",
+        "hls_enabled": "HLS output"
+      },
+      "liquidsoap": {
+        "music_gain": "Music gain",
+        "duck_gain": "Music under voice",
+        "fade_out_ms": "Fade out",
+        "harbor_port": "Harbor port",
+        "control_host": "Control host",
+        "control_port": "Control port",
+        "media_root": "Media folder in Liquidsoap"
+      },
+      "rotation": {
+        "grid_horizon_days": "Grid horizon",
+        "plan_horizon_hours": "Plan horizon",
+        "lookahead_items": "Lookahead",
+        "default_duration_tolerance_ms": "Default tolerance",
+        "default_fixed_tolerance_ms": "Default fixed tolerance",
+        "min_filler_gap_ms": "Smallest filler gap",
+        "max_relaxed_tolerance_ms": "Emergency tolerance limit"
+      },
+      "filler": {
+        "fallback": "Global fallback filler",
+        "reminder_deadline_minutes": "Reminder deadline"
+      },
+      "outage": {
+        "heartbeat_timeout_seconds": "Heartbeat timeout",
+        "icecast_check_interval_seconds": "Icecast check interval",
+        "failed_checks_to_open": "Failed checks before an outage"
+      },
+      "retention": {
+        "play_log_days": "Play log days",
+        "log_days": "Log days"
+      },
+      "playout": {
+        "emergency_playlist_id": "Emergency playlist",
+        "prepush_minutes": "Pre-push"
+      },
+      "import": {
+        "inbox_dir": "Inbox folder",
+        "library_dir": "Library folder",
+        "min_bitrate_kbps": "Lowest bitrate",
+        "target_codec": "Target codec",
+        "target_bitrate_kbps": "Target bitrate",
+        "target_sample_rate_hz": "Target sample rate",
+        "target_channels": "Target channels",
+        "loudness_tolerance_lu": "Loudness tolerance",
+        "max_true_peak_dbtp": "Highest true peak"
+      }
+    }
+  },
+  "time": {
+    "zoneLabel": "Timezone",
+    "zoneRequired": "Choose a timezone."
+  },
+  "player": {
+    "region": "Track preview",
+    "play": "Play {title}",
+    "pause": "Pause {title}",
+    "seek": "Position",
+    "volume": "Volume",
+    "close": "Close player",
+    "errors": {
+      "unsupported": "This browser cannot play the audio format of \"{title}\".",
+      "not_found": "The audio file of \"{title}\" was not found.",
+      "failed": "\"{title}\" could not be played. Try again."
+    }
+  },
+  "forms": {
+    "errors": {
+      "required": "This field is required.",
+      "range": "Enter a number between {min} and {max}.",
+      "step": "Enter a number between {min} and {max}, in steps of {step}.",
+      "min": "Enter {value} or more.",
+      "max": "Enter {value} or less.",
+      "minlength": "Enter at least {length} characters.",
+      "maxlength": "Enter at most {length} characters.",
+      "timeOfDay": "Enter a time as HH:MM, from 00:00 to 23:59.",
+      "weekdays": "Choose days from Monday to Sunday.",
+      "bothOrNone": "Fill in both fields or leave both empty.",
+      "atLeastOne": "Set at least one of these fields.",
+      "pattern": "The value does not have the expected form.",
+      "invalid": "The value is not valid.",
+      "relativePath": "Enter a path inside the media folder, such as music/song.mp3: no leading /, no drive letter, no \\, and no ..",
+      "fallbackSource": "Choose the playlist or artist for this mode.",
+      "dateRange": "Choose a last date on or after the first one, at most {days} days in all.",
+      "date": "Enter a date as YYYY-MM-DD, or choose one in the calendar.",
+      "dateMin": "Choose {date} or a later date.",
+      "dateMax": "Choose {date} or an earlier date."
+    },
+    "timepicker": {
+      "format": "HH:MM",
+      "open": "Choose a time"
+    },
+    "datepicker": {
+      "format": "YYYY-MM-DD",
+      "calendar": "Calendar",
+      "open": "Open calendar",
+      "close": "Close calendar",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "prevYear": "Previous year",
+      "nextYear": "Next year",
+      "prevYears": "Previous 24 years",
+      "nextYears": "Next 24 years",
+      "chooseDate": "Choose date",
+      "chooseMonthAndYear": "Choose month and year",
+      "yearRange": "{start} to {end}"
+    },
+    "serverErrors": {
+      "required": "This field is required.",
+      "unknown_field": "The server does not know this field.",
+      "type": "The value has the wrong type.",
+      "range": "The value is out of the allowed range.",
+      "length": "The value is too short or too long.",
+      "pattern": "The value does not have the expected form.",
+      "format": "The value is not in the expected format.",
+      "enum": "Choose one of the offered values.",
+      "unique": "The list contains the same item twice.",
+      "invalid": "The value is not valid.",
+      "taken": "This value is already used. Choose another one.",
+      "unknown_id": "The chosen item no longer exists.",
+      "overlap": "The value overlaps with another one.",
+      "does_not_fit": "It does not fit into the available time.",
+      "order": "The values are in the wrong order.",
+      "blocked": "A separation or play rule blocks this choice."
+    },
+    "weekdays": {
+      "label": "Weekdays"
+    },
+    "playlistType": "Playlist type",
+    "units": {
+      "ms": "ms",
+      "seconds": "s",
+      "minutes": "min",
+      "hours": "h",
+      "kbps": "kbps",
+      "hz": "Hz",
+      "percent": "%",
+      "days": "days",
+      "lufs": "LUFS",
+      "lu": "LU",
+      "dbtp": "dBTP"
+    },
+    "hours": {
+      "label": "Hours",
+      "all": "All hours",
+      "none": "No hours"
+    }
+  },
+  "filler": {
+    "modeLabel": "Filler mode",
+    "modes": {
+      "none": "None",
+      "ask": "Ask at air time",
+      "random": "Random track",
+      "playlist": "From a playlist",
+      "artist": "By an artist",
+      "pool": "From the clock's pool",
+      "global": "Global fallback (settings)"
+    },
+    "dialog": {
+      "title": "The clock \"{clock}\" is short",
+      "intro": "Choose how to fill each short segment. Short segments: {count}.",
+      "segment": "Segment {number}: {from} to {to}",
+      "shortfall": "Short by {duration}",
+      "sourcePlaylist": "Playlist for the filler",
+      "sourceArtist": "Artist for the filler",
+      "pool": "Tracks for the clock's pool",
+      "poolNote": "Pool tracks are used in this order. Leave the list empty to keep the clock's current pool.",
+      "save": "Save with filler",
+      "saveIncomplete": "Save incomplete"
+    }
+  },
+  "pickers": {
+    "playlists": "Playlists",
+    "playlist": "Playlist",
+    "playRules": "Play rules",
+    "artist": "Artist",
+    "trackCount": "tracks: {count}",
+    "ruleUses": "uses: {count}",
+    "noMatches": "No matches.",
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "tracks": {
+      "label": "Tracks",
+      "selected": "Chosen tracks",
+      "search": "Search by title or artist",
+      "results": "Search results",
+      "loadingTrack": "Track {id}…",
+      "moveUp": "Move \"{title}\" up",
+      "moveDown": "Move \"{title}\" down",
+      "remove": "Remove \"{title}\""
+    },
+    "clock": "Clock",
+    "clockIncomplete": "incomplete"
+  },
+  "dialogs": {
+    "delete": {
+      "title": "Delete \"{name}\"?",
+      "message": "\"{name}\" will be deleted. This cannot be undone."
+    },
+    "usedBy": {
+      "intro": "It is used by:",
+      "kinds": {
+        "playlist": "Playlist",
+        "track": "Track",
+        "clock": "Clock",
+        "clock_element": "Clock element",
+        "play_rule": "Play rule",
+        "playlist_type": "Playlist type",
+        "artist": "Artist",
+        "grid_slot": "Grid slot"
+      }
+    },
+    "unsaved": {
+      "title": "Leave without saving?",
+      "message": "Your changes on this page are not saved. If you leave now, they are lost.",
+      "leave": "Leave without saving"
+    }
+  },
+  "problems": {
+    "bad_request": "The request could not be read.",
+    "validation_failed": "Some fields are not valid. Check the highlighted fields.",
+    "not_found": "The requested item was not found.",
+    "method_not_allowed": "This action is not supported here.",
+    "body_too_large": "The data sent is too large.",
+    "unsupported_media_type": "The data was sent in a format the server does not accept.",
+    "not_acceptable": "The server cannot answer in the requested format.",
+    "internal_error": "The server had an internal error. The error is in the logs.",
+    "operation_not_found": "The operation was not found.",
+    "log_file_not_found": "The log file was not found.",
+    "setting_not_found": "The setting was not found.",
+    "setting_not_editable": "This setting cannot be changed in the panel.",
+    "playlist_type_not_found": "The playlist type was not found.",
+    "system_type_not_deletable": "A system playlist type cannot be deleted.",
+    "playlist_type_in_use": "The playlist type is in use and cannot be deleted.",
+    "playlist_not_found": "The playlist was not found.",
+    "playlist_in_use": "The playlist is used by clocks and cannot be deleted.",
+    "artist_not_found": "The artist was not found.",
+    "artist_in_use": "The artist is in use and cannot be deleted.",
+    "artist_has_history": "The artist has play history and cannot be deleted.",
+    "track_not_found": "The track was not found.",
+    "track_in_use": "The track is in use and cannot be deleted.",
+    "track_has_history": "The track has play history and cannot be deleted.",
+    "track_file_not_found": "The audio file of the track was not found.",
+    "play_rule_not_found": "The play rule was not found.",
+    "play_rule_in_use": "The play rule is in use and cannot be deleted.",
+    "separation_rule_not_found": "The separation rule was not found.",
+    "clock_not_found": "The clock was not found.",
+    "clock_in_use": "The clock is used in the grid and cannot be deleted.",
+    "clock_has_history": "The clock has play history and cannot be deleted.",
+    "grid_slot_not_found": "The grid slot was not found.",
+    "grid_conflict": "Another change to the same grid hours was saved at the same time. Reload the grid and try again.",
+    "filler_request_not_found": "The filler reminder was not found.",
+    "filler_request_closed": "The filler reminder is already closed.",
+    "filler_request_not_answerable": "This reminder is closed by refilling the clock's filler pool, not by choosing a track.",
+    "hour_started": "This hour is on air, over, or about to start, so its plan cannot be changed.",
+    "liquidsoap_unavailable": "Liquidsoap cannot be reached. Try again when the playout is connected.",
+    "missed_item_not_found": "The missed item was not found.",
+    "missed_item_resolved": "The missed item was already rescheduled or dismissed.",
+    "media_operation_running": "Another import, analysis, or transcoding is running. Wait until it finishes.",
+    "media_tools_unavailable": "The audio tools (ffmpeg) are not available on the server.",
+    "live_session_active": "A live session is already running. Take it over to start a new one.",
+    "live_offer_invalid": "The browser's live connection request was not accepted.",
+    "live_unavailable": "The live voice bridge is not available on the server.",
+    "network_error": "The server cannot be reached. Check that the backend is running.",
+    "timeout": "The server did not answer in time. Try again.",
+    "unexpected_response": "The server sent an unexpected answer. Try again in a moment."
+  },
+  "nav": {
+    "live": "Live",
+    "library": "Library",
+    "import": "Import",
+    "artists": "Artists",
+    "playlists": "Playlists",
+    "playlistTypes": "Playlist types",
+    "playRules": "Play rules",
+    "separationRules": "Separation rules",
+    "clocks": "Clocks",
+    "grid": "Grid",
+    "trackPlan": "Track plan",
+    "fillerReminders": "Filler reminders",
+    "playedTracks": "Played tracks",
+    "missedItems": "Missed items",
+    "logs": "Logs",
+    "settings": "Settings"
+  },
+  "playlistTypes": {
+    "title": "Playlist types",
+    "add": "Add type",
+    "rename": "Rename",
+    "kind": "Kind",
+    "system": "System",
+    "custom": "Custom",
+    "playlists": "Playlists",
+    "tracks": "Tracks",
+    "fields": {
+      "code": "Code",
+      "name": "Name"
+    },
+    "dialog": {
+      "createTitle": "New playlist type",
+      "renameTitle": "Rename playlist type",
+      "codeHint": "Lowercase letters, digits, - and _, starting with a letter. Cannot be changed later.",
+      "codeFixed": "Code: {code} (cannot be changed)"
+    }
+  },
+  "artists": {
+    "title": "Artists",
+    "add": "Add artist",
+    "rename": "Rename",
+    "search": "Search artists",
+    "tracks": "Tracks",
+    "fields": {
+      "name": "Name"
+    },
+    "dialog": {
+      "createTitle": "New artist",
+      "renameTitle": "Rename artist"
+    }
+  },
+  "separationRules": {
+    "title": "Separation rules",
+    "hours": "{hours} h",
+    "fields": {
+      "scope": "Applies to",
+      "min_interval_hours": "Minimum interval",
+      "notes": "Notes"
+    },
+    "scopes": {
+      "track": "Same track",
+      "artist": "Same artist"
+    },
+    "dialog": {
+      "title": "Separation: {scope}",
+      "retentionNote": "At most {hours} hours: separation is checked against the aired history, which is kept for the play log retention period (Settings)."
+    }
+  },
+  "playRules": {
+    "title": "Play rules",
+    "add": "Add play rule",
+    "fields": {
+      "name": "Name",
+      "window_from": "Allowed from",
+      "window_to": "Allowed until",
+      "weekdays": "Weekdays",
+      "min_interval_minutes": "Minimum interval",
+      "max_per_hour": "Plays per hour",
+      "notes": "Notes",
+      "track_ids": "Tracks",
+      "playlist_ids": "Playlists"
+    },
+    "list": {
+      "window": "Time window",
+      "windowRange": "{from} to {to}",
+      "anyTime": "Any time",
+      "everyDay": "Every day",
+      "minutes": "{minutes} min",
+      "uses": "Used by",
+      "usesValue": "{tracks} tracks, {playlists} playlists"
+    },
+    "edit": {
+      "createTitle": "New play rule",
+      "editTitle": "Edit play rule",
+      "limits": "Limits",
+      "limitsNote": "Set at least one limit. Every limit you set must pass for the track to play. Times are station time.",
+      "weekdaysNote": "No day chosen means every day. With a window that crosses midnight (22:00 to 02:00), the day is the one on which the window starts.",
+      "targets": "Applies to"
+    },
+    "errors": {
+      "atLeastOne": "Set at least one limit: a time window, weekdays, a minimum interval, or plays per hour.",
+      "sameWindow": "The window must end at a different time than it starts."
+    }
+  },
+  "library": {
+    "title": "Library",
+    "add": "Add track",
+    "preview": "Preview",
+    "noDuration": "No length",
+    "fields": {
+      "title": "Title",
+      "artist_id": "Artist",
+      "type_id": "Type",
+      "file_path": "File path",
+      "duration_ms": "Length",
+      "playlist_ids": "Playlists",
+      "rule_ids": "Play rules",
+      "quality_notes": "Quality notes",
+      "format": "Format",
+      "bitrate": "Bitrate",
+      "sample_rate": "Sample rate",
+      "quality_ok": "Quality"
+    },
+    "filters": {
+      "search": "Search by title or artist",
+      "playlist": "Playlist",
+      "type": "Type",
+      "quality": "Quality"
+    },
+    "quality": {
+      "ok": "OK",
+      "issues": "Issues",
+      "unanalysed": "Not analysed",
+      "issueNames": {
+        "format": "format",
+        "sample_rate": "sample rate",
+        "channels": "channels",
+        "loudness": "loudness",
+        "true_peak": "true peak",
+        "low_bitrate": "low bitrate",
+        "file_missing": "file missing"
+      },
+      "explain": {
+        "format": "the file format is not the broadcast format. Optimize track converts it.",
+        "sample_rate": "the sample rate is not the broadcast sample rate. Optimize track converts it.",
+        "channels": "the number of channels is not the broadcast standard. Optimize track converts it.",
+        "loudness": "the loudness is outside the tolerance around the station loudness. Fix loudness or Optimize track corrects it.",
+        "true_peak": "the peaks are above the allowed limit. Fix loudness or Optimize track corrects them.",
+        "low_bitrate": "the source was encoded below the minimum bitrate. A fix cannot restore lost detail; replace the source file.",
+        "file_missing": "the file is not in the media folder. Put it back or correct the file path."
+      }
+    },
+    "edit": {
+      "createTitle": "New track",
+      "editTitle": "Edit track",
+      "filePathHint": "Relative to the media folder, with forward slashes, for example music/song.mp3.",
+      "durationIs": "= {duration}",
+      "durationEmpty": "Left empty, the length is read from the file. A track without a length cannot be planned.",
+      "file": "File",
+      "kbps": "{kbps} kbps",
+      "hz": "{hz} Hz",
+      "qualityOverride": "Quality OK (your choice, until the next analysis)"
+    },
+    "analysis": {
+      "source_bitrate": "Source bitrate",
+      "channels": "Channels",
+      "loudness_lufs": "Loudness",
+      "true_peak_dbtp": "True peak",
+      "loudness_range_lu": "Loudness range",
+      "analyzed_at": "Analysed",
+      "lufs": "{value} LUFS",
+      "dbtp": "{value} dBTP",
+      "lu": "{value} LU"
+    },
+    "media": {
+      "title": "Analysis and fixes",
+      "selected": "Selected tracks: {count}",
+      "clearSelection": "Clear selection",
+      "selectAll": "Select every track on the page",
+      "select": "Select {title}",
+      "analyse": "Analyse",
+      "force": "Decode again",
+      "fixLoudness": "Fix loudness",
+      "fixLoudnessCount": "Fix loudness ({count})",
+      "optimize": "Optimize track",
+      "optimizeCount": "Optimize track ({count})",
+      "output": "Fixed file",
+      "outputs": {
+        "copy": "Optimal copy next to the original",
+        "replace": "Replace the original"
+      },
+      "tooMany": "At most {max} tracks at once. Select fewer.",
+      "lowBitrate": "Tracks with a low bitrate: {count}. No fix can restore it; replace the source file.",
+      "missing": "Tracks with a missing file: {count}. Put the file back or correct the path.",
+      "saveFirst": "Save or undo your changes first.",
+      "running": "Working on the files…",
+      "replaceDialog": {
+        "title": "Replace the original files?",
+        "message": "The fixed files replace the originals of {count} tracks. The originals are deleted from the media folder and cannot be restored.",
+        "confirm": "Replace"
+      }
+    }
+  },
+  "playlists": {
+    "title": "Playlists",
+    "add": "Add playlist",
+    "trackCount": "Tracks",
+    "ruleCount": "Play rules",
+    "fields": {
+      "name": "Name",
+      "type_id": "Type",
+      "rule_ids": "Play rules"
+    },
+    "edit": {
+      "createTitle": "New playlist",
+      "editTitle": "Edit playlist"
+    },
+    "tracks": {
+      "label": "Tracks in this playlist ({count})",
+      "poolNote": "A playlist is a pool: the order of its tracks does not matter, and the system chooses the track.",
+      "filter": "Filter the tracks of this playlist",
+      "members": "Tracks in this playlist",
+      "none": "No tracks.",
+      "more": "{count} more tracks are not shown. Use the filter to find them.",
+      "remove": "Remove",
+      "addLabel": "Add tracks from the library",
+      "add": "Add",
+      "addOne": "Add \"{title}\"",
+      "inPlaylist": "In playlist"
+    }
+  },
+  "clocks": {
+    "title": "Clocks",
+    "add": "Add clock",
+    "statusLabel": "Status",
+    "elementCount": "Elements",
+    "updatedAt": "Changed",
+    "status": {
+      "complete": "Complete",
+      "incomplete": "Incomplete"
+    },
+    "placements": {
+      "flow": "In flow",
+      "start": "At the start",
+      "end": "At the end",
+      "fixed": "At a fixed minute"
+    },
+    "fields": {
+      "name": "Name",
+      "default_filler_mode": "Default filler mode",
+      "filler_playlist": "Filler playlist",
+      "filler_artist": "Filler artist",
+      "placement": "Placement",
+      "fixed_minute": "Fixed minute",
+      "fixed_tolerance_ms": "Fixed tolerance",
+      "nominal_duration_ms": "Nominal duration",
+      "duration_tolerance_ms": "Tolerance",
+      "playlist_ids": "Playlists"
+    },
+    "edit": {
+      "createTitle": "New clock",
+      "editTitle": "Edit clock",
+      "elements": "Elements",
+      "elementsNote": "The order of flow elements is the order of play. Start and end elements open and close the hour; fixed elements start at their minute.",
+      "addElement": "Add element",
+      "noElements": "Add at least one element.",
+      "save": "Save and check"
+    },
+    "element": {
+      "title": "Element {number}",
+      "new": "new",
+      "moveUp": "Up",
+      "moveDown": "Down",
+      "remove": "Remove",
+      "moveUpLabel": "Move element {number} up",
+      "moveDownLabel": "Move element {number} down",
+      "removeLabel": "Remove element {number}",
+      "defaultTolerance": "Empty: the default from the settings"
+    },
+    "check": {
+      "title": "Dry check",
+      "incompleteNote": "A short segment has no filler. Reminders are created for its hours until you choose one.",
+      "shortfall": "The clock is short by {duration} in total.",
+      "full": "The clock fills the hour.",
+      "replaced": "These fixed elements were replaced by a new element at the same time:",
+      "replacedElement": "Fixed element at :{minute}, {duration}",
+      "warnings": "Warnings:"
+    },
+    "warnings": {
+      "element_no_tracks": "Element {element}: its playlists have no track with a known duration.",
+      "element_no_fitting_track": "Element {element}: no track fits the nominal duration within the tolerance.",
+      "element_few_tracks": "Element {element}: too few fitting tracks for the separation rules; tracks may repeat or be skipped.",
+      "element_blocked_by_play_rules": "Element {element}: play rules block every fitting track in these grid hours: {hours}.",
+      "segment_overflow": "Segment {segment} runs past the end of the hour; the last track is cut and faded out."
+    },
+    "build": {
+      "accepted": "Rebuilding the planned hours…",
+      "running": "Rebuilding the planned hours…",
+      "completed": "The planned hours are rebuilt.",
+      "failed": "Rebuilding the planned hours failed."
+    },
+    "layout": {
+      "title": "Layout of the hour (nominal durations)",
+      "stale": "This is the layout as saved. Save to check your changes.",
+      "caption": "Segments of the hour",
+      "segment": "Segment",
+      "time": "Time",
+      "elements": "Elements",
+      "content": "Content",
+      "fixed": "Fixed element",
+      "shortfall": "Short",
+      "overflow": "Overflow",
+      "filler": "Filler",
+      "overflowBy": "Over by {duration}",
+      "holder": "element {number}"
+    },
+    "pool": {
+      "title": "Filler pool",
+      "note": "Specific tracks used one after another when a segment in pool mode needs filler. Used tracks stay listed as history.",
+      "unused": "Tracks waiting in the pool",
+      "save": "Save pool",
+      "saved": "The pool is saved.",
+      "used": "Already used"
+    }
+  },
+  "grid": {
+    "title": "Grid",
+    "fields": {
+      "clock_id": "Clock",
+      "weekdays": "Weekdays",
+      "hours": "Hours",
+      "valid_from": "Valid from",
+      "valid_to": "Valid to"
+    },
+    "week": {
+      "title": "Week from {from} to {to}",
+      "previous": "Previous week",
+      "current": "This week",
+      "next": "Next week",
+      "note": "Hours and dates are in the station timezone ({zone}). Use + in a cell to add its weekday and hour to the change below, and − next to a chosen day or hour to take it out.",
+      "caption": "Clocks by hour for the week",
+      "hour": "Hour",
+      "today": "(today)",
+      "pick": "Add {day} {hour} to the change",
+      "unpickWeekday": "Take {weekday} out of the change",
+      "unpickHour": "Take {hour} out of the change"
+    },
+    "change": {
+      "title": "Change the grid",
+      "note": "The clock is assigned to every chosen weekday at every chosen hour, for the dates given. Existing slots there are replaced for those dates.",
+      "assign": "Assign clock",
+      "clear": "Clear these hours",
+      "resetSelection": "Reset weekdays and hours"
+    },
+    "result": {
+      "created": "Slots created: {count}.",
+      "replaced": "Replaced slots:",
+      "change": {
+        "trimmed": "shortened",
+        "split": "split around the new dates",
+        "deleted": "removed"
+      }
+    },
+    "slots": {
+      "title": "Slots from today",
+      "weekday": "Weekday",
+      "hour": "Hour",
+      "openEnd": "no end",
+      "describe": "{day} {hour} · {clock} · {from} to {to}"
+    }
+  },
+  "rotation": {
+    "pendingReminders": "Filler reminders: {count}"
+  },
+  "trackPlan": {
+    "title": "Track plan",
+    "fields": {
+      "from": "From",
+      "to": "To"
+    },
+    "range": {
+      "title": "Dates",
+      "note": "Dates and times are in the station timezone ({zone}). Up to 7 days at once.",
+      "reset": "Today and tomorrow"
+    },
+    "rebuild": {
+      "action": "Rebuild these dates",
+      "note": "A rebuild chooses the tracks of the planned hours again. Hours that have started keep their plan."
+    },
+    "hours": {
+      "title": "Planned hours",
+      "warningsNote": "Warnings are shown for hours built since this panel was opened.",
+      "empty": "No planned hours on these dates. The plan covers the next 24 to 48 hours; later hours are built as the time comes."
+    },
+    "builtAt": "Built {time}",
+    "reminder": "Filler reminder",
+    "warningsLabel": "Warnings of this hour",
+    "noItems": "No tracks are planned in this hour.",
+    "truncated": "cut (file {length})",
+    "columns": {
+      "start": "Start",
+      "preview": "Preview",
+      "title": "Title",
+      "artist": "Artist",
+      "length": "Plays for",
+      "source": "Source",
+      "status": "Status"
+    },
+    "sources": {
+      "clock": "Clock",
+      "filler_pool": "Filler: pool",
+      "filler_random": "Filler: random",
+      "filler_playlist": "Filler: playlist",
+      "filler_artist": "Filler: artist",
+      "filler_answer": "Filler: your answer",
+      "reschedule": "Rescheduled"
+    },
+    "statuses": {
+      "planned": "Planned",
+      "queued": "Sent to playout",
+      "aired": "Aired",
+      "missed": "Not aired",
+      "replaced": "Replaced"
+    },
+    "warnings": {
+      "element_blocked_by_play_rules": "Element {element}: play rules block every track, so the element is skipped.",
+      "element_tolerance_relaxed": "Element {element}: no track fit the tolerance; one was chosen with a wider tolerance.",
+      "element_general_pool": "Element {element}: no track of its playlists fit; one was taken from the whole library.",
+      "element_emergency": "Element {element}: no track at all; the element is skipped and the emergency playlist covers it.",
+      "pool_track_refused": "Segment {segment}: the pool track {track} breaks a separation or play rule and was skipped.",
+      "pool_empty": "Segment {segment}: the filler pool is empty, so the default filler mode was used. Refill the pool.",
+      "filler_waiting": "Segment {segment}: waits for the answer to a filler reminder.",
+      "gap_unfilled": "Segment {segment}: a gap is left that no filler could close.",
+      "element_replaced": "Element {element}: replaced in this hour by a rescheduled item.",
+      "reschedule_dropped": "A rescheduled item could not be placed in this hour."
+    }
+  },
+  "fillerReminders": {
+    "title": "Filler reminders",
+    "statusLabel": "Status",
+    "filter": {
+      "pending": "Waiting",
+      "answered": "Answered",
+      "defaulted": "Default used",
+      "expired": "Expired",
+      "all": "All"
+    },
+    "statuses": {
+      "pending": "Waiting",
+      "answered": "Answered",
+      "defaulted": "Default used",
+      "expired": "Expired"
+    },
+    "reasons": {
+      "short_clock": "Short clock",
+      "pool_empty": "Filler pool empty"
+    },
+    "modes": {
+      "none": "no filler chosen",
+      "ask": "ask at air time",
+      "pool": "pool"
+    },
+    "columns": {
+      "hour": "Hour",
+      "clock": "Clock",
+      "reason": "Reason",
+      "deadline": "Deadline"
+    },
+    "fields": {
+      "track_id": "Track"
+    },
+    "overdue": "deadline passed",
+    "answer": "Answer",
+    "refillPool": "Refill the pool",
+    "answerNote": "Choose a track for the short segment of “{clock}” at {hour}. The hour is rebuilt with it.",
+    "save": "Use this track",
+    "answered": "The answer is saved; the hour of “{clock}” is rebuilt.",
+    "empty": "No reminders here."
+  },
+  "playedTracks": {
+    "title": "Played tracks",
+    "fields": {
+      "from": "From",
+      "to": "To",
+      "status": "Status"
+    },
+    "range": {
+      "title": "Range",
+      "note": "Station dates ({zone}), at most 31 days.",
+      "reset": "Yesterday and today"
+    },
+    "refresh": "Show",
+    "list": {
+      "title": "What aired",
+      "empty": "Nothing aired or was missed in this range."
+    },
+    "columns": {
+      "time": "Time",
+      "preview": "Preview",
+      "title": "Title",
+      "length": "Length",
+      "clock": "Clock",
+      "source": "Source",
+      "status": "Status"
+    },
+    "statuses": {
+      "aired": "Aired",
+      "truncated": "Cut short",
+      "missed": "Not aired"
+    },
+    "sources": {
+      "auto": "Plan",
+      "live": "Live",
+      "emergency": "Emergency playlist"
+    },
+    "deletedClock": "deleted clock",
+    "resolve": "Reschedule or dismiss"
+  },
+  "missedItems": {
+    "title": "Missed items",
+    "resolutionLabel": "Decision",
+    "filter": {
+      "open": "Waiting",
+      "rescheduled": "Rescheduled",
+      "dismissed": "Dismissed"
+    },
+    "resolutions": {
+      "open": "Waiting",
+      "rescheduled": "Rescheduled {time}",
+      "dismissed": "Dismissed {time}"
+    },
+    "historyLink": "Played tracks",
+    "columns": {
+      "planned": "Planned for",
+      "preview": "Preview",
+      "title": "Title",
+      "length": "Length",
+      "clock": "Clock",
+      "outage": "Outage"
+    },
+    "fields": {
+      "target_hour_start_utc": "Target hour",
+      "placement": "Placement",
+      "fixed_minute": "Fixed minute",
+      "fixed_tolerance_ms": "Fixed tolerance"
+    },
+    "placements": {
+      "start": "At the start",
+      "end": "At the end",
+      "fixed": "At a fixed minute"
+    },
+    "reschedule": "Reschedule",
+    "rescheduleNote": "Choose a later planned hour for “{title}”. The hour is rebuilt around it, once; the clock does not change.",
+    "noTargets": "No planned hours are ahead yet. The plan is extended as time goes on.",
+    "save": "Reschedule",
+    "status": {
+      "accepted": "Rebuilding the hour…",
+      "running": "Rebuilding the hour…",
+      "completed": "Rescheduled.",
+      "failed": "The item could not be placed in that hour. Try another hour or placement."
+    },
+    "rescheduled": "“{title}” is rescheduled.",
+    "dismiss": "Dismiss",
+    "dismissDialog": {
+      "title": "Dismiss “{title}”?",
+      "message": "“{title}” will not be aired again. It stays in the played-tracks list as Not aired."
+    },
+    "dismissed": "“{title}” is dismissed.",
+    "empty": "No missed items here."
+  },
+  "outages": {
+    "title": "Outages in this range",
+    "openMissed": "Not aired: {count}",
+    "open": "still open",
+    "empty": "No outages in this range.",
+    "columns": {
+      "started": "Started",
+      "ended": "Ended",
+      "component": "Failed part",
+      "detectedBy": "Detected by",
+      "reason": "Reason",
+      "missed": "Not aired"
+    },
+    "detectedBy": {
+      "icecast": "Icecast check",
+      "liquidsoap_callback": "Liquidsoap stopped reporting",
+      "liquidsoap_control": "Control link lost",
+      "backend": "Backend restart"
+    }
+  },
+  "live": {
+    "title": "Live",
+    "states": {
+      "off": "Off air",
+      "connecting": "Connecting",
+      "on_air": "On air",
+      "reconnecting": "Reconnecting"
+    },
+    "reasons": {
+      "stopped": "The live session was stopped.",
+      "replaced": "Another panel took over the live session.",
+      "no_audio": "The live session ended: no audio reached the station.",
+      "dropout": "The live session ended: the audio connection was lost.",
+      "shutdown": "The live session ended because the backend stopped."
+    },
+    "voice": {
+      "title": "Live voice",
+      "insecure": "The browser offers the microphone only when the panel is opened on localhost or over HTTPS. Open it that way to go live.",
+      "onAirSince": "since {time}",
+      "otherPanel": "Started from another panel.",
+      "input": "Microphone",
+      "inputNumber": "Microphone {number}",
+      "testMicrophone": "Test microphone",
+      "closeMicrophone": "Close microphone",
+      "level": "Level",
+      "clipping": "Clipping",
+      "note": "Testing the microphone sends nothing to the air.",
+      "goOnAir": "Go on air",
+      "stop": "Stop live",
+      "ducking": "While you are live, the music is lowered automatically to the ducking level set in"
+    },
+    "takeover": {
+      "title": "Take over the live session?",
+      "message": "A live session is already running, from another panel or from this one before a reload. Taking over ends it and puts this microphone on air.",
+      "confirm": "Take over"
+    },
+    "errors": {
+      "denied": "The browser was not allowed to use the microphone. Allow it in the site settings and try again.",
+      "noInput": "No microphone was found.",
+      "busy": "The microphone is in use by another program.",
+      "microphone": "The microphone could not be opened.",
+      "inputLost": "The microphone was disconnected. Choose it again or another one.",
+      "connection": "The live connection could not be set up."
+    },
+    "gain": {
+      "title": "Music gain",
+      "label": "Music gain",
+      "note": "Applies at once and stays until it is changed or the backend restarts; then the gain from the settings applies.",
+      "unknown": "The current gain is not known yet: the playout engine has not connected.",
+      "presets": {
+        "normal": "Normal",
+        "underVoice": "Under voice",
+        "off": "Music off"
+      }
+    },
+    "onAir": {
+      "title": "On air",
+      "controlLink": "Control link",
+      "output": "Stream output",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "unknown": "Not reported yet",
+      "since": "since {time}",
+      "nowPlaying": "Now playing",
+      "nothing": "Nothing is reported as playing.",
+      "emergency": "Emergency playlist",
+      "truncated": "Cut with a fade",
+      "started": "Started {time}",
+      "progress": "Progress of the current track",
+      "queued": "Waiting in the playout engine",
+      "queueEmpty": "No tracks are waiting."
+    }
+  },
+  "operationStatus": {
+    "running": "Running…",
+    "completed": "Done.",
+    "failed": "Failed. The error message shows the reason."
+  },
+  "import": {
+    "title": "Import",
+    "refresh": "Refresh",
+    "inbox": {
+      "title": "Inbox",
+      "titleIn": "Inbox: {dir}",
+      "empty": "The inbox is empty. Copy audio files into the {dir} folder inside the media folder on the station computer, then press Refresh.",
+      "count": "Files waiting: {count}.",
+      "more": "The folder holds more files than are listed here.",
+      "path": "File",
+      "size": "Size",
+      "modified": "Modified"
+    },
+    "form": {
+      "title": "Import the inbox",
+      "intro": "Every file in the inbox becomes a track with this type and these playlists. Import songs and jingles as separate batches.",
+      "type_id": "Type",
+      "playlist_ids": "Playlists",
+      "start": "Import",
+      "running": "Importing…",
+      "showIssues": "Show tracks with quality issues"
+    },
+    "analyse": {
+      "title": "Analysis",
+      "intro": "Analyse the tracks that have never been analysed. To check other tracks again, for example after changing the broadcast standard in Settings, select them in the library and press Analyse.",
+      "start": "Analyse tracks not analysed yet",
+      "running": "Analysing…"
+    }
+  },
+  "logs": {
+    "title": "Logs",
+    "filters": "Log file and filters",
+    "note": "Files are named by their UTC date. Times are shown in the station timezone ({zone}).",
+    "noFiles": "No log files yet.",
+    "fileOption": "{date} (UTC)",
+    "refresh": "Refresh",
+    "fields": {
+      "file": "Log file",
+      "level": "Level",
+      "component": "Component"
+    },
+    "levels": {
+      "DEBUG": "DEBUG and above",
+      "INFO": "INFO and above",
+      "WARN": "WARN and ERROR",
+      "ERROR": "ERROR only"
+    },
+    "entries": "Entries",
+    "shown": "{shown} of {total}",
+    "columns": {
+      "time": "Time",
+      "level": "Level",
+      "component": "Component",
+      "message": "Message"
+    },
+    "requestId": "Request ID: {id}",
+    "requested": "From the error popup",
+    "empty": "No entries match the filters.",
+    "offsetLimit": "Older entries of this file cannot be read here. Narrow the filters to see them.",
+    "openGrafana": "Search in Grafana"
+  }
+}

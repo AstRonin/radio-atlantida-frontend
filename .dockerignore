@@ -1,0 +1,10 @@
+.git
+.github
+.angular
+.vscode
+node_modules
+dist
+coverage
+docs
+*.md
+public/config.json

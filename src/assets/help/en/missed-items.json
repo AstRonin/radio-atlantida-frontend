@@ -1,0 +1,54 @@
+{
+  "title": "Missed items",
+  "summary": "Missed items are planned items that did not air because the broadcast was interrupted. Each waits here until you reschedule or dismiss it.",
+  "entities": [
+    {
+      "term": "Missed item",
+      "text": "A track or program planned during an outage that did not reach the air, with its planned time, its clock, and the reason."
+    },
+    {
+      "term": "Reschedule",
+      "text": "Puts the item into a later hour once, at its start, its end, or a fixed minute. The clock template does not change."
+    },
+    {
+      "term": "Dismiss",
+      "text": "Marks the item as not to be aired again."
+    }
+  ],
+  "usage": "Choose a target hour within the track plan and a placement. The hour is rebuilt around the item with the usual rules; if it does not fit or breaks a rule, the request is refused.",
+  "steps": [
+    "Open a missed item.",
+    "Choose Reschedule, a target hour, and the placement.",
+    "Save and follow the operation in the header; or choose Dismiss."
+  ],
+  "mistakes": [
+    "Choosing an hour that is on air or about to start. Such hours are frozen.",
+    "Placing a long program at a fixed minute where it does not fit before the next fixed element."
+  ],
+  "example": {
+    "title": "Rescheduling the news",
+    "text": "The 14:00 news was missed. Reschedule it to 16:00 with placement Start. The 16:00 hour is rebuilt: the news plays first, and the music after it is fitted to the rest of the hour."
+  },
+  "operations": {
+    "edit": "Rescheduling is a one-time change for the chosen hour only.",
+    "delete": "Dismissing cannot be undone, but the item stays in the played-tracks list as Not aired."
+  },
+  "fields": {
+    "target_hour_start_utc": {
+      "label": "Target hour",
+      "text": "A future hour within the track plan."
+    },
+    "placement": {
+      "label": "Placement",
+      "text": "Start of the hour, end of the hour, or a fixed minute."
+    },
+    "fixed_minute": {
+      "label": "Fixed minute",
+      "text": "Minute of the hour, 0 to 59, for a fixed placement."
+    },
+    "fixed_tolerance_ms": {
+      "label": "Fixed tolerance",
+      "text": "How far the start may move from the minute, in milliseconds. Default one minute."
+    }
+  }
+}
