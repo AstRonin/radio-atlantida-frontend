@@ -3,6 +3,7 @@ import {
   atLeastOneValidator,
   bothOrNoneValidator,
   rangeValidator,
+  relativePathValidator,
   timeOfDayValidator,
   weekdaysValidator,
 } from './validators';
@@ -101,5 +102,30 @@ describe('validators', () => {
     });
     form.controls.max_per_hour.setValue(1);
     expect(form.valid).toBe(true);
+  });
+
+  describe('relativePathValidator', () => {
+    const validate = (value: unknown) => relativePathValidator(new FormControl(value));
+
+    it('accepts paths under the media root and empty values', () => {
+      expect(validate('music/song.mp3')).toBeNull();
+      expect(validate('jingles/2026/id..final.mp3')).toBeNull();
+      expect(validate('')).toBeNull();
+      expect(validate(null)).toBeNull();
+    });
+
+    it('refuses absolute paths, backslashes, and parent elements', () => {
+      for (const path of [
+        '/media/song.mp3',
+        'C:/media/song.mp3',
+        'c:song.mp3',
+        'music\\song.mp3',
+        '../song.mp3',
+        'music/../../etc/passwd',
+        'music/..',
+      ]) {
+        expect(validate(path), path).toEqual({ relativePath: true });
+      }
+    });
   });
 });

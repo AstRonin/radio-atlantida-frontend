@@ -17,14 +17,17 @@ export type DefaultFillerMode = NonNullable<ApiSchema<'ClockBody'>['default_fill
  * - `element`: a clock element's `filler_mode`;
  * - `segment`: a choice in the blocking filler dialog (`none` is not a choice);
  * - `default`: a clock's default mode, where empty means the global fallback; `ask` and `pool`
- *   cannot be a fallback (design §4, §6.2).
+ *   cannot be a fallback (design §4, §6.2);
+ * - `fallback`: the global fallback itself (setting `filler.fallback`), which has no further
+ *   fallback to offer.
  */
-export type FillerModeSet = 'element' | 'segment' | 'default';
+export type FillerModeSet = 'element' | 'segment' | 'default' | 'fallback';
 
 const MODES: Readonly<Record<FillerModeSet, readonly ElementFillerMode[]>> = {
   element: ['none', 'ask', 'random', 'playlist', 'artist', 'pool'],
   segment: ['ask', 'random', 'playlist', 'artist', 'pool'] satisfies SegmentFillerMode[],
   default: ['random', 'playlist', 'artist'] satisfies DefaultFillerMode[],
+  fallback: ['random', 'playlist', 'artist'] satisfies DefaultFillerMode[],
 };
 
 /** A select for a filler mode (design §6.2). Labels are `filler.modes.<mode>`. */

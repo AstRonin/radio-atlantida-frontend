@@ -67,6 +67,24 @@ export const weekdaysValidator: ValidatorFn = (control) => {
   return valid ? null : { weekdays: true };
 };
 
+/**
+ * A file path relative to the media root, as `TrackBody.file_path` requires: forward slashes, no
+ * absolute path (`/x`, `C:/x`), no backslash, and no `..` element. The backend rejects these again.
+ * Empty values pass; use `required`.
+ */
+export const relativePathValidator: ValidatorFn = (control) => {
+  const value: unknown = control.value;
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    return { relativePath: true };
+  }
+  const absolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
+  const escapes = value.split('/').includes('..');
+  return absolute || escapes || value.includes('\\') ? { relativePath: true } : null;
+};
+
 function isEmpty(value: unknown): boolean {
   return (
     value === null ||

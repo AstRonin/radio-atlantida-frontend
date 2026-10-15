@@ -37,8 +37,8 @@ streams it, and PostgreSQL stores the data.
 **If the code, the design, and the requirements disagree, stop and ask.**
 
 Phase status: F1 (skeleton), F2 (API client and contract pipeline), F3 (realtime, operations,
-alerts, settings core), and F4 (shared UI: help, validation, pickers, player) done. Next: F5
-(settings and library pages).
+alerts, settings core), F4 (shared UI: help, validation, pickers, player), and F5 (settings and
+library pages) done. The initialization plan ends with F5; later phases have their own plans.
 
 ## Ground rules
 
@@ -61,6 +61,11 @@ alerts, settings core), and F4 (shared UI: help, validation, pickers, player) do
   pickers in `shared/pickers`, `app-play-button` for track preview, `ConfirmService` for deletes (it
   shows `used_by` refusals), and `FillerDialogService` for the blocking filler dialog. Shared lists
   are read through `CatalogService` (`core/catalog`), so `shared/` never calls HTTP itself.
+- **Pages (F5).** Lists load with `rxResource` and `reload()` after a change; show load errors
+  with `errorMessage()` (`core/api`) and save errors with `applySubmitError()` (`shared/forms`).
+  Edit pages implement `PendingChanges`, call `warnBeforeUnload()`, and their routes use
+  `unsavedChangesGuard`. Text fields use `app-text-input`. Page tests use `flushHelp()` and
+  `settlePage()` from `core/testing`; `whenStable()` hangs while a resource request is open.
 - **No secrets in the frontend.** The panel only shows whether a secret is set.
 - **Times.** The API sends ISO 8601 UTC (`...Z`). Display them in the station timezone from settings
   (IANA name, default `Asia/Yerevan`), never in the browser's zone.
@@ -119,7 +124,7 @@ docker/nginx.conf            static files, SPA fallback, /api and /api/ws proxy,
 docs/                        context documents (kept verbatim, not formatted by Prettier)
 scripts/sync-api.mjs         copies the backend specification into api/
 src/app/core/                app-wide services: api, realtime, operations, alerts, settings, time,
-                             player, help, catalog (lists for pickers), i18n, shell
+                             player, help, catalog (lists for pickers), i18n, shell, testing
 src/app/shared/              ui, forms, pickers (presentational only)
 src/app/features/            one folder per domain, created when its phase starts
 src/app/app.routes.ts        lazy routes; a route with data.navLabel appears in the navigation

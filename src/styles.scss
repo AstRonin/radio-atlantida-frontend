@@ -37,3 +37,68 @@ body {
   outline: 2px solid var(--mat-sys-primary);
   outline-offset: 2px;
 }
+
+// Building blocks shared by the feature pages.
+.page-section {
+  margin-bottom: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0 1rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  align-items: baseline;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-scroll .mat-mdc-table {
+  min-width: 40rem;
+}
+
+.cell-actions {
+  white-space: nowrap;
+  text-align: end;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.form-error,
+.load-error {
+  color: var(--mat-sys-error);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 1rem;
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.badge.warn {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}

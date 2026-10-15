@@ -3,7 +3,18 @@
     "close": "Close",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "delete": "Delete"
+    "delete": "Delete",
+    "save": "Save",
+    "edit": "Edit",
+    "back": "Back",
+    "retry": "Try again",
+    "actions": "Actions",
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No",
+    "loadMore": "Load more"
   },
   "shell": {
     "stationName": "Radio Atlantida",
@@ -36,7 +47,7 @@
   },
   "home": {
     "title": "Radio Atlantida",
-    "intro": "This is the station management panel. Pages for the library, playlists, play rules, and settings will appear in the navigation as they are added."
+    "intro": "This is the station management panel. Use the navigation to build the library, playlists, and play rules, and to configure the station."
   },
   "realtime": {
     "state": {
@@ -88,7 +99,114 @@
     }
   },
   "settings": {
-    "reconnectNotice": "Saved. The new value takes effect when the connection is opened again. Changing the stream server briefly interrupts the stream."
+    "reconnectNotice": "Saved. The new value takes effect when the connection is opened again. Changing the stream server briefly interrupts the stream.",
+    "title": "Settings",
+    "playlistTypesLink": "Playlist types",
+    "discard": "Discard changes",
+    "unsaved": "Unsaved changes: {count}",
+    "saved": "Saved: {count}",
+    "none": "None",
+    "empty": "(empty)",
+    "groups": {
+      "station": "Station",
+      "stream": "Stream output (Icecast)",
+      "liquidsoap": "Liquidsoap",
+      "rotation": "Rotation",
+      "filler": "Filler",
+      "outage": "Outage detection",
+      "retention": "Retention",
+      "playout": "Playout and emergency playlist",
+      "import": "Import and broadcast standard"
+    },
+    "apply": {
+      "immediate": "Applies at once",
+      "reconnect": "Applies on reconnect"
+    },
+    "meta": {
+      "default": "Default: {value}",
+      "isDefault": "Default value",
+      "affectsAir": "Affects air"
+    },
+    "reconnect": {
+      "title": "Save and reconnect?",
+      "message": "These settings take effect when their connection is opened again: {settings}. Changing the stream server briefly interrupts the stream."
+    },
+    "secrets": {
+      "title": "Secrets",
+      "note": "Set in the server environment and changed by a restart, never in the panel.",
+      "set": "Set",
+      "notSet": "Not set"
+    },
+    "fallback": {
+      "playlist": "Fallback playlist",
+      "artist": "Fallback artist"
+    },
+    "fields": {
+      "station": {
+        "timezone": "Station timezone",
+        "name": "Station name"
+      },
+      "stream": {
+        "icecast_host": "Icecast host",
+        "icecast_port": "Icecast port",
+        "mount": "Mount point",
+        "codec": "Codec",
+        "bitrate_kbps": "Bitrate",
+        "sample_rate_hz": "Sample rate",
+        "channels": "Channels",
+        "loudness_target_lufs": "Loudness target",
+        "name": "Stream name",
+        "description": "Stream description",
+        "genre": "Genre",
+        "hls_enabled": "HLS output"
+      },
+      "liquidsoap": {
+        "music_gain": "Music gain",
+        "duck_gain": "Music under voice",
+        "fade_out_ms": "Fade out",
+        "harbor_port": "Harbor port",
+        "control_host": "Control host",
+        "control_port": "Control port",
+        "media_root": "Media folder in Liquidsoap"
+      },
+      "rotation": {
+        "grid_horizon_days": "Grid horizon",
+        "plan_horizon_hours": "Plan horizon",
+        "lookahead_items": "Lookahead",
+        "default_duration_tolerance_ms": "Default tolerance",
+        "default_fixed_tolerance_ms": "Default fixed tolerance",
+        "min_filler_gap_ms": "Smallest filler gap",
+        "max_relaxed_tolerance_ms": "Emergency tolerance limit"
+      },
+      "filler": {
+        "fallback": "Global fallback filler",
+        "reminder_deadline_minutes": "Reminder deadline"
+      },
+      "outage": {
+        "heartbeat_timeout_seconds": "Heartbeat timeout",
+        "icecast_check_interval_seconds": "Icecast check interval",
+        "failed_checks_to_open": "Failed checks before an outage"
+      },
+      "retention": {
+        "play_log_days": "Play log days",
+        "log_days": "Log days"
+      },
+      "playout": {
+        "emergency_playlist_id": "Emergency playlist",
+        "prepush_minutes": "Pre-push"
+      },
+      "import": {
+        "inbox_dir": "Inbox folder",
+        "library_dir": "Library folder",
+        "min_bitrate_kbps": "Lowest bitrate",
+        "target_codec": "Target codec",
+        "target_bitrate_kbps": "Target bitrate",
+        "target_sample_rate_hz": "Target sample rate",
+        "target_channels": "Target channels",
+        "loudness_tolerance_lu": "Loudness tolerance",
+        "max_true_peak_dbtp": "Highest true peak"
+      }
+    }
   },
   "time": {
     "zoneLabel": "Timezone",
@@ -121,7 +239,9 @@
       "bothOrNone": "Fill in both fields or leave both empty.",
       "atLeastOne": "Set at least one of these fields.",
       "pattern": "The value does not have the expected form.",
-      "invalid": "The value is not valid."
+      "invalid": "The value is not valid.",
+      "relativePath": "Enter a path inside the media folder, such as music/song.mp3: no leading /, no drive letter, no \\, and no ..",
+      "fallbackSource": "Choose the playlist or artist for this mode."
     },
     "serverErrors": {
       "required": "This field is required.",
@@ -152,7 +272,11 @@
       "hours": "h",
       "kbps": "kbps",
       "hz": "Hz",
-      "percent": "%"
+      "percent": "%",
+      "days": "days",
+      "lufs": "LUFS",
+      "lu": "LU",
+      "dbtp": "dBTP"
     }
   },
   "filler": {
@@ -217,6 +341,11 @@
         "artist": "Artist",
         "grid_slot": "Grid slot"
       }
+    },
+    "unsaved": {
+      "title": "Leave without saving?",
+      "message": "Your changes on this page are not saved. If you leave now, they are lost.",
+      "leave": "Leave without saving"
     }
   },
   "problems": {
@@ -267,5 +396,179 @@
     "network_error": "The server cannot be reached. Check that the backend is running.",
     "timeout": "The server did not answer in time. Try again.",
     "unexpected_response": "The server sent an unexpected answer. Try again in a moment."
+  },
+  "nav": {
+    "library": "Library",
+    "artists": "Artists",
+    "playlists": "Playlists",
+    "playlistTypes": "Playlist types",
+    "playRules": "Play rules",
+    "separationRules": "Separation rules",
+    "settings": "Settings"
+  },
+  "playlistTypes": {
+    "title": "Playlist types",
+    "add": "Add type",
+    "rename": "Rename",
+    "kind": "Kind",
+    "system": "System",
+    "custom": "Custom",
+    "playlists": "Playlists",
+    "tracks": "Tracks",
+    "fields": {
+      "code": "Code",
+      "name": "Name"
+    },
+    "dialog": {
+      "createTitle": "New playlist type",
+      "renameTitle": "Rename playlist type",
+      "codeHint": "Lowercase letters, digits, - and _, starting with a letter. Cannot be changed later.",
+      "codeFixed": "Code: {code} (cannot be changed)"
+    }
+  },
+  "artists": {
+    "title": "Artists",
+    "add": "Add artist",
+    "rename": "Rename",
+    "search": "Search artists",
+    "tracks": "Tracks",
+    "fields": {
+      "name": "Name"
+    },
+    "dialog": {
+      "createTitle": "New artist",
+      "renameTitle": "Rename artist"
+    }
+  },
+  "separationRules": {
+    "title": "Separation rules",
+    "hours": "{hours} h",
+    "fields": {
+      "scope": "Applies to",
+      "min_interval_hours": "Minimum interval",
+      "notes": "Notes"
+    },
+    "scopes": {
+      "track": "Same track",
+      "artist": "Same artist"
+    },
+    "dialog": {
+      "title": "Separation: {scope}",
+      "retentionNote": "At most {hours} hours: separation is checked against the aired history, which is kept for the play log retention period (Settings)."
+    }
+  },
+  "playRules": {
+    "title": "Play rules",
+    "add": "Add play rule",
+    "fields": {
+      "name": "Name",
+      "window_from": "Allowed from",
+      "window_to": "Allowed until",
+      "weekdays": "Weekdays",
+      "min_interval_minutes": "Minimum interval",
+      "max_per_hour": "Plays per hour",
+      "notes": "Notes",
+      "track_ids": "Tracks",
+      "playlist_ids": "Playlists"
+    },
+    "list": {
+      "window": "Time window",
+      "windowRange": "{from} to {to}",
+      "anyTime": "Any time",
+      "everyDay": "Every day",
+      "minutes": "{minutes} min",
+      "uses": "Used by",
+      "usesValue": "{tracks} tracks, {playlists} playlists"
+    },
+    "edit": {
+      "createTitle": "New play rule",
+      "editTitle": "Edit play rule",
+      "limits": "Limits",
+      "limitsNote": "Set at least one limit. Every limit you set must pass for the track to play. Times are station time.",
+      "weekdaysNote": "No day chosen means every day. With a window that crosses midnight (22:00 to 02:00), the day is the one on which the window starts.",
+      "targets": "Applies to"
+    },
+    "errors": {
+      "atLeastOne": "Set at least one limit: a time window, weekdays, a minimum interval, or plays per hour.",
+      "sameWindow": "The window must end at a different time than it starts."
+    }
+  },
+  "library": {
+    "title": "Library",
+    "add": "Add track",
+    "preview": "Preview",
+    "noDuration": "No length",
+    "fields": {
+      "title": "Title",
+      "artist_id": "Artist",
+      "type_id": "Type",
+      "file_path": "File path",
+      "duration_ms": "Length",
+      "playlist_ids": "Playlists",
+      "rule_ids": "Play rules",
+      "quality_notes": "Quality notes",
+      "format": "Format",
+      "bitrate": "Bitrate",
+      "sample_rate": "Sample rate",
+      "quality_ok": "Quality"
+    },
+    "filters": {
+      "search": "Search by title or artist",
+      "playlist": "Playlist",
+      "type": "Type",
+      "quality": "Quality"
+    },
+    "quality": {
+      "ok": "OK",
+      "issues": "Issues",
+      "unanalysed": "Not analysed",
+      "issueNames": {
+        "format": "format",
+        "sample_rate": "sample rate",
+        "channels": "channels",
+        "loudness": "loudness",
+        "true_peak": "true peak",
+        "low_bitrate": "low bitrate",
+        "file_missing": "file missing"
+      }
+    },
+    "edit": {
+      "createTitle": "New track",
+      "editTitle": "Edit track",
+      "filePathHint": "Relative to the media folder, with forward slashes, for example music/song.mp3.",
+      "durationIs": "= {duration}",
+      "durationEmpty": "Left empty, the length is read from the file. A track without a length cannot be planned.",
+      "file": "File",
+      "kbps": "{kbps} kbps",
+      "hz": "{hz} Hz"
+    }
+  },
+  "playlists": {
+    "title": "Playlists",
+    "add": "Add playlist",
+    "trackCount": "Tracks",
+    "ruleCount": "Play rules",
+    "fields": {
+      "name": "Name",
+      "type_id": "Type",
+      "rule_ids": "Play rules"
+    },
+    "edit": {
+      "createTitle": "New playlist",
+      "editTitle": "Edit playlist"
+    },
+    "tracks": {
+      "label": "Tracks in this playlist ({count})",
+      "poolNote": "A playlist is a pool: the order of its tracks does not matter, and the system chooses the track.",
+      "filter": "Filter the tracks of this playlist",
+      "members": "Tracks in this playlist",
+      "none": "No tracks.",
+      "more": "{count} more tracks are not shown. Use the filter to find them.",
+      "remove": "Remove",
+      "addLabel": "Add tracks from the library",
+      "add": "Add",
+      "addOne": "Add \"{title}\"",
+      "inPlaylist": "In playlist"
+    }
   }
 }

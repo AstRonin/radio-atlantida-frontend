@@ -10,7 +10,7 @@ import { DEFAULT_TIME_ZONE, StationTimeService } from '../time/station-time.serv
 
 export type Setting = ApiSchema<'Setting'>;
 
-/** Keys the panel itself reads. Every other setting is shown and edited generically (Phase F5). */
+/** Keys the panel itself reads. Every other setting is shown and edited generically. */
 export const SETTING_KEYS = {
   stationTimezone: 'station.timezone',
   stationName: 'station.name',
@@ -65,21 +65,30 @@ export class SettingsService {
       return;
     }
     this.loading = true;
-    this.api
-      .get('/api/settings')
+    this.refresh()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (list) => {
-          this.loading = false;
-          this.byKey.set(new Map(list.items.map((setting) => [setting.key, setting])));
-          this.loadedState.set(true);
-          this.applyTimezone();
-        },
+        next: () => (this.loading = false),
         error: (error: unknown) => {
           this.loading = false;
           console.error('Could not load the settings; the defaults stay in use.', error);
         },
       });
+  }
+
+  /**
+   * Reads the settings again, for the settings page, which shows their current state. Fails with
+   * an `ApiProblem`; the settings known before stay in use.
+   */
+  refresh(): Observable<Setting[]> {
+    return this.api.get('/api/settings').pipe(
+      map((list) => list.items),
+      tap((items) => {
+        this.byKey.set(new Map(items.map((setting) => [setting.key, setting])));
+        this.loadedState.set(true);
+        this.applyTimezone();
+      }),
+    );
   }
 
   get(key: string): Setting | undefined {

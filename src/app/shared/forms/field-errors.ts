@@ -18,6 +18,7 @@ const ORDER = [
   'timeOfDay',
   'weekdays',
   'bothOrNone',
+  'relativePath',
   'pattern',
 ];
 

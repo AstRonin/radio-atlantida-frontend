@@ -21,6 +21,10 @@
     {
       "term": "Play button",
       "text": "Plays the track in your browser only. A preview never goes to air and does not count as a play."
+    },
+    {
+      "term": "Artist",
+      "text": "The performer of a track, kept on the Artists page. Artist separation counts plays per artist, so each artist has one entry with a unique name. Jingles and station IDs need no artist."
     }
   ],
   "usage": "Search by title or artist, or filter by playlist, type, or quality. Open a track to edit its details, its playlists, and its play rules. Use the play button on any row to check what a track sounds like.",

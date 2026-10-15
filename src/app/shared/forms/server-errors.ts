@@ -1,5 +1,8 @@
 import { AbstractControl } from '@angular/forms';
+import { ApiProblem } from '../../core/api/api-problem';
 import type { FieldError, FieldErrorCode } from '../../core/api/api-types';
+import { errorMessage } from '../../core/api/problem-message';
+import type { I18nService } from '../../core/i18n/i18n.service';
 
 /** Key of the validation error that holds a backend field error on a control. */
 export const SERVER_ERROR = 'server';
@@ -31,11 +34,19 @@ export function applyServerErrors(
       unmatched.push(error);
       continue;
     }
-    const serverError: ServerFieldError = { code: error.code, message: error.message };
-    control.setErrors({ ...control.errors, [SERVER_ERROR]: serverError });
-    control.markAsTouched();
+    setServerError(control, error);
   }
   return unmatched;
+}
+
+/**
+ * Puts one backend field error on a control, for an error whose path the caller resolves itself
+ * (a setting's `value` belongs to the control of that setting).
+ */
+export function setServerError(control: AbstractControl, error: FieldError): void {
+  const serverError: ServerFieldError = { code: error.code, message: error.message };
+  control.setErrors({ ...control.errors, [SERVER_ERROR]: serverError });
+  control.markAsTouched();
 }
 
 /** `elements[2].fixed_minute` -> `['elements', 2, 'fixed_minute']`; null if it is not a body field. */
@@ -55,4 +66,15 @@ export function controlPath(field: string): (string | number)[] | null {
     }
   }
   return path;
+}
+
+/**
+ * Handles a failed save of a form: the field errors go next to their fields, and the returned text
+ * is the message to show with the form (the problem's own message, translated by its code).
+ */
+export function applySubmitError(form: AbstractControl, error: unknown, i18n: I18nService): string {
+  if (error instanceof ApiProblem) {
+    applyServerErrors(form, error.errors);
+  }
+  return errorMessage(error, i18n);
 }

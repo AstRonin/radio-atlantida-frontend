@@ -26,6 +26,9 @@ import { FieldHintComponent } from '../ui/field-hint.component';
     <mat-form-field class="field">
       <mat-label>{{ label() | translate }}</mat-label>
       <mat-select [formControl]="control()">
+        @if (noneLabel(); as none) {
+          <mat-option [value]="null">{{ none | translate }}</mat-option>
+        }
         @for (playlist of playlists().items; track playlist.id) {
           <mat-option [value]="playlist.id">
             {{ playlist.name }} <span class="meta">· {{ playlist.type.name }}</span>
@@ -61,6 +64,8 @@ import { FieldHintComponent } from '../ui/field-hint.component';
 export class PlaylistSelectComponent {
   readonly control = input.required<FormControl<number | null>>();
   readonly label = input('pickers.playlist');
+  /** Translation key of an option for no playlist (value null), for an optional choice. */
+  readonly noneLabel = input<string | null>(null);
   readonly hintPage = input<HelpPageId | null>(null);
   readonly hintField = input<string | null>(null);
 
