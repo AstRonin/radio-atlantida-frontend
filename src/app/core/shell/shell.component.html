@@ -22,6 +22,11 @@
       {{ 'rotation.pendingReminders' | translate: { count } }}
     </a>
   }
+  @if (openMissedItems(); as count) {
+    <a matButton class="missed" routerLink="/missed-items">
+      {{ 'outages.openMissed' | translate: { count } }}
+    </a>
+  }
   <app-connection-status />
   <app-operations-menu />
   <app-language-switch />

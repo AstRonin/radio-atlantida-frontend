@@ -67,6 +67,16 @@ export const routes: Routes = [
     data: nav('nav.fillerReminders'),
   },
   {
+    path: 'played-tracks',
+    loadChildren: () => import('./features/played-tracks/played-tracks.routes'),
+    data: nav('nav.playedTracks'),
+  },
+  {
+    path: 'missed-items',
+    loadChildren: () => import('./features/missed-items/missed-items.routes'),
+    data: nav('nav.missedItems'),
+  },
+  {
     path: 'settings',
     loadChildren: () => import('./features/settings/settings.routes'),
     data: nav('nav.settings'),

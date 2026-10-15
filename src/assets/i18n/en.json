@@ -413,11 +413,13 @@
     "playlistTypes": "Playlist types",
     "playRules": "Play rules",
     "separationRules": "Separation rules",
-    "settings": "Settings",
     "clocks": "Clocks",
     "grid": "Grid",
     "trackPlan": "Track plan",
-    "fillerReminders": "Filler reminders"
+    "fillerReminders": "Filler reminders",
+    "playedTracks": "Played tracks",
+    "missedItems": "Missed items",
+    "settings": "Settings"
   },
   "playlistTypes": {
     "title": "Playlist types",
@@ -828,6 +830,117 @@
     "save": "Use this track",
     "answered": "The answer is saved; the hour of “{clock}” is rebuilt.",
     "empty": "No reminders here."
+  },
+  "playedTracks": {
+    "title": "Played tracks",
+    "fields": {
+      "from": "From",
+      "to": "To",
+      "status": "Status"
+    },
+    "range": {
+      "title": "Range",
+      "note": "Station dates ({zone}), at most 31 days.",
+      "reset": "Yesterday and today"
+    },
+    "refresh": "Show",
+    "list": {
+      "title": "What aired",
+      "empty": "Nothing aired or was missed in this range."
+    },
+    "columns": {
+      "time": "Time",
+      "preview": "Preview",
+      "title": "Title",
+      "length": "Length",
+      "clock": "Clock",
+      "source": "Source",
+      "status": "Status"
+    },
+    "statuses": {
+      "aired": "Aired",
+      "truncated": "Cut short",
+      "missed": "Not aired"
+    },
+    "sources": {
+      "auto": "Plan",
+      "live": "Live",
+      "emergency": "Emergency playlist"
+    },
+    "deletedClock": "deleted clock",
+    "resolve": "Reschedule or dismiss"
+  },
+  "missedItems": {
+    "title": "Missed items",
+    "resolutionLabel": "Decision",
+    "filter": {
+      "open": "Waiting",
+      "rescheduled": "Rescheduled",
+      "dismissed": "Dismissed"
+    },
+    "resolutions": {
+      "open": "Waiting",
+      "rescheduled": "Rescheduled {time}",
+      "dismissed": "Dismissed {time}"
+    },
+    "historyLink": "Played tracks",
+    "columns": {
+      "planned": "Planned for",
+      "preview": "Preview",
+      "title": "Title",
+      "length": "Length",
+      "clock": "Clock",
+      "outage": "Outage"
+    },
+    "fields": {
+      "target_hour_start_utc": "Target hour",
+      "placement": "Placement",
+      "fixed_minute": "Fixed minute",
+      "fixed_tolerance_ms": "Fixed tolerance"
+    },
+    "placements": {
+      "start": "At the start",
+      "end": "At the end",
+      "fixed": "At a fixed minute"
+    },
+    "reschedule": "Reschedule",
+    "rescheduleNote": "Choose a later planned hour for “{title}”. The hour is rebuilt around it, once; the clock does not change.",
+    "noTargets": "No planned hours are ahead yet. The plan is extended as time goes on.",
+    "save": "Reschedule",
+    "status": {
+      "accepted": "Rebuilding the hour…",
+      "running": "Rebuilding the hour…",
+      "completed": "Rescheduled.",
+      "failed": "The item could not be placed in that hour. Try another hour or placement."
+    },
+    "rescheduled": "“{title}” is rescheduled.",
+    "dismiss": "Dismiss",
+    "dismissDialog": {
+      "title": "Dismiss “{title}”?",
+      "message": "“{title}” will not be aired again. It stays in the played-tracks list as Not aired."
+    },
+    "dismissed": "“{title}” is dismissed.",
+    "empty": "No missed items here."
+  },
+  "outages": {
+    "title": "Outages in this range",
+    "openMissed": "Not aired: {count}",
+    "open": "still open",
+    "empty": "No outages in this range.",
+    "columns": {
+      "started": "Started",
+      "ended": "Ended",
+      "component": "Failed part",
+      "detectedBy": "Detected by",
+      "reason": "Reason",
+      "missed": "Not aired"
+    },
+    "detectedBy": {
+      "icecast": "Icecast check",
+      "liquidsoap_callback": "Liquidsoap stopped reporting",
+      "liquidsoap_control": "Control link lost",
+      "backend": "Backend restart"
+    }
   },
   "live": {
     "title": "Live",

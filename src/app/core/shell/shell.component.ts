@@ -8,6 +8,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 import { HelpPanelComponent } from '../../shared/ui/help-panel.component';
+import { MissedItemsService } from '../alerts/missed-items.service';
 import { OutageBannerComponent } from '../alerts/outage-banner.component';
 import { OutageService } from '../alerts/outage.service';
 import { HelpService } from '../help/help.service';
@@ -60,4 +61,5 @@ export class ShellComponent {
   protected readonly openOutage = inject(OutageService).openOutage;
   protected readonly help = inject(HelpService);
   protected readonly pendingReminders = inject(FillerRemindersService).pending;
+  protected readonly openMissedItems = inject(MissedItemsService).open;
 }
