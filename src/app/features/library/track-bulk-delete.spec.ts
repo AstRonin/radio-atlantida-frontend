@@ -26,6 +26,9 @@ const track = (id: number): Track => ({
   quality_issues: [],
   fixes: [],
   play_rule_ids: [],
+  cue_in_ms: 0,
+  fade_in_ms: 0,
+  fade_out_ms: 0,
   playlist_ids: [],
   quality_notes: '',
   created_at: '2026-10-01T00:00:00Z',
@@ -200,7 +203,7 @@ describe('bulk track delete', () => {
       await settlePage();
       http.expectOne('/api/playlists').flush({ items: [] });
       http.expectOne('/api/playlist-types').flush({ items: [] });
-      tracksRequest().flush({ items: rows });
+      tracksRequest().flush({ items: rows, total: rows.length });
       await settlePage();
       return fixture.nativeElement as HTMLElement;
     }
@@ -255,7 +258,7 @@ describe('bulk track delete', () => {
         ],
       });
       await settlePage();
-      tracksRequest().flush({ items: [track(2), track(4)] });
+      tracksRequest().flush({ items: [track(2), track(4)], total: 2 });
       await settlePage();
 
       expect(checked(page)).toEqual([0, 1]);
@@ -284,7 +287,7 @@ describe('bulk track delete', () => {
         { status: 500, statusText: 'Internal Server Error' },
       );
       await settlePage();
-      tracksRequest().flush({ items: [track(1), track(2)] });
+      tracksRequest().flush({ items: [track(1), track(2)], total: 2 });
       await settlePage();
       expect(page.querySelector('.form-error')?.textContent).toContain('deleted 1 of 2');
       expect(checked(page)).toEqual([0, 1]);

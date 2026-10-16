@@ -13,7 +13,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
   imports: [MatButtonModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1 class="title">{{ title() | translate }}</h1>
+    <h1 class="title">{{ titleKey() | translate }}</h1>
     <div class="actions">
       <ng-content />
       <button
@@ -51,7 +51,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 })
 export class PageHeaderComponent {
   /** Translation key of the page title. */
-  readonly title = input.required<string>();
+  readonly titleKey = input.required<string>();
   readonly helpPage = input.required<HelpPageId>();
 
   protected readonly help = inject(HelpService);

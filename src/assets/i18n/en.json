@@ -197,7 +197,9 @@
         "harbor_port": "Harbor port",
         "control_host": "Control host",
         "control_port": "Control port",
-        "media_root": "Media folder in Liquidsoap"
+        "media_root": "Media folder in Liquidsoap",
+        "cue_fade_in_ms": "Default fade in at a start point",
+        "cue_fade_out_ms": "Default fade out at a stop point"
       },
       "rotation": {
         "grid_horizon_days": "Grid horizon",
@@ -272,12 +274,14 @@
       "atLeastOne": "Set at least one of these fields.",
       "pattern": "The value does not have the expected form.",
       "invalid": "The value is not valid.",
+      "controlCharacters": "Remove line breaks and tabs.",
       "relativePath": "Enter a path inside the media folder, such as music/song.mp3: no leading /, no drive letter, no \\, and no ..",
       "fallbackSource": "Choose the playlist or artist for this mode.",
       "dateRange": "Choose a last date on or after the first one, at most {days} days in all.",
       "date": "Enter a date as YYYY-MM-DD, or choose one in the calendar.",
       "dateMin": "Choose {date} or a later date.",
-      "dateMax": "Choose {date} or an earlier date."
+      "dateMax": "Choose {date} or an earlier date.",
+      "cueTime": "Enter a time as m:ss.mmm, for example 1:02.340."
     },
     "timepicker": {
       "format": "HH:MM",
@@ -314,10 +318,16 @@
       "overlap": "The value overlaps with another one.",
       "does_not_fit": "It does not fit into the available time.",
       "order": "The values are in the wrong order.",
-      "blocked": "A separation or play rule blocks this choice."
+      "blocked": "A separation or play rule blocks this choice.",
+      "invalid_characters": "Remove line breaks and tabs.",
+      "cue_order": "The stop point must be after the start point.",
+      "cue_beyond_end": "The point is past the end of the file.",
+      "air_too_short": "Leave at least 5 seconds on air.",
+      "fades_too_long": "The fades together are longer than the part on air."
     },
     "weekdays": {
-      "label": "Weekdays"
+      "label": "Weekdays",
+      "all": "All"
     },
     "playlistType": "Playlist type",
     "units": {
@@ -337,6 +347,9 @@
       "label": "Hours",
       "all": "All hours",
       "none": "No hours"
+    },
+    "cueTime": {
+      "format": "m:ss.mmm"
     }
   },
   "filler": {
@@ -435,6 +448,8 @@
     "track_in_use": "The track is in use and cannot be deleted.",
     "track_has_history": "The track has play history and cannot be deleted.",
     "track_file_not_found": "The audio file of the track was not found.",
+    "title_empty": "Nothing would be left of the title.",
+    "title_too_long": "The title would be longer than 500 characters.",
     "play_rule_not_found": "The play rule was not found.",
     "play_rule_in_use": "The play rule is in use and cannot be deleted.",
     "separation_rule_not_found": "The separation rule was not found.",
@@ -457,7 +472,10 @@
     "live_unavailable": "The live voice bridge is not available on the server.",
     "network_error": "The server cannot be reached. Check that the backend is running.",
     "timeout": "The server did not answer in time. Try again.",
-    "unexpected_response": "The server sent an unexpected answer. Try again in a moment."
+    "unexpected_response": "The server sent an unexpected answer. Try again in a moment.",
+    "track_on_air": "The track is on air or queued; try again after it has played.",
+    "track_not_analysed": "Analyse the track first: its length is not known.",
+    "waveform_unavailable": "The file cannot be read."
   },
   "nav": {
     "live": "Live",
@@ -570,6 +588,10 @@
     "add": "Add track",
     "preview": "Preview",
     "noDuration": "No length",
+    "pageStatus": "Page {page} of {pages}, {total} tracks",
+    "sort": {
+      "by": "Sort by {column}"
+    },
     "fields": {
       "title": "Title",
       "artist_id": "Artist",
@@ -582,13 +604,18 @@
       "format": "Format",
       "bitrate": "Bitrate",
       "sample_rate": "Sample rate",
-      "quality_ok": "Quality"
+      "quality_ok": "Quality",
+      "reviewed": "Reviewed",
+      "next_planned_at": "In plan"
     },
     "filters": {
       "search": "Search by title or artist",
       "playlist": "Playlist",
       "type": "Type",
-      "quality": "Quality"
+      "quality": "Quality",
+      "reviewed": "Reviewed",
+      "inPlan": "In plan",
+      "withoutPlaylist": "Without playlist"
     },
     "quality": {
       "ok": "OK",
@@ -613,6 +640,11 @@
         "file_missing": "the file is not in the media folder. Put it back or correct the file path."
       }
     },
+    "reviewedFilter": {
+      "true": "Reviewed",
+      "false": "Not reviewed"
+    },
+    "reviewedAt": "Reviewed {time}",
     "edit": {
       "createTitle": "New track",
       "editTitle": "Edit track",
@@ -622,7 +654,9 @@
       "file": "File",
       "kbps": "{kbps} kbps",
       "hz": "{hz} Hz",
-      "qualityOverride": "Quality OK (your choice, until the next analysis)"
+      "qualityOverride": "Quality OK (your choice, until the next analysis)",
+      "titleHint": "Listeners see this title and the artist. A change applies to tracks queued after saving. Changing the title, artist, or file clears the reviewed mark.",
+      "reviewSaveFirst": "Save the changes first."
     },
     "analysis": {
       "source_bitrate": "Source bitrate",
@@ -661,11 +695,12 @@
         "title": "Replace the original files?",
         "message": "The fixed files replace the originals of {count} tracks. The originals are deleted from the media folder and cannot be restored.",
         "confirm": "Replace"
-      }
+      },
+      "cueReset": "The start and stop points of {count} tracks were reset: the new file is shorter. {paths}"
     },
     "bulkDelete": {
       "delete": "Delete ({count})",
-      "tooMany": "Select at most 1,000 tracks to delete.",
+      "tooMany": "Select at most 1,000 tracks to delete, rename, or mark.",
       "confirmTitle": "Delete {count} tracks?",
       "confirmMessage": "Delete {count} tracks from the library? The files stay on disk. Tracks that have played, are planned, or are in a filler pool are kept.",
       "running": "Deleting {count} tracks…",
@@ -673,6 +708,72 @@
       "refusedTitle": "Kept tracks: {count}. They stay selected.",
       "usedBy": "Filler pool of:",
       "moreRefused": "and {count} more"
+    },
+    "selection": {
+      "rename": "Rename ({count})",
+      "markReviewed": "Mark reviewed ({count})",
+      "markUnreviewed": "Mark not reviewed ({count})",
+      "reviewRunning": "Saving the reviewed mark…",
+      "reviewNotFound": "Tracks no longer in the library: {count}. They left the selection."
+    },
+    "rename": {
+      "title": "Rename track",
+      "button": "Rename {title}",
+      "hint": "Listeners see this title for items queued after saving. Renaming clears the reviewed mark.",
+      "markReviewed": "Mark as reviewed",
+      "reviewFailed": "The title is saved, but the reviewed mark is not."
+    },
+    "bulkRename": {
+      "title": "Rename {count} tracks",
+      "find": "Find",
+      "replace": "Replace with",
+      "replaceHint": "Leave empty to remove the text found.",
+      "matchCase": "Match case",
+      "preview": "Preview",
+      "apply": "Apply",
+      "previewTitle": "Titles that would change: {count}",
+      "appliedTitle": "Titles changed: {count}",
+      "to": "becomes",
+      "unchanged": "Titles without the text or not changed: {count}",
+      "refusedTitle": "Titles left alone: {count}",
+      "reviewNote": "The renamed tracks lost their reviewed mark."
+    },
+    "cue": {
+      "title": "Start and stop",
+      "loadingWaveform": "Reading the waveform. The first time takes a few seconds.",
+      "analyseFirst": "Analyse the track first: the start and stop points need the length of the file.",
+      "cue_in_ms": "Start",
+      "cue_out_ms": "Stop",
+      "fade_in_ms": "Fade in",
+      "fade_out_ms": "Fade out",
+      "fadeChoices": "Quick choices",
+      "setFade": "{fade}: {seconds} s",
+      "seconds": "{seconds} s",
+      "onAir": "On air: {air} (file {file})",
+      "playIn": "Play from start point",
+      "playBeforeOut": "Play last 5 s before stop",
+      "reset": "Reset",
+      "markReviewed": "Mark as reviewed",
+      "onAirHint": {
+        "on_air": "The track is on air now. Save after it has played.",
+        "queued": "The track is queued for air. Save after it has played."
+      },
+      "save": "Save start and stop",
+      "saved": "Start and stop are saved.",
+      "savedReviewed": "Start and stop are saved, and the track is marked as reviewed.",
+      "rebuilding": "Rebuilding the planned hours with the new cut…",
+      "reviewFailed": "The start and stop points are saved, but the reviewed mark is not."
+    },
+    "inPlanFilter": {
+      "true": "Yes",
+      "false": "No"
+    },
+    "usage": {
+      "on_air": "On air",
+      "queued": "Queued",
+      "cut": "{air} on air, file {file}",
+      "playlists": "In {count} playlists: {names}",
+      "nextPlanned": "Next in plan: {time}"
     }
   },
   "playlists": {
@@ -1213,6 +1314,7 @@
       "artist_id": "Artist",
       "start": "Import",
       "running": "Importing…",
+      "reviewNew": "Review the new tracks",
       "showIssues": "Show tracks with quality issues"
     },
     "analyse": {
@@ -1253,5 +1355,20 @@
     "empty": "No entries match the filters.",
     "offsetLimit": "Older entries of this file cannot be read here. Narrow the filters to see them.",
     "openGrafana": "Search in Grafana"
+  },
+  "waveform": {
+    "label": "Waveform. Click to place the cursor.",
+    "cueIn": "Start point",
+    "cueOut": "Stop point",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit",
+    "enlarged": "×{factor}",
+    "enlargedHint": "Enlarged {factor} times, so the loudest point ({peak}) fills the height. The level lines show the real level.",
+    "realLevel": "Real level",
+    "realLevelHint": "Draw the waveform at its real level: the full height is 0 dB.",
+    "scroll": "Scroll the waveform",
+    "keyboard": "Keyboard shortcuts",
+    "shortcuts": "Waveform: Space plays or pauses from the cursor, I sets the start point and O the stop point at the cursor, + and − zoom, 0 fits the whole track. Start or stop point: ← and → move it by 100 ms, with Shift by 1 s, with Alt by 10 ms; Page Up and Page Down by 10 s; Home and End go as far as it can."
   }
 }

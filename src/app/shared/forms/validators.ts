@@ -94,6 +94,32 @@ export const nonEmptyValidator: ValidatorFn = (control) => {
   return Array.isArray(value) && value.length > 0 ? null : { required: true };
 };
 
+// Go's unicode.IsControl, which the backend applies: C0, DEL, and C1.
+// eslint-disable-next-line no-control-regex -- matching control characters is the point.
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/;
+
+/**
+ * Text without control characters (line breaks, tabs), as a track title must be; the backend
+ * refuses them with the code `invalid_characters`. Empty values pass.
+ */
+export const noControlCharacters: ValidatorFn = (control) => {
+  const value: unknown = control.value;
+  return typeof value === 'string' && CONTROL_CHARACTER.test(value)
+    ? { controlCharacters: true }
+    : null;
+};
+
+/**
+ * Text that is more than white space, for fields the backend trims before checking them. The
+ * error is `required`, as an empty field gets.
+ */
+export const notBlankValidator: ValidatorFn = (control) => {
+  const value: unknown = control.value;
+  return typeof value === 'string' && value !== '' && value.trim() === ''
+    ? { required: true }
+    : null;
+};
+
 function isEmpty(value: unknown): boolean {
   return (
     value === null ||

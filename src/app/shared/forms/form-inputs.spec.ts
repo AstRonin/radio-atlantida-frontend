@@ -163,13 +163,75 @@ describe('form inputs', () => {
     const boxes = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>(
       'input[type=checkbox]',
     );
-    expect(boxes).toHaveLength(7);
-    expect(boxes[4].checked).toBe(true);
+    expect(boxes).toHaveLength(8);
+    expect(boxes[5].checked).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('Monday');
 
-    boxes[0].click();
+    boxes[1].click();
     expect(control.value).toEqual([1, 5]);
     expect(control.dirty).toBe(true);
+  });
+
+  it('weekdays input "All" selects and clears the seven days', async () => {
+    const control = new FormControl<number[] | null>([]);
+    const fixture = TestBed.createComponent(WeekdaysInputComponent);
+    fixture.componentRef.setInput('control', control);
+    await fixture.whenStable();
+    const boxes = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>(
+      'input[type=checkbox]',
+    );
+    const all = boxes[0];
+    expect(fixture.nativeElement.textContent).toContain('forms.weekdays.all');
+    expect(all.checked).toBe(false);
+    expect(all.indeterminate).toBe(false);
+
+    all.click();
+    await fixture.whenStable();
+    expect(control.value).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(control.dirty).toBe(true);
+    expect(control.touched).toBe(true);
+    expect(all.checked).toBe(true);
+
+    all.click();
+    await fixture.whenStable();
+    expect(control.value).toEqual([]);
+    expect(all.checked).toBe(false);
+
+    boxes[1].click();
+    boxes[3].click();
+    await fixture.whenStable();
+    expect(all.indeterminate).toBe(true);
+    expect(all.checked).toBe(false);
+
+    // From "some", All selects every day.
+    all.click();
+    await fixture.whenStable();
+    expect(control.value).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it('weekdays input "All" follows the days', async () => {
+    const control = new FormControl<number[] | null>([1, 2, 3, 4, 5, 6]);
+    const fixture = TestBed.createComponent(WeekdaysInputComponent);
+    fixture.componentRef.setInput('control', control);
+    await fixture.whenStable();
+    const boxes = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>(
+      'input[type=checkbox]',
+    );
+    expect(boxes[0].indeterminate).toBe(true);
+
+    boxes[7].click();
+    await fixture.whenStable();
+    expect(control.value).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(boxes[0].checked).toBe(true);
+
+    control.setValue([2]);
+    await fixture.whenStable();
+    expect(boxes[0].checked).toBe(false);
+    expect(boxes[0].indeterminate).toBe(true);
+
+    control.disable();
+    await fixture.whenStable();
+    expect(boxes[0].disabled).toBe(true);
   });
 
   it('weekdays input follows a value set from outside', async () => {
@@ -183,11 +245,11 @@ describe('form inputs', () => {
     const boxes = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>(
       'input[type=checkbox]',
     );
-    expect(boxes[3].checked).toBe(true);
+    expect(boxes[4].checked).toBe(true);
 
     control.setValue([]);
     await fixture.whenStable();
-    expect(boxes[3].checked).toBe(false);
+    expect(boxes[4].checked).toBe(false);
   });
 
   it('hours input edits a sorted list of 0 to 23 with toggle buttons', async () => {

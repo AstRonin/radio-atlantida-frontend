@@ -67,7 +67,7 @@ const CLOSED_CODES: readonly ApiProblemCode[] = ['filler_request_closed', 'hour_
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="fillerReminders.title" helpPage="help.filler-reminders" />
+    <app-page-header titleKey="fillerReminders.title" helpPage="help.filler-reminders" />
 
     <div class="list-filters">
       <mat-form-field>

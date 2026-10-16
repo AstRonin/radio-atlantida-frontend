@@ -29,7 +29,9 @@ const playout = (overrides: Partial<PlayoutStatus> = {}): PlayoutStatus => ({
     artist_name: 'Ani',
     source: 'plan',
     started_at: '2026-10-15T08:00:00Z',
-    out_ms: 200_000,
+    // Cut from 0:20: the length is out − in, 3:20.
+    in_ms: 20_000,
+    out_ms: 220_000,
     truncated: false,
   },
   queued: [
@@ -38,7 +40,8 @@ const playout = (overrides: Partial<PlayoutStatus> = {}): PlayoutStatus => ({
       track_id: 8,
       title: 'Next Song',
       planned_start_utc: '2026-10-15T08:03:20Z',
-      planned_out_ms: 180_000,
+      planned_in_ms: 30_000,
+      planned_out_ms: 210_000,
       truncated: false,
       queue: 'hour_0',
     },
@@ -104,6 +107,7 @@ describe('LivePageComponent', () => {
     expect(page.textContent).toContain('1:40 / 3:20');
     expect(page.querySelector('mat-progress-bar[mode="determinate"]')).not.toBeNull();
     expect(page.textContent).toContain('Next Song');
+    expect(page.querySelector('table.queued tbody tr')?.textContent).toContain('3:00');
     expect(page.textContent).toContain('live.onAir.connected');
     // Without a secure context, the voice section explains why it offers no controls.
     expect(page.textContent).toContain('live.voice.insecure');
@@ -122,6 +126,7 @@ describe('LivePageComponent', () => {
         title: 'Next Song',
         source: 'plan',
         started_at: '2026-10-15T08:03:20Z',
+        in_ms: 0,
         out_ms: 180_000,
         truncated: false,
       },

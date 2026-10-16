@@ -81,7 +81,7 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
   providers: [providePaginatorIntl()],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="import.title" helpPage="help.import">
+    <app-page-header titleKey="import.title" helpPage="help.import">
       <button
         matButton
         type="button"
@@ -233,7 +233,10 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
       </form>
       <app-operation-status [state]="importRun.state()" runningLabel="import.form.running" />
       @if (importRun.state()?.status === 'completed') {
-        <p>
+        <p class="links">
+          <a routerLink="/library" [queryParams]="{ reviewed: 'false' }">{{
+            'import.form.reviewNew' | translate
+          }}</a>
           <a routerLink="/library" [queryParams]="{ quality: 'issues' }">{{
             'import.form.showIssues' | translate
           }}</a>
@@ -268,6 +271,12 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
 
     .path {
       overflow-wrap: anywhere;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
     }
 
     .numeric {

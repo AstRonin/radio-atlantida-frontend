@@ -32,7 +32,7 @@ const MONDAY_UTC = Date.UTC(2024, 0, 1);
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="playRules.title" helpPage="help.play-rules">
+    <app-page-header titleKey="playRules.title" helpPage="help.play-rules">
       <a matButton="filled" routerLink="/play-rules/new">{{ 'playRules.add' | translate }}</a>
     </app-page-header>
 

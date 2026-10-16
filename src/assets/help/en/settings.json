@@ -107,6 +107,14 @@
       "label": "Fade out",
       "text": "How long a track cut at a segment end fades out, 2000 to 3000 ms. Default 2500."
     },
+    "liquidsoap.cue_fade_in_ms": {
+      "label": "Default fade in at a start point",
+      "text": "The fade in the track editor proposes when you move a start point away from the start of the file, 0 to 5000 ms. Default 1000. Each track keeps its own fade; changing this changes no track."
+    },
+    "liquidsoap.cue_fade_out_ms": {
+      "label": "Default fade out at a stop point",
+      "text": "The fade out the track editor proposes when you move a stop point away from the end of the file, 0 to 5000 ms. Default 2000. Each track keeps its own fade; changing this changes no track."
+    },
     "liquidsoap.harbor_port": {
       "label": "Harbor port",
       "text": "The port on which Liquidsoap receives live voice."

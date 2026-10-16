@@ -15,6 +15,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import type { PreviewTrack } from '../../core/player/player.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { DurationPipe } from '../../core/time/duration.pipe';
+import { plannedLengthMs } from '../../core/time/duration';
 import { addDays, stationMidnightUtc, stationToday } from '../../core/time/local-date';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { StationTimeService } from '../../core/time/station-time.service';
@@ -96,7 +97,7 @@ export function outageChunks(range: HistoryRange): HistoryRange[] {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="playedTracks.title" helpPage="help.played-tracks" />
+    <app-page-header titleKey="playedTracks.title" helpPage="help.played-tracks" />
 
     <section class="page-section" aria-labelledby="range-heading">
       <h2 id="range-heading" class="section-title">
@@ -456,7 +457,9 @@ function rowOf(entry: PlayHistoryEntry): HistoryRow {
   return {
     entry,
     time: missed ? entry.planned_start_utc : (entry.started_at ?? entry.planned_start_utc),
-    lengthMs: missed ? entry.planned_out_ms : (entry.actual_duration_ms ?? entry.planned_out_ms),
+    lengthMs: missed
+      ? plannedLengthMs(entry.planned_in_ms, entry.planned_out_ms)
+      : (entry.actual_duration_ms ?? plannedLengthMs(entry.planned_in_ms, entry.planned_out_ms)),
     preview: {
       id: entry.track_id,
       title: entry.title,

@@ -3,26 +3,38 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { AlertsService } from '../alerts/alerts.service';
 import { apiProblemInterceptor } from '../api/api.interceptors';
-import { FakeAudio, provideFakeAudio } from './fake-audio.testing';
+import { FakeAudio, FakeFader, provideFakeAudio } from './fake-audio.testing';
 import { PlayerService, PreviewTrack } from './player.service';
 
 const song: PreviewTrack = { id: 7, title: 'Summer', artist: { name: 'Band' }, format: 'mp3' };
 const jingle: PreviewTrack = { id: 9, title: 'Station ID', format: 'ogg' };
+// A live recording cut from 0:05 to 3:00, with a 1 s fade in and a 2 s fade out.
+const live: PreviewTrack = {
+  id: 11,
+  title: 'Live at the Hall',
+  format: 'mp3',
+  cue_in_ms: 5000,
+  cue_out_ms: 180_000,
+  fade_in_ms: 1000,
+  fade_out_ms: 2000,
+};
 
 describe('PlayerService', () => {
   let audio: FakeAudio;
   let player: PlayerService;
   let http: HttpTestingController;
   let alerts: { show: ReturnType<typeof vi.fn> };
+  let fader: FakeFader;
 
   beforeEach(() => {
     audio = new FakeAudio();
+    fader = new FakeFader();
     alerts = { show: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([apiProblemInterceptor])),
         provideHttpClientTesting(),
-        provideFakeAudio(audio),
+        provideFakeAudio(audio, fader),
         { provide: AlertsService, useValue: alerts },
       ],
     });
@@ -166,5 +178,75 @@ describe('PlayerService', () => {
 
     expect(player.track()).toBeNull();
     expect(player.status()).toBe('idle');
+  });
+
+  describe('with cue points', () => {
+    it('starts at the cue in and stops at the cue out, back at the start', () => {
+      player.play(live);
+      expect(audio.currentTime).toBe(5);
+      expect(player.position()).toBe(5);
+      audio.emit('playing');
+
+      audio.currentTime = 100;
+      audio.emit('timeupdate');
+      expect(player.position()).toBe(100);
+
+      audio.currentTime = 180.1;
+      audio.emit('timeupdate');
+      expect(audio.paused).toBe(true);
+      expect(player.status()).toBe('paused');
+      expect(player.position()).toBe(5);
+    });
+
+    it('starts at a given point instead, as the editor asks', () => {
+      player.play(live, 175_000);
+      expect(audio.currentTime).toBe(175);
+    });
+
+    it('ramps the gain over the fades', () => {
+      player.play(live);
+      // Silent at the cue in before anything plays.
+      expect(fader.last).toEqual({ gain: 0, points: [] });
+
+      audio.emit('playing');
+      expect(fader.resumes).toBe(1);
+      expect(fader.last).toEqual({
+        gain: 0,
+        points: [
+          [1, 1],
+          [173, 1],
+          [175, 0],
+        ],
+      });
+
+      // Halfway through the fade out, a pause holds the gain there.
+      audio.currentTime = 179;
+      player.pause();
+      audio.emit('pause');
+      expect(fader.last).toEqual({ gain: 0.5, points: [] });
+
+      audio.duration = 200;
+      audio.emit('durationchange');
+      player.seek(176);
+      expect(fader.last?.gain).toBe(1);
+    });
+
+    it('fades out at the end of the file when there is no cue out', () => {
+      player.play({ ...live, cue_out_ms: null });
+      audio.duration = 200;
+      audio.emit('durationchange');
+      audio.currentTime = 199;
+      audio.emit('playing');
+      expect(fader.last).toEqual({ gain: 0.5, points: [[1, 0]] });
+    });
+
+    it('resets the gain for a track without fades after a faded one', () => {
+      player.play(live);
+      player.play(song);
+      expect(fader.last).toEqual({ gain: 1, points: [] });
+      const count = fader.schedules.length;
+      audio.emit('playing');
+      expect(fader.schedules).toHaveLength(count);
+    });
   });
 });

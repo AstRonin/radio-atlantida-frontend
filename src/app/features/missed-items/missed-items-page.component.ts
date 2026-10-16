@@ -24,7 +24,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { OperationStatus, OperationsService } from '../../core/operations/operations.service';
 import type { PreviewTrack } from '../../core/player/player.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
-import { DurationPipe } from '../../core/time/duration.pipe';
+import { PlannedLengthPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { FieldHintComponent } from '../../shared/ui/field-hint.component';
 import { NumberInputComponent } from '../../shared/forms/number-input.component';
@@ -70,7 +70,7 @@ interface MissedRow {
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
-    DurationPipe,
+    PlannedLengthPipe,
     StationTimePipe,
     FieldHintComponent,
     NumberInputComponent,
@@ -79,7 +79,7 @@ interface MissedRow {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="missedItems.title" helpPage="help.missed-items" />
+    <app-page-header titleKey="missedItems.title" helpPage="help.missed-items" />
 
     <div class="list-filters">
       <mat-form-field>
@@ -142,7 +142,7 @@ interface MissedRow {
                   <span class="muted"> — {{ item.artist_name }}</span>
                 }
               </td>
-              <td class="time">{{ item.planned_out_ms | duration }}</td>
+              <td class="time">{{ item.planned_out_ms | plannedLength: item.planned_in_ms }}</td>
               <td>
                 @if (item.clock; as clock) {
                   @if (clock.name) {

@@ -62,7 +62,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header
-      [title]="ruleId() === null ? 'playRules.edit.createTitle' : 'playRules.edit.editTitle'"
+      [titleKey]="ruleId() === null ? 'playRules.edit.createTitle' : 'playRules.edit.editTitle'"
       helpPage="help.play-rules"
     />
 

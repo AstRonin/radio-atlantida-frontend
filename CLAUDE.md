@@ -38,7 +38,9 @@ streams it, and PostgreSQL stores the data.
    `docs/f10-import-plan.md`, F11: `docs/f11-logs-plan.md`, F12: `docs/f12-release-plan.md`,
    F13: `docs/f13-grafana-link-plan.md`, F14: `docs/f14-broadcast-status-plan.md`, F15:
    `docs/f15-air-window-plan.md`, F16: `docs/f16-import-in-place-plan.md`, F17:
-   `docs/f17-bulk-delete-plan.md`). Work only on the current phase.
+   `docs/f17-bulk-delete-plan.md`, F18: `docs/f18-library-pagination-sort-plan.md`, F19:
+   `docs/f19-track-titles-review-weekdays-plan.md`, F20: `docs/f20-track-cue-editor-plan.md`).
+   Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
@@ -65,10 +67,27 @@ without polling; the list is `app-air-window-list` (`shared/air-window`); settin
 window", `docs/f15-air-window-plan.md`), F16 (import in place: the manager chooses a folder of
 the media root from `GET /api/import/folders`, sees its files and their status from
 `GET /api/import/files`, and imports the new ones where they lie with a type, optional playlists,
-and an optional artist; no inbox, `docs/f16-import-in-place-plan.md`), and F17 (bulk track
+and an optional artist; no inbox, `docs/f16-import-in-place-plan.md`), F17 (bulk track
 delete: "Delete (N)" in the library selection bar sends one `POST /api/tracks/delete` for up to
 1,000 tracks; deleted tracks leave the selection, refused ones stay selected with their reasons,
-`docs/f17-bulk-delete-plan.md`) done. A page follows an operation it started (progress,
+`docs/f17-bulk-delete-plan.md`), F18 (library pages and sort: `mat-paginator` and sortable
+headers on the library, sorted and paged by the backend with `sort`, `order`, `offset`, and
+`total` on `GET /api/tracks`; page, size, and order in the URL (`library-list-state.ts`); the
+selection is kept across pages, `docs/f18-library-pagination-sort-plan.md`), F19 (track
+titles, reviewed mark, "All" weekdays: a row "Rename" dialog that sends the whole track back with
+`PUT`, "Rename (N)" find-and-replace previewed with `POST /api/tracks/rename` `dry_run`, the
+"Reviewed" column, filter (`reviewed` in the URL), and "Mark reviewed (N)" / "Mark not reviewed
+(N)" with `POST /api/tracks/review` (`track-review.ts`), a "Reviewed" switch on the track page
+sent at once, and "All" in `app-weekdays-input`; the backend clears the mark,
+`docs/f19-track-titles-review-weekdays-plan.md`), and F20 (track cue editor and usage marks:
+"Start and stop" on the track page (`app-track-cue`, `@defer`) with the canvas waveform
+`app-waveform-editor` (`shared/waveform`, peaks from `GET /api/tracks/{id}/waveform`, browser parts
+behind `WAVEFORM_BROWSER`), `app-duration-input` (`m:ss.SSS`), Save with `PUT /api/tracks/{id}/cue`
+then "Mark as reviewed", the plan rebuild followed; previews honour the cue and fades through a
+`GainNode` (`PREVIEW_FADER_FACTORY`, faked in `fake-audio.testing.ts`); the library shows the on-air
+length, In plan, on air / queued, and the playlist count, filters `in_plan` and `in_playlist=false`,
+and reloads on playout and plan events; plan lengths are `out − in` (`plannedLength` pipe),
+`docs/f20-track-cue-editor-plan.md`) done. A page follows an operation it started (progress,
 summary) with `followOperation()` (`core/operations`) and `app-operation-status` (`shared/ui`). The live
 session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
 browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The

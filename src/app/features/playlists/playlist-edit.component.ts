@@ -63,7 +63,7 @@ interface Loaded {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header
-      [title]="stored() === null ? 'playlists.edit.createTitle' : 'playlists.edit.editTitle'"
+      [titleKey]="stored() === null ? 'playlists.edit.createTitle' : 'playlists.edit.editTitle'"
       helpPage="help.playlists"
     />
 

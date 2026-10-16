@@ -285,6 +285,8 @@ describe('import', () => {
       expect(page.textContent).toContain('folder jingles: 2 imported');
       const link = page.querySelector<HTMLAnchorElement>('a[href*="quality=issues"]');
       expect(link?.getAttribute('href')).toBe('/library?quality=issues');
+      const review = page.querySelector<HTMLAnchorElement>('a[href*="reviewed=false"]');
+      expect(review?.getAttribute('href')).toBe('/library?reviewed=false');
       expect(view(fixture).form.controls.folder.value).toBe('jingles');
       expect(button(page, 'import.form.start')?.disabled).toBe(true);
     });

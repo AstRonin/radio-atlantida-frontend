@@ -36,7 +36,7 @@ const DEFAULT_PLAY_LOG_DAYS = 10;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="separationRules.title" helpPage="help.separation-rules" />
+    <app-page-header titleKey="separationRules.title" helpPage="help.separation-rules" />
 
     @if (rules.isLoading()) {
       <mat-progress-bar mode="indeterminate" [attr.aria-label]="'common.loading' | translate" />

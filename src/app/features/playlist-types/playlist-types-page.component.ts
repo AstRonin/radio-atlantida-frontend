@@ -32,7 +32,7 @@ import {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="playlistTypes.title" helpPage="help.playlist-types">
+    <app-page-header titleKey="playlistTypes.title" helpPage="help.playlist-types">
       <button matButton="filled" type="button" (click)="create()">
         {{ 'playlistTypes.add' | translate }}
       </button>

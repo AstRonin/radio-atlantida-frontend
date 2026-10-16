@@ -3,6 +3,8 @@ import {
   atLeastOneValidator,
   bothOrNoneValidator,
   dateRangeValidator,
+  noControlCharacters,
+  notBlankValidator,
   rangeValidator,
   relativePathValidator,
   timeOfDayValidator,
@@ -127,6 +129,32 @@ describe('validators', () => {
       ]) {
         expect(validate(path), path).toEqual({ relativePath: true });
       }
+    });
+  });
+
+  describe('noControlCharacters', () => {
+    const validate = (value: unknown) => noControlCharacters(new FormControl(value));
+
+    it('refuses line breaks, tabs, and other control characters', () => {
+      for (const value of ['a\nb', 'a\tb', 'a\u0000b', 'a\u007fb', 'a\u0085b']) {
+        expect(validate(value), JSON.stringify(value)).toEqual({ controlCharacters: true });
+      }
+    });
+
+    it('passes other text, Cyrillic and emoji included', () => {
+      for (const value of ['', null, 'Song (Live)', 'Песня', 'Երգ', 'Party 🎉']) {
+        expect(validate(value), String(value)).toBeNull();
+      }
+    });
+  });
+
+  describe('notBlankValidator', () => {
+    const validate = (value: unknown) => notBlankValidator(new FormControl(value));
+
+    it('refuses white space alone and passes text or an empty value', () => {
+      expect(validate('   ')).toEqual({ required: true });
+      expect(validate(' a ')).toBeNull();
+      expect(validate('')).toBeNull();
     });
   });
 

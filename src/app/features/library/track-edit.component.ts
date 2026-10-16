@@ -9,12 +9,14 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, concatMap, map, merge, of } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
@@ -23,6 +25,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { formatDurationMs } from '../../core/time/duration';
+import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { controlVersion } from '../../shared/forms/field-errors';
 import { NumberInputComponent } from '../../shared/forms/number-input.component';
 import { PlaylistTypeSelectComponent } from '../../shared/forms/playlist-type-select.component';
@@ -38,6 +41,7 @@ import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 import { TRACK_LIMITS, Track, trackBody, trackForm, trackFormValue } from './track-form';
 import { TrackAnalysisComponent } from './track-analysis.component';
+import { TrackCueComponent } from './track-cue.component';
 import { trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
 
@@ -45,7 +49,8 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
  * Creates or edits a track: its metadata, its file path under the media root, its playlists, and
  * its play rules. The file is not uploaded here; it must already be in the media folder (new files
  * come in through the import). A stored track shows its analysis and offers Analyse, Fix
- * loudness, and Optimize track.
+ * loudness, and Optimize track, and its reviewed mark, which is sent at once and not with Save.
+ * Its start and stop points have a section and a Save of their own (`app-track-cue`).
  */
 @Component({
   selector: 'app-track-edit',
@@ -53,9 +58,11 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
     MatButtonModule,
     MatCheckboxModule,
     MatProgressBarModule,
+    MatSlideToggleModule,
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
+    StationTimePipe,
     ArtistSelectComponent,
     NumberInputComponent,
     PageHeaderComponent,
@@ -67,16 +74,27 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
     FieldHintComponent,
     OperationStatusComponent,
     TrackAnalysisComponent,
+    TrackCueComponent,
     TrackMediaActionsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header
-      [title]="trackId() === null ? 'library.edit.createTitle' : 'library.edit.editTitle'"
+      [titleKey]="trackId() === null ? 'library.edit.createTitle' : 'library.edit.editTitle'"
       helpPage="help.library"
     >
       @if (stored(); as track) {
         <app-play-button [track]="track" />
+        @if (track.playout_state; as state) {
+          <span class="badge" [class.warn]="state === 'on_air'">{{
+            'library.usage.' + state | translate
+          }}</span>
+        }
+        @if (track.next_planned_at) {
+          <span class="muted">{{
+            'library.usage.nextPlanned' | translate: { time: (track.next_planned_at | stationTime) }
+          }}</span>
+        }
       }
     </app-page-header>
 
@@ -92,6 +110,7 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
         <app-text-input
           [control]="form.controls.title"
           label="library.fields.title"
+          hint="library.edit.titleHint"
           [maxLength]="limits.titleMax"
           hintPage="help.library"
           hintField="title"
@@ -159,6 +178,26 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
             }}</mat-checkbox>
             <app-field-hint page="help.library" field="quality_ok" />
           </div>
+          <div class="reviewed">
+            <mat-slide-toggle
+              [checked]="!!track.reviewed_at"
+              [disabled]="dirty() || reviewing()"
+              (change)="setReviewed(track, $event)"
+            >
+              {{ 'library.fields.reviewed' | translate }}
+            </mat-slide-toggle>
+            <app-field-hint page="help.library" field="reviewed" />
+            @if (dirty()) {
+              <span class="muted">{{ 'library.edit.reviewSaveFirst' | translate }}</span>
+            } @else if (track.reviewed_at) {
+              <span class="muted">{{
+                'library.reviewedAt' | translate: { time: (track.reviewed_at | stationTime) }
+              }}</span>
+            }
+          </div>
+          @if (reviewError(); as message) {
+            <p class="form-error" role="alert">{{ message }}</p>
+          }
           <app-track-media-actions
             [tracks]="[track]"
             [counts]="false"
@@ -170,6 +209,11 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
             <p class="form-error" role="alert">{{ message }}</p>
           }
           <app-operation-status [state]="media.run.state()" runningLabel="library.media.running" />
+          @if (media.cueReset(); as reset) {
+            <p class="muted" role="status">
+              {{ 'library.media.cueReset' | translate: { count: reset.count, paths: reset.paths } }}
+            </p>
+          }
         </section>
       }
       <app-text-input
@@ -191,6 +235,15 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
         <a matButton routerLink="/library">{{ 'common.back' | translate }}</a>
       </div>
     </form>
+
+    @if (edited(); as track) {
+      <!-- The canvas editor is not needed for the first view of the page. -->
+      @defer (on idle) {
+        <app-track-cue [track]="track" (saved)="stored.set($event)" />
+      } @placeholder {
+        <p class="muted">{{ 'library.cue.title' | translate }}</p>
+      }
+    }
   `,
   styles: `
     .section-title {
@@ -203,10 +256,15 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
       margin: 0 0 1.25rem;
     }
 
-    .quality-ok {
+    .quality-ok,
+    .reviewed {
       display: flex;
       align-items: center;
       margin: 0.75rem 0;
+    }
+
+    .reviewed {
+      gap: 0.5rem;
     }
   `,
 })
@@ -224,9 +282,14 @@ export default class TrackEditComponent implements PendingChanges {
   protected readonly form = trackForm();
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly reviewing = signal(false);
+  protected readonly reviewError = signal<string | null>(null);
+  private readonly cue = viewChild(TrackCueComponent);
 
   /** The track as last read or saved; null for a new one. */
   protected readonly stored = signal<Track | null>(null);
+  /** A stored track opened for editing; a track created here goes back to the library. */
+  protected readonly edited = computed(() => (this.id() === undefined ? null : this.stored()));
   protected readonly trackId = computed(() => {
     const id = this.id();
     return this.stored()?.id ?? (id === undefined ? null : Number(id));
@@ -290,7 +353,32 @@ export default class TrackEditComponent implements PendingChanges {
   }
 
   hasUnsavedChanges(): boolean {
-    return this.form.dirty;
+    return this.form.dirty || !!this.cue()?.hasUnsavedChanges();
+  }
+
+  /**
+   * Saving a new title, artist, or file clears the mark on the backend, so the toggle waits for a
+   * saved form; the time shown is the backend's, read again after the request.
+   */
+  protected setReviewed(track: Track, change: MatSlideToggleChange): void {
+    const reviewed = change.checked;
+    this.reviewing.set(true);
+    this.reviewError.set(null);
+    this.api
+      .post('/api/tracks/review', { body: { track_ids: [track.id], reviewed } })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.reviewing.set(false);
+          this.track.reload();
+        },
+        error: (error: unknown) => {
+          this.reviewing.set(false);
+          this.reviewError.set(errorMessage(error, this.i18n));
+          // The toggle moved on click; put it back to the stored state.
+          change.source.checked = !reviewed;
+        },
+      });
   }
 
   protected save(): void {

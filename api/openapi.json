@@ -1174,7 +1174,12 @@
           "overlap",
           "does_not_fit",
           "order",
-          "blocked"
+          "blocked",
+          "invalid_characters",
+          "cue_order",
+          "cue_beyond_end",
+          "air_too_short",
+          "fades_too_long"
         ],
         "type": "string"
       },
@@ -2303,6 +2308,12 @@
           "artist_name": {
             "type": "string"
           },
+          "in_ms": {
+            "description": "In point in the file (the cue in), in ms; the track plays out_ms - in_ms.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "item_id": {
             "description": "Plan item; absent for an emergency track.",
             "format": "int64",
@@ -2310,7 +2321,7 @@
             "type": "integer"
           },
           "out_ms": {
-            "description": "Planned out point (plan items) or duration (emergency tracks), in ms.",
+            "description": "Out point in the file: planned (plan items), or the cue out or the duration (emergency tracks), in ms.",
             "format": "int64",
             "type": "integer"
           },
@@ -2342,6 +2353,7 @@
           "title",
           "source",
           "started_at",
+          "in_ms",
           "truncated"
         ],
         "type": "object"
@@ -2352,6 +2364,12 @@
           "artist_name": {
             "type": "string"
           },
+          "in_ms": {
+            "description": "In point in the file (the cue in), in ms; the track plays out_ms - in_ms.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "item_id": {
             "description": "Plan item; absent for an emergency track.",
             "format": "int64",
@@ -2359,7 +2377,7 @@
             "type": "integer"
           },
           "out_ms": {
-            "description": "Planned out point (plan items) or duration (emergency tracks), in ms.",
+            "description": "Out point in the file: planned (plan items), or the cue out or the duration (emergency tracks), in ms.",
             "format": "int64",
             "type": "integer"
           },
@@ -2392,6 +2410,7 @@
           "title",
           "source",
           "started_at",
+          "in_ms",
           "truncated"
         ],
         "type": "object"
@@ -2982,7 +3001,14 @@
             "$ref": "#/components/schemas/OutageRef",
             "description": "Missed items: the outage that kept them off the air."
           },
+          "planned_in_ms": {
+            "description": "In point the item was planned with, from the start of the file (its cue in); 0 for emergency tracks.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "planned_out_ms": {
+            "description": "Out point from the start of the file; the planned length is planned_out_ms - planned_in_ms. Absent for emergency tracks.",
             "format": "int64",
             "type": "integer"
           },
@@ -3045,7 +3071,8 @@
           "status",
           "source",
           "track_id",
-          "title"
+          "title",
+          "planned_in_ms"
         ],
         "type": "object"
       },
@@ -3489,7 +3516,14 @@
             "minimum": 0,
             "type": "integer"
           },
+          "planned_in_ms": {
+            "description": "In point from the start of the file.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "planned_out_ms": {
+            "description": "Out point from the start of the file; the length is planned_out_ms - planned_in_ms.",
             "format": "int64",
             "type": "integer"
           },
@@ -3522,6 +3556,7 @@
           "track_id",
           "title",
           "planned_start_utc",
+          "planned_in_ms",
           "planned_out_ms",
           "truncated",
           "queue"
@@ -3638,6 +3673,8 @@
           "track_in_use",
           "track_has_history",
           "track_file_not_found",
+          "title_empty",
+          "title_too_long",
           "play_rule_not_found",
           "play_rule_in_use",
           "separation_rule_not_found",
@@ -3657,7 +3694,10 @@
           "media_tools_unavailable",
           "live_session_active",
           "live_offer_invalid",
-          "live_unavailable"
+          "live_unavailable",
+          "track_on_air",
+          "track_not_analysed",
+          "waveform_unavailable"
         ],
         "type": "string"
       },
@@ -3673,6 +3713,105 @@
         },
         "required": [
           "name"
+        ],
+        "type": "object"
+      },
+      "RenameRefusal": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "title_empty: nothing would be left of the title; title_too_long: the title would be over 500 characters (it is not cut).",
+            "enum": [
+              "track_not_found",
+              "title_empty",
+              "title_too_long"
+            ],
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id",
+          "code"
+        ],
+        "type": "object"
+      },
+      "RenameTracksBody": {
+        "additionalProperties": false,
+        "properties": {
+          "dry_run": {
+            "description": "true returns the preview and writes nothing; false writes the titles.",
+            "type": "boolean"
+          },
+          "find": {
+            "description": "Text to find in the titles, literally (no pattern characters); not only white space.",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "match_case": {
+            "description": "Match the case of find; by default the match ignores case.",
+            "type": "boolean"
+          },
+          "replace": {
+            "description": "Text that replaces every occurrence; empty or absent removes it.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "track_ids": {
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids",
+          "find",
+          "dry_run"
+        ],
+        "type": "object"
+      },
+      "RenameTracksResult": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "description": "Tracks whose title changes (dry run) or changed.",
+            "items": {
+              "$ref": "#/components/schemas/TitleChange"
+            },
+            "type": "array"
+          },
+          "refused": {
+            "description": "Tracks left alone, with the reason.",
+            "items": {
+              "$ref": "#/components/schemas/RenameRefusal"
+            },
+            "type": "array"
+          },
+          "unchanged": {
+            "description": "Tracks whose title has no occurrence of find, or stays the same.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "changed",
+          "unchanged",
+          "refused"
         ],
         "type": "object"
       },
@@ -3710,6 +3849,59 @@
         "required": [
           "target_hour_start_utc",
           "placement"
+        ],
+        "type": "object"
+      },
+      "ReviewTracksBody": {
+        "additionalProperties": false,
+        "properties": {
+          "reviewed": {
+            "description": "true marks the tracks reviewed (a track already reviewed keeps the time of its first mark); false clears the mark.",
+            "type": "boolean"
+          },
+          "track_ids": {
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids",
+          "reviewed"
+        ],
+        "type": "object"
+      },
+      "ReviewTracksResult": {
+        "additionalProperties": false,
+        "properties": {
+          "not_found": {
+            "description": "Tracks that do not exist, in request order.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "updated": {
+            "description": "Tracks marked or cleared, in request order.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "updated",
+          "not_found"
         ],
         "type": "object"
       },
@@ -4097,9 +4289,36 @@
         ],
         "type": "object"
       },
+      "TitleChange": {
+        "additionalProperties": false,
+        "properties": {
+          "new_title": {
+            "type": "string"
+          },
+          "old_title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id",
+          "old_title",
+          "new_title"
+        ],
+        "type": "object"
+      },
       "Track": {
         "additionalProperties": false,
         "properties": {
+          "air_duration_ms": {
+            "description": "Length on air: cue out (or the duration) minus cue in. The planner fits the track by it. Absent while the duration is unknown.",
+            "format": "int64",
+            "type": "integer"
+          },
           "analyzed_at": {
             "description": "Absent until the file is analysed.",
             "format": "date-time",
@@ -4126,9 +4345,34 @@
             "format": "date-time",
             "type": "string"
           },
+          "cue_in_ms": {
+            "description": "Start of the part that goes on air, from the start of the file (PUT /api/tracks/{id}/cue). 0: the start of the file.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cue_out_ms": {
+            "description": "End of the part that goes on air, from the start of the file; absent: the end of the file.",
+            "format": "int64",
+            "type": "integer"
+          },
           "duration_ms": {
             "description": "Absent until entered or read from the file; such a track cannot be planned.",
             "format": "int64",
+            "type": "integer"
+          },
+          "fade_in_ms": {
+            "description": "Fade in at the cue in point; 0 is a hard cut.",
+            "format": "int64",
+            "maximum": 5000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fade_out_ms": {
+            "description": "Fade out ending at the cue out point; 0 is a hard cut. A track cut at the end of its segment fades out by liquidsoap.fade_out_ms instead.",
+            "format": "int64",
+            "maximum": 5000,
+            "minimum": 0,
             "type": "integer"
           },
           "file_checksum": {
@@ -4174,6 +4418,11 @@
             "format": "double",
             "type": "number"
           },
+          "next_planned_at": {
+            "description": "Earliest planned start of the track in the track plan (planned or queued items); absent when it is not planned.",
+            "format": "date-time",
+            "type": "string"
+          },
           "play_rule_ids": {
             "description": "Rules of the track itself, in ID order. The rules of its playlists apply too.",
             "items": {
@@ -4191,6 +4440,14 @@
               "type": "integer"
             },
             "type": "array"
+          },
+          "playout_state": {
+            "description": "on_air: the track is on air; queued: a plan item of it waits in Liquidsoap's queue. Absent otherwise. The panel reloads on the playout and plan events.",
+            "enum": [
+              "on_air",
+              "queued"
+            ],
+            "type": "string"
           },
           "quality_issues": {
             "description": "Problems found by the last analysis against the broadcast standard (settings import.*). low_bitrate and file_missing cannot be fixed by a transcode.",
@@ -4214,6 +4471,11 @@
           "quality_ok": {
             "description": "Absent until the file is analysed.",
             "type": "boolean"
+          },
+          "reviewed_at": {
+            "description": "When the manager marked the track checked (POST /api/tracks/review); absent when it is not. A change of the title, the artist, the file path, or the file itself (a transcode, a replaced file) clears it.",
+            "format": "date-time",
+            "type": "string"
           },
           "sample_rate": {
             "description": "Hz.",
@@ -4246,7 +4508,10 @@
           "play_rule_ids",
           "created_at",
           "quality_issues",
-          "fixes"
+          "fixes",
+          "cue_in_ms",
+          "fade_in_ms",
+          "fade_out_ms"
         ],
         "type": "object"
       },
@@ -4353,6 +4618,67 @@
         ],
         "type": "object"
       },
+      "TrackCueBody": {
+        "additionalProperties": false,
+        "properties": {
+          "cue_in_ms": {
+            "description": "Start of the on-air part, from the start of the file; before the end of the file.",
+            "format": "int64",
+            "maximum": 21600000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cue_out_ms": {
+            "description": "End of the on-air part, after cue_in_ms and not past the end of the file; null: the end of the file. A cut must leave at least 5 s on air.",
+            "format": "int64",
+            "maximum": 21600000,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "fade_in_ms": {
+            "description": "Fade in at cue in; 0 is a hard cut. The panel proposes liquidsoap.cue_fade_in_ms.",
+            "format": "int64",
+            "maximum": 5000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fade_out_ms": {
+            "description": "Fade out ending at cue out; 0 is a hard cut. The fades together must not be longer than the on-air part. The panel proposes liquidsoap.cue_fade_out_ms.",
+            "format": "int64",
+            "maximum": 5000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cue_in_ms",
+          "cue_out_ms",
+          "fade_in_ms",
+          "fade_out_ms"
+        ],
+        "type": "object"
+      },
+      "TrackCueResult": {
+        "additionalProperties": false,
+        "properties": {
+          "build_operation_id": {
+            "description": "The clock_build operation that rebuilds the future hours holding a planned item of the track, so they use the new cut. Absent when only fades changed or the track is not planned.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "track": {
+            "$ref": "#/components/schemas/Track"
+          }
+        },
+        "required": [
+          "track"
+        ],
+        "type": "object"
+      },
       "TrackEndedData": {
         "additionalProperties": false,
         "properties": {
@@ -4442,12 +4768,19 @@
             "type": "array"
           },
           "next_cursor": {
-            "description": "Pass as cursor to read the next page; absent on the last page.",
+            "description": "Pass as cursor to read the next page; set only in the default order (title, asc), absent on the last page.",
             "type": "string"
+          },
+          "total": {
+            "description": "Tracks matching the filters, on every page.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
-          "items"
+          "items",
+          "total"
         ],
         "type": "object"
       },
@@ -4553,8 +4886,14 @@
             "minimum": 0,
             "type": "integer"
           },
+          "planned_in_ms": {
+            "description": "In point from the start of the file (the track's cue in when it was planned).",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "planned_out_ms": {
-            "description": "Out point from the start of the track; shorter than duration_ms when truncated.",
+            "description": "Out point from the start of the file; the length is planned_out_ms - planned_in_ms, shorter than the track's air_duration_ms when truncated.",
             "format": "int64",
             "type": "integer"
           },
@@ -4603,6 +4942,7 @@
           "title",
           "duration_ms",
           "planned_start_utc",
+          "planned_in_ms",
           "planned_out_ms",
           "truncated",
           "source",
@@ -4761,6 +5101,45 @@
         "required": [
           "track_id",
           "code"
+        ],
+        "type": "object"
+      },
+      "TrackWaveform": {
+        "additionalProperties": false,
+        "properties": {
+          "bucket_ms": {
+            "description": "Length of one bucket.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "duration_ms": {
+            "description": "Length of the decoded audio.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_peak": {
+            "description": "The largest absolute value in peaks, so the drawing can be scaled to it (0 for silence). In dBFS: 20 × log10(max_peak / 127).",
+            "format": "int64",
+            "maximum": 127,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "peaks": {
+            "description": "The min and max amplitude of every bucket of a mono mix, -127 to 127 (linear; 127 is full scale, 0 dBFS), flat: [min0, max0, min1, max1, ...]. The last bucket may be partial.",
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "duration_ms",
+          "bucket_ms",
+          "peaks",
+          "max_peak"
         ],
         "type": "object"
       },
@@ -8925,7 +9304,7 @@
     },
     "/api/tracks": {
       "get": {
-        "description": "Tracks in title order, a page at a time: pass next_cursor as cursor for the next page. The filters combine.",
+        "description": "Tracks matching the filters, sorted by `sort` and `order` (ties by title and ID), a page at a time: read the next page with `offset`, or with `next_cursor` as `cursor` in the default title order. `total` counts every matching track. The filters combine.",
         "operationId": "list-tracks",
         "parameters": [
           {
@@ -8991,12 +9370,102 @@
             }
           },
           {
-            "description": "next_cursor of the previous page.",
+            "description": "Only tracks with (true) or without (false) the reviewed mark.",
+            "explode": false,
+            "in": "query",
+            "name": "reviewed",
+            "schema": {
+              "description": "Only tracks with (true) or without (false) the reviewed mark.",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tracks with (true) or without (false) a planned or queued item in the track plan.",
+            "explode": false,
+            "in": "query",
+            "name": "in_plan",
+            "schema": {
+              "description": "Only tracks with (true) or without (false) a planned or queued item in the track plan.",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tracks in at least one playlist (true) or in none (false).",
+            "explode": false,
+            "in": "query",
+            "name": "in_playlist",
+            "schema": {
+              "description": "Only tracks in at least one playlist (true) or in none (false).",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders (reviewed: by the time of the mark, tracks not reviewed last; next_planned_at: tracks not in the plan last).",
+            "explode": false,
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "default": "title",
+              "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders (reviewed: by the time of the mark, tracks not reviewed last; next_planned_at: tracks not in the plan last).",
+              "enum": [
+                "title",
+                "artist",
+                "type",
+                "duration",
+                "format",
+                "quality",
+                "reviewed",
+                "next_planned_at"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "default": "asc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Tracks to skip in the sorted list.",
+            "explode": false,
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "description": "Tracks to skip in the sorted list.",
+              "format": "int64",
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "next_cursor of the previous page; only in the default order (title, asc) and without offset.",
             "explode": false,
             "in": "query",
             "name": "cursor",
             "schema": {
-              "description": "next_cursor of the previous page.",
+              "description": "next_cursor of the previous page; only in the default order (title, asc) and without offset.",
               "maxLength": 2000,
               "type": "string"
             }
@@ -9226,6 +9695,110 @@
         ]
       }
     },
+    "/api/tracks/rename": {
+      "post": {
+        "description": "Replaces every occurrence of find in the titles of the tracks (literal text; case ignored unless match_case), then trims the title and collapses runs of white space. With dry_run true it returns the preview and writes nothing; with false it writes the changed titles in one transaction, computed again from the stored titles, and clears their reviewed mark. A title that would become empty or longer than 500 characters is refused, not cut.",
+        "operationId": "rename-tracks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameTracksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameTracksResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Find and replace in titles",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/review": {
+      "post": {
+        "description": "Sets or clears the reviewed mark of several tracks in one statement. A track already reviewed keeps the time of its first mark. Tracks that do not exist are listed in not_found.",
+        "operationId": "review-tracks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewTracksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTracksResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Mark tracks reviewed",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
     "/api/tracks/transcode": {
       "post": {
         "description": "Starts a transcode operation (Fix loudness, Optimize track). A track is skipped when the fix removes none of its issues, while it is queued, on air, or planned to start within playout.prepush_minutes + 5 minutes, and when the target path belongs to another track. Refused with media_operation_running while another import, analysis, or transcode runs, and with media_tools_unavailable when ffmpeg is missing.",
@@ -9426,7 +9999,7 @@
         ]
       },
       "put": {
-        "description": "Replaces the metadata and the playlists of a track. Optional fields left out are cleared, then metadata is read from the file where it exists.",
+        "description": "Replaces the metadata and the playlists of a track. Optional fields left out are cleared, then metadata is read from the file where it exists. The title is trimmed and runs of white space become one space; control characters (line breaks, tabs) are refused (invalid_characters). A new title, artist, or file path clears the reviewed mark; playlists, type, notes, and the quality override do not. The title and artist go on air with requests pushed to Liquidsoap after the save; items already queued keep the old ones.",
         "operationId": "update-track",
         "parameters": [
           {
@@ -9579,6 +10152,90 @@
         ]
       }
     },
+    "/api/tracks/{id}/cue": {
+      "put": {
+        "description": "Sets the part of the file that goes on air (cue_in_ms to cue_out_ms) and the fades at those points; the file is not changed. A cut must leave at least 5 s on air (air_too_short), and the fades together must fit in it (fades_too_long). Refused for a track without a duration (track_not_analysed) and while a plan item of the track is queued in Liquidsoap or it is on air (track_on_air). When cue in or out changed, the future hours that hold a planned item of the track are rebuilt (build_operation_id); items already queued keep their cut. Fades only need no rebuild: they are read when a request is pushed. The reviewed mark is kept.",
+        "operationId": "set-track-cue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackCueBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackCueResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Set the cue points of a track",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
     "/api/tracks/{id}/play-rules": {
       "put": {
         "description": "Rules of the track itself. The rules of its playlists apply too; all of them must pass.",
@@ -9648,6 +10305,115 @@
           }
         },
         "summary": "Set the play rules of a track",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/{id}/waveform": {
+      "get": {
+        "description": "The min and max amplitude of every 50 ms of the track file, for the cue editor. Computed with ffmpeg on the first request and stored until the file changes (its checksum); the ETag is the checksum, so a client sends If-None-Match and gets 304 while it is current. A missing or unreadable file is waveform_unavailable; without ffmpeg, media_tools_unavailable.",
+        "operationId": "get-track-waveform",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The ETag of a waveform the client holds; 304 while it is current.",
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "description": "The ETag of a waveform the client holds; 304 while it is current.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackWaveform"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "description": "The checksum of the file the waveform was computed for; absent for a track never analysed.",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "The waveform of If-None-Match is current."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get the waveform of a track",
         "tags": [
           "Tracks"
         ]

@@ -38,7 +38,7 @@ export const PROGRESS_TICK_MS = 1_000;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="live.title" helpPage="help.live" />
+    <app-page-header titleKey="live.title" helpPage="help.live" />
 
     <section class="page-section" aria-labelledby="voice-heading">
       <h2 id="voice-heading" class="section-title">{{ 'live.voice.title' | translate }}</h2>

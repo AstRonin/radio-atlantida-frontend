@@ -34,7 +34,7 @@ type ClockSummary = ApiSchema<'ClockSummary'>;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="clocks.title" helpPage="help.clocks">
+    <app-page-header titleKey="clocks.title" helpPage="help.clocks">
       <a matButton="filled" routerLink="/clocks/new">{{ 'clocks.add' | translate }}</a>
     </app-page-header>
 

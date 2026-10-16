@@ -87,7 +87,7 @@ interface LogRow {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="logs.title" helpPage="help.logs">
+    <app-page-header titleKey="logs.title" helpPage="help.logs">
       @if (grafanaUrl(); as grafana) {
         <a
           matButton="outlined"

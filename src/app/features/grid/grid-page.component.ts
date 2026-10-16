@@ -69,7 +69,7 @@ const WEEK_DAYS = 7;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="grid.title" helpPage="help.grid" />
+    <app-page-header titleKey="grid.title" helpPage="help.grid" />
 
     <section class="page-section" aria-labelledby="week-heading">
       <div class="week-head">

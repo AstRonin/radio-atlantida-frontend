@@ -14,7 +14,8 @@ const MONDAY_UTC = Date.UTC(2024, 0, 1);
 
 /**
  * Weekdays as checkboxes, never typed (design §6.2). The value is a sorted list of 1 = Monday to
- * 7 = Sunday, as the API sends it. Day names come from the active language's locale.
+ * 7 = Sunday, as the API sends it. Day names come from the active language's locale. "All" sets
+ * or clears the seven days at once.
  */
 @Component({
   selector: 'app-weekdays-input',
@@ -28,6 +29,15 @@ const MONDAY_UTC = Date.UTC(2024, 0, 1);
           <app-field-hint [page]="page" [field]="hintField() ?? ''" />
         }
       </legend>
+      <mat-checkbox
+        class="all"
+        [checked]="allState() === 'all'"
+        [indeterminate]="allState() === 'some'"
+        [disabled]="control().disabled"
+        (change)="toggleAll()"
+      >
+        {{ 'forms.weekdays.all' | translate }}
+      </mat-checkbox>
       @for (day of days(); track day.value) {
         <mat-checkbox
           [checked]="selected().has(day.value)"
@@ -99,15 +109,28 @@ export class WeekdaysInputComponent {
     return new Set(this.control().value ?? []);
   });
 
+  protected readonly allState = computed<'all' | 'some' | 'none'>(() => {
+    const count = WEEKDAYS.filter((day) => this.selected().has(day)).length;
+    return count === WEEKDAYS.length ? 'all' : count > 0 ? 'some' : 'none';
+  });
+
   protected toggle(day: number, checked: boolean): void {
-    const control = this.control();
-    const days = new Set(control.value ?? []);
+    const days = new Set(this.control().value ?? []);
     if (checked) {
       days.add(day);
     } else {
       days.delete(day);
     }
-    control.setValue([...days].sort((a, b) => a - b));
+    this.update([...days].sort((a, b) => a - b));
+  }
+
+  protected toggleAll(): void {
+    this.update(this.allState() === 'all' ? [] : [...WEEKDAYS]);
+  }
+
+  private update(days: number[]): void {
+    const control = this.control();
+    control.setValue(days);
     control.markAsDirty();
     control.markAsTouched();
   }

@@ -80,7 +80,7 @@ type ClockWarning = ApiSchema<'ClockWarning'>;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header
-      [title]="clockId() === null ? 'clocks.edit.createTitle' : 'clocks.edit.editTitle'"
+      [titleKey]="clockId() === null ? 'clocks.edit.createTitle' : 'clocks.edit.editTitle'"
       helpPage="help.clocks"
     />
 
