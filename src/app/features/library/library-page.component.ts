@@ -23,6 +23,7 @@ import {
   catchError,
   debounceTime,
   distinctUntilChanged,
+  filter,
   map,
   merge,
   of,
@@ -40,8 +41,10 @@ import { ConfirmService } from '../../shared/ui/confirm.service';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
+import { BULK_DELETE_MAX, trackBulkDelete } from './track-bulk-delete';
+import { TrackDeleteResultComponent } from './track-delete-result.component';
 import type { Track } from './track-form';
-import { trackMedia } from './track-media';
+import { MediaRequest, trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
 import { TrackQualityComponent } from './track-quality.component';
 
@@ -59,7 +62,8 @@ interface PageRequest {
 /**
  * The track library (docs/frontend-init-plan.md F5): search by title or artist, filters by
  * playlist, type, and quality, a play button on every row. Pages are read with the backend's
- * cursor, a hundred tracks at a time. Selected tracks can be analysed again or fixed (F10).
+ * cursor, a hundred tracks at a time. Selected tracks can be analysed again or fixed (F10), or
+ * deleted with one request (F17).
  */
 @Component({
   selector: 'app-library-page',
@@ -78,6 +82,7 @@ interface PageRequest {
     PageHeaderComponent,
     OperationStatusComponent,
     PlayButtonComponent,
+    TrackDeleteResultComponent,
     TrackMediaActionsComponent,
     TrackQualityComponent,
   ],
@@ -123,7 +128,13 @@ interface PageRequest {
       </mat-form-field>
     </form>
 
-    @if (selectedTracks().length > 0 || media.run.state()) {
+    @if (
+      selectedTracks().length > 0 ||
+      media.run.state() ||
+      bulkDelete.running() ||
+      bulkDelete.result() ||
+      bulkDelete.error()
+    ) {
       <section class="page-section selection" aria-labelledby="selection-heading">
         <h2 id="selection-heading" class="section-title">
           {{ 'library.media.selected' | translate: { count: selectedTracks().length } }}
@@ -131,17 +142,44 @@ interface PageRequest {
             <button matButton type="button" (click)="clearSelection()">
               {{ 'library.media.clearSelection' | translate }}
             </button>
+            <button
+              matButton
+              type="button"
+              class="danger"
+              [disabled]="tooManyToDelete() || bulkDelete.running() || media.run.running()"
+              (click)="deleteSelected()"
+            >
+              {{ 'library.bulkDelete.delete' | translate: { count: selectedTracks().length } }}
+            </button>
           }
         </h2>
+        @if (tooManyToDelete()) {
+          <p class="muted">{{ 'library.bulkDelete.tooMany' | translate }}</p>
+        }
         <app-track-media-actions
           [tracks]="selectedTracks()"
-          [running]="media.run.running()"
-          (request)="media.start($event)"
+          [running]="media.run.running() || bulkDelete.running()"
+          (request)="startMedia($event)"
         />
         @if (media.error(); as message) {
           <p class="form-error" role="alert">{{ message }}</p>
         }
         <app-operation-status [state]="media.run.state()" runningLabel="library.media.running" />
+        @if (bulkDelete.count(); as count) {
+          <div role="status">
+            <mat-progress-bar
+              mode="indeterminate"
+              [attr.aria-label]="'library.bulkDelete.running' | translate: { count }"
+            />
+            <p class="muted">{{ 'library.bulkDelete.running' | translate: { count } }}</p>
+          </div>
+        }
+        @if (bulkDelete.error(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        @if (bulkDelete.result(); as result) {
+          <app-track-delete-result [result]="result" />
+        }
       </section>
     }
 
@@ -259,6 +297,10 @@ interface PageRequest {
     .numeric {
       font-variant-numeric: tabular-nums;
     }
+
+    .danger {
+      --mat-button-text-label-text-color: var(--mat-sys-error);
+    }
   `,
 })
 export default class LibraryPageComponent implements OnInit {
@@ -304,6 +346,7 @@ export default class LibraryPageComponent implements OnInit {
    */
   protected readonly selected = signal<ReadonlyMap<number, Track>>(new Map());
   protected readonly selectedTracks = computed(() => [...this.selected().values()]);
+  protected readonly tooManyToDelete = computed(() => this.selected().size > BULK_DELETE_MAX);
   protected readonly allSelected = computed(
     () => this.rows().length > 0 && this.rows().every((track) => this.selected().has(track.id)),
   );
@@ -312,6 +355,18 @@ export default class LibraryPageComponent implements OnInit {
   protected readonly media = trackMedia((state) => {
     if (state.status === 'completed') {
       this.clearSelection();
+    }
+    this.reload();
+  });
+
+  /** Deleted tracks leave the selection; refused ones stay selected, so the manager sees them. */
+  protected readonly bulkDelete = trackBulkDelete((deleted) => {
+    if (deleted.length > 0) {
+      this.selected.update((selected) => {
+        const next = new Map(selected);
+        deleted.forEach((id) => next.delete(id));
+        return next;
+      });
     }
     this.reload();
   });
@@ -386,6 +441,7 @@ export default class LibraryPageComponent implements OnInit {
   }
 
   protected select(track: Track, checked: boolean): void {
+    this.bulkDelete.clear();
     this.selected.update((selected) => {
       const next = new Map(selected);
       if (checked) {
@@ -398,6 +454,7 @@ export default class LibraryPageComponent implements OnInit {
   }
 
   protected selectAll(checked: boolean): void {
+    this.bulkDelete.clear();
     this.selected.update((selected) => {
       const next = new Map(selected);
       for (const track of this.rows()) {
@@ -428,7 +485,28 @@ export default class LibraryPageComponent implements OnInit {
   }
 
   protected clearSelection(): void {
+    this.bulkDelete.clear();
     this.selected.set(new Map());
+  }
+
+  protected startMedia(request: MediaRequest): void {
+    this.bulkDelete.clear();
+    this.media.start(request);
+  }
+
+  protected deleteSelected(): void {
+    const ids = this.selectedTracks().map((track) => track.id);
+    this.bulkDelete.clear();
+    this.confirm
+      .confirm({
+        title: 'library.bulkDelete.confirmTitle',
+        message: 'library.bulkDelete.confirmMessage',
+        params: { count: ids.length },
+        confirmLabel: 'common.delete',
+        destructive: true,
+      })
+      .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.bulkDelete.start(ids));
   }
 
   protected reload(): void {

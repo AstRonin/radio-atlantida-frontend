@@ -662,6 +662,17 @@
         "message": "The fixed files replace the originals of {count} tracks. The originals are deleted from the media folder and cannot be restored.",
         "confirm": "Replace"
       }
+    },
+    "bulkDelete": {
+      "delete": "Delete ({count})",
+      "tooMany": "Select at most 1,000 tracks to delete.",
+      "confirmTitle": "Delete {count} tracks?",
+      "confirmMessage": "Delete {count} tracks from the library? The files stay on disk. Tracks that have played, are planned, or are in a filler pool are kept.",
+      "running": "Deleting {count} tracks…",
+      "done": "Deleted {deleted} of {requested} tracks.",
+      "refusedTitle": "Kept tracks: {count}. They stay selected.",
+      "usedBy": "Filler pool of:",
+      "moreRefused": "and {count} more"
     }
   },
   "playlists": {

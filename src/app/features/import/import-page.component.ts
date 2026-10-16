@@ -44,7 +44,7 @@ import { ImportFolderSelectComponent, MEDIA_ROOT } from './import-folder-select.
 
 type ImportFile = ApiSchema<'ImportFile'>;
 
-// A folder may hold hundreds of files (the backend lists up to 1,000); the page shows them in pages.
+// A folder may hold hundreds of files (the backend lists up to 2,000); the page shows them in pages.
 const PAGE_SIZES = [10, 25, 50, 100];
 
 // The whole media folder is the empty path, which `Validators.required` would refuse.

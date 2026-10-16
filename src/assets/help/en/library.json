@@ -23,6 +23,10 @@
       "text": "Fix loudness brings the loudness to the station level and keeps the format. Optimize track also converts the file to the broadcast standard. A button appears only when it removes at least one issue. Choose whether the fixed file replaces the original or is kept as an optimal copy next to it."
     },
     {
+      "term": "Delete selected tracks",
+      "text": "Delete (N) next to Clear selection removes up to 1,000 selected tracks from the library in one step. The files stay on disk. A track that has aired, is planned, or is in a clock's filler pool is kept: the result lists each kept track with the reason, links the clocks whose filler pool holds it, and leaves it selected."
+    },
+    {
       "term": "Play button",
       "text": "Plays the track in your browser only. A preview never goes to air and does not count as a play."
     },
@@ -31,7 +35,7 @@
       "text": "The performer of a track, kept on the Artists page. Artist separation counts plays per artist, so each artist has one entry with a unique name. Jingles and station IDs need no artist."
     }
   ],
-  "usage": "Search by title or artist, or filter by playlist, type, or quality. Open a track to edit its details, its playlists, and its play rules, and to see what the analysis measured. Select tracks with the checkboxes to analyse them again or fix them. Use the play button on any row to check what a track sounds like.",
+  "usage": "Search by title or artist, or filter by playlist, type, or quality. Open a track to edit its details, its playlists, and its play rules, and to see what the analysis measured. Select tracks with the checkboxes to analyse them again, fix them, or delete them. Use the play button on any row to check what a track sounds like.",
   "steps": [
     "Bring new files in through the Import page, or copy a file into the media folder and click Add track.",
     "For a track added by hand, enter the title, the artist, the type, and the file path.",
@@ -45,7 +49,8 @@
     "Forgetting the duration of a track whose file cannot be read: a track without a duration is never planned.",
     "Expecting the type to control rotation. Only playlists, clocks, and rules decide when a track plays.",
     "Choosing Replace the original when you may want the original back. Replace deletes it; an optimal copy keeps it on disk.",
-    "Expecting a fix for a low bitrate. Detail lost in the source cannot be restored; replace the file with a better one."
+    "Expecting a fix for a low bitrate. Detail lost in the source cannot be restored; replace the file with a better one.",
+    "Expecting Delete to free disk space. It removes tracks from the library only; the files stay in the media folder."
   ],
   "example": {
     "title": "Adding a morning jingle",
@@ -54,7 +59,7 @@
   "operations": {
     "create": "The file must already be in the media folder. The panel does not upload files; use the Import page for new files.",
     "edit": "Changing the playlists or rules affects only hours that are not planned yet or are rebuilt.",
-    "delete": "A track that has aired or is planned cannot be deleted, so the played-tracks list stays complete. Remove it from its playlists instead."
+    "delete": "A track that has aired or is planned cannot be deleted, so the played-tracks list stays complete; a track in a clock's filler pool cannot be deleted until it is removed from the pool. Remove such a track from its playlists instead. Deleting selected tracks applies the same rules to each track: the others are deleted, and the kept ones stay selected with the reason."
   },
   "fields": {
     "title": {
