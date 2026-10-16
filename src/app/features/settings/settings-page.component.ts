@@ -8,11 +8,12 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { rxResource, takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormRecord } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable, catchError, concatMap, from, map, of, toArray } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import { ApiProblem } from '../../core/api/api-problem';
@@ -42,6 +43,15 @@ interface Section {
   secrets: SecretStatus[];
 }
 
+interface SectionStats {
+  /** Settings of the section changed and not saved yet. */
+  changed: number;
+  /** Settings of the section with an error: a server refusal or an invalid value. */
+  errors: number;
+}
+
+const NO_STATS: SectionStats = { changed: 0, errors: 0 };
+
 interface SaveResult {
   setting: Setting;
   error: unknown;
@@ -56,6 +66,7 @@ interface SaveResult {
   selector: 'app-settings-page',
   imports: [
     MatButtonModule,
+    MatExpansionModule,
     MatProgressBarModule,
     RouterLink,
     TranslatePipe,
@@ -78,37 +89,72 @@ interface SaveResult {
       </p>
     }
 
-    @for (section of sections(); track section.group) {
-      <section class="page-section group" [attr.aria-labelledby]="'group-' + section.group">
-        <h2 class="group-title" [id]="'group-' + section.group">
-          {{ 'settings.groups.' + section.group | translate }}
-        </h2>
-        @for (setting of section.settings; track setting.key) {
-          @if (controls()[setting.key]; as control) {
-            <app-setting-field [setting]="setting" [control]="control" />
-          }
-        }
-        @if (section.secrets.length > 0) {
-          <div class="secrets">
-            <h3 class="secrets-title">{{ 'settings.secrets.title' | translate }}</h3>
-            <p class="muted">{{ 'settings.secrets.note' | translate }}</p>
-            <ul class="secret-list">
-              @for (secret of section.secrets; track secret.name) {
-                <li>
-                  <code>{{ secret.name }}</code>
-                  <span class="badge" [class.warn]="!secret.is_set">
-                    {{
-                      (secret.is_set ? 'settings.secrets.set' : 'settings.secrets.notSet')
-                        | translate
-                    }}
+    <p class="summary" role="status">
+      <span class="badge">{{ 'settings.unsaved' | translate: { count: changedCount() } }}</span>
+      @if (errorCount() > 0) {
+        <span class="badge warn" role="alert">
+          {{ 'settings.errors' | translate: { count: errorCount() } }}
+        </span>
+      }
+    </p>
+
+    <mat-accordion multi>
+      @for (section of sections(); track section.group) {
+        <section class="group" [attr.aria-labelledby]="'group-' + section.group">
+          <mat-expansion-panel
+            [expanded]="openGroups().has(section.group)"
+            (opened)="setOpen(section.group, true)"
+            (closed)="setOpen(section.group, false)"
+          >
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <h2 class="group-title" [id]="'group-' + section.group">
+                  {{ 'settings.groups.' + section.group | translate }}
+                </h2>
+              </mat-panel-title>
+              <mat-panel-description class="group-counts">
+                @let stats = statsOf(section.group);
+                @if (stats.changed > 0) {
+                  <span class="badge">
+                    {{ 'settings.changed' | translate: { count: stats.changed } }}
                   </span>
-                </li>
+                }
+                @if (stats.errors > 0) {
+                  <span class="badge warn">
+                    {{ 'settings.errors' | translate: { count: stats.errors } }}
+                  </span>
+                }
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            @for (setting of section.settings; track setting.key) {
+              @if (controls()[setting.key]; as control) {
+                <app-setting-field [setting]="setting" [control]="control" />
               }
-            </ul>
-          </div>
-        }
-      </section>
-    }
+            }
+            @if (section.secrets.length > 0) {
+              <div class="secrets">
+                <h3 class="secrets-title">{{ 'settings.secrets.title' | translate }}</h3>
+                <p class="muted">{{ 'settings.secrets.note' | translate }}</p>
+                <ul class="secret-list">
+                  @for (secret of section.secrets; track secret.name) {
+                    <li>
+                      <code>{{ secret.name }}</code>
+                      <span class="badge" [class.warn]="!secret.is_set">
+                        {{
+                          (secret.is_set ? 'settings.secrets.set' : 'settings.secrets.notSet')
+                            | translate
+                        }}
+                      </span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </mat-expansion-panel>
+        </section>
+      }
+    </mat-accordion>
     @if (secretsError(); as message) {
       <p class="load-error" role="alert">{{ message }}</p>
     }
@@ -151,13 +197,45 @@ interface SaveResult {
     }
   `,
   styles: `
+    /*
+     * Material gives the header a fixed height and the title a third of its width, so a long
+     * group name wraps and spills over the next panel. The header grows with its content instead.
+     */
     .group {
       max-width: 48rem;
+      --mat-expansion-header-collapsed-state-height: auto;
+      --mat-expansion-header-expanded-state-height: auto;
+    }
+
+    .group mat-expansion-panel-header {
+      min-height: 3.5rem;
+      padding-block: 0.5rem;
+    }
+
+    .group mat-panel-title {
+      flex: 1 1 auto;
     }
 
     .group-title {
+      margin: 0;
+      font: var(--mat-sys-title-medium);
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
       margin: 0 0 0.75rem;
-      font: var(--mat-sys-title-large);
+    }
+
+    .group-counts {
+      flex: 0 1 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      align-items: center;
     }
 
     .secrets {
@@ -212,6 +290,20 @@ export default class SettingsPageComponent implements PendingChanges {
   protected readonly result = signal<string | null>(null);
   protected readonly saveErrors = signal<readonly string[]>([]);
 
+  /** The open sections are kept in the query parameter `open`, a comma-separated list of groups. */
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
+  /** Without the parameter the first section is open; an empty parameter means none is. */
+  protected readonly openGroups = computed((): ReadonlySet<string> => {
+    const param = this.queryParams().get('open');
+    if (param === null) {
+      const first = this.sections()[0]?.group;
+      return new Set(first ? [first] : []);
+    }
+    return new Set(param.split(',').filter((group) => group !== ''));
+  });
+
   private readonly loaded = rxResource({ stream: () => this.settingsService.refresh() });
   private readonly secrets = rxResource({
     stream: () => this.api.get('/api/settings/secrets').pipe(map((list) => list.items)),
@@ -260,6 +352,55 @@ export default class SettingsPageComponent implements PendingChanges {
     this.version();
     return this.form.invalid;
   });
+
+  /** The changed and invalid settings of each section, which the headers and the summary show. */
+  private readonly stats = computed(() => {
+    this.version();
+    const controls = this.controls();
+    const changed = new Set(this.changed().map((setting) => setting.key));
+    const result = new Map<string, SectionStats>();
+    for (const section of this.sections()) {
+      let changedCount = 0;
+      let errors = 0;
+      for (const setting of section.settings) {
+        const control = controls[setting.key];
+        if (control === undefined) {
+          continue;
+        }
+        if (changed.has(setting.key)) {
+          changedCount++;
+        }
+        if (control.invalid) {
+          errors++;
+        }
+      }
+      result.set(section.group, { changed: changedCount, errors });
+    }
+    return result;
+  });
+  protected readonly errorCount = computed(() =>
+    [...this.stats().values()].reduce((total, stats) => total + stats.errors, 0),
+  );
+
+  protected statsOf(group: string): SectionStats {
+    return this.stats().get(group) ?? NO_STATS;
+  }
+
+  protected setOpen(group: string, open: boolean): void {
+    const next = new Set(this.openGroups());
+    if (open) {
+      next.add(group);
+    } else {
+      next.delete(group);
+    }
+    // An empty value (not null) keeps "none open" apart from the default of the first section.
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { open: [...next].join(',') },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
 
   constructor() {
     // Controls are made once per setting; later updates of the service (a save) keep them.

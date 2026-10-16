@@ -37,7 +37,7 @@ streams it, and PostgreSQL stores the data.
    `docs/f8-live-control-plan.md`, F9: `docs/f9-outages-missed-plan.md`, F10:
    `docs/f10-import-plan.md`, F11: `docs/f11-logs-plan.md`, F12: `docs/f12-release-plan.md`,
    F13: `docs/f13-grafana-link-plan.md`, F14: `docs/f14-broadcast-status-plan.md`, F15:
-   `docs/f15-air-window-plan.md`). Work only on
+   `docs/f15-air-window-plan.md`, F16: `docs/f16-import-in-place-plan.md`). Work only on
    the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
@@ -48,8 +48,8 @@ library pages), F6 (clocks and grid, `docs/f6-clocks-grid-plan.md`), F7 (rotatio
 plan, filler reminders, engine warnings, `docs/f7-rotation-views-plan.md`), F8 (live control:
 live voice over WebRTC, music gain, on-air status, `docs/f8-live-control-plan.md`), F9
 (outages and missed items: played-tracks list, outage list, reschedule and dismiss, open count in
-the header, `docs/f9-outages-missed-plan.md`), F10 (import, analysis, and transcoding: inbox
-and import page, quality facts and issues, Analyse / Fix loudness / Optimize track for selected
+the header, `docs/f9-outages-missed-plan.md`), F10 (import, analysis, and transcoding: import
+page, quality facts and issues, Analyse / Fix loudness / Optimize track for selected
 tracks, `docs/f10-import-plan.md`), F11 (logs: daily file, level and component filters,
 station-time entries, "Open log" from the error popup, `docs/f11-logs-plan.md`), F12 (release
 pipeline: a tag `vX.Y.Z` on `main` pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z` after
@@ -59,10 +59,13 @@ Grafana" on the Logs page, from the container's `GRAFANA_URL` served as `/config
 `RuntimeConfigService` (`core/config`), `docs/f13-grafana-link-plan.md`), F14 (broadcast status
 in the header: state, timer on the server clock, tooltip, from `broadcast.state` and
 `GET /api/broadcast/status` in `BroadcastService` (`core/broadcast`),
-`docs/f14-broadcast-status-plan.md`), and F15 (air window: played, on-air, and queued items from
+`docs/f14-broadcast-status-plan.md`), F15 (air window: played, on-air, and queued items from
 `GET /api/air-window` on the page `/air-window`, reloaded on playout, plan, and outage events
 without polling; the list is `app-air-window-list` (`shared/air-window`); settings group "Air
-window", `docs/f15-air-window-plan.md`) done. A page follows an operation it started (progress,
+window", `docs/f15-air-window-plan.md`), and F16 (import in place: the manager chooses a folder of
+the media root from `GET /api/import/folders`, sees its files and their status from
+`GET /api/import/files`, and imports the new ones where they lie with a type, optional playlists,
+and an optional artist; no inbox, `docs/f16-import-in-place-plan.md`) done. A page follows an operation it started (progress,
 summary) with `followOperation()` (`core/operations`) and `app-operation-status` (`shared/ui`). The live
 session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
 browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The

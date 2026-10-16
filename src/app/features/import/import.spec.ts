@@ -9,15 +9,53 @@ import { apiProblemInterceptor } from '../../core/api/api.interceptors';
 import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
+import { applyServerErrors } from '../../shared/forms/server-errors';
+import { ImportFolderSelectComponent } from './import-folder-select.component';
 import ImportPageComponent from './import-page.component';
 
-type Inbox = ApiSchema<'Inbox'>;
+type Folders = ApiSchema<'ImportFolders'>;
+type Files = ApiSchema<'ImportFiles'>;
 
-const inbox = (overrides: Partial<Inbox> = {}): Inbox => ({
-  dir: 'incoming',
+const folders = (overrides: Partial<Folders> = {}): Folders => ({
+  root: { audio_files: 5, new_files: 5 },
+  folders: [
+    { path: 'jingles', audio_files: 2, new_files: 2 },
+    { path: 'music', audio_files: 3, new_files: 3 },
+    { path: 'music/rock', audio_files: 1, new_files: 0 },
+  ],
+  more: false,
+  ...overrides,
+});
+
+const files = (overrides: Partial<Files> = {}): Files => ({
+  folder: 'jingles',
   items: [
-    { path: 'incoming/a.mp3', size: 5_242_880, modified_at: '2026-10-15T08:00:00Z' },
-    { path: 'incoming/jingles/b.wav', size: 900, modified_at: '2026-10-15T08:01:00Z' },
+    {
+      path: 'jingles/id1.mp3',
+      size: 5_242_880,
+      modified_at: '2026-10-15T08:00:00Z',
+      status: 'new',
+    },
+    {
+      path: 'jingles/id2.mp3',
+      size: 900,
+      modified_at: '2026-10-15T08:01:00Z',
+      status: 'in_library',
+      track_id: 17,
+    },
+    {
+      path: 'jingles/id3.flac',
+      size: 900,
+      modified_at: '2026-10-15T08:02:00Z',
+      status: 'original',
+      track_id: 18,
+    },
+    {
+      path: 'jingles/notes.txt',
+      size: 10,
+      modified_at: '2026-10-15T08:03:00Z',
+      status: 'not_audio',
+    },
   ],
   more: false,
   ...overrides,
@@ -25,27 +63,93 @@ const inbox = (overrides: Partial<Inbox> = {}): Inbox => ({
 
 interface ImportView {
   form: FormGroup<{
+    folder: FormControl<string | null>;
     type_id: FormControl<number | null>;
     playlist_ids: FormControl<number[] | null>;
+    artist_id: FormControl<number | null>;
   }>;
 }
 
+const filesUrl = (request: { url: string }) => request.url === '/api/import/files';
+
 describe('import', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([apiProblemInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+      ],
+    });
+  });
+
+  describe('ImportFolderSelectComponent', () => {
+    function render(more = false) {
+      const control = new FormControl<string | null>(null);
+      const fixture = TestBed.createComponent(ImportFolderSelectComponent);
+      fixture.componentRef.setInput('control', control);
+      fixture.componentRef.setInput('folders', folders().folders);
+      fixture.componentRef.setInput('root', folders().root);
+      fixture.componentRef.setInput('more', more);
+      return { fixture, control };
+    }
+
+    afterEach(() => {
+      flushHelp(TestBed.inject(HttpTestingController));
+    });
+
+    async function options(fixture: ComponentFixture<unknown>): Promise<string[]> {
+      await fixture.whenStable();
+      (fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLElement>('.mat-mdc-select-trigger')
+        ?.click();
+      await fixture.whenStable();
+      return [...document.querySelectorAll('mat-option')].map(
+        (option) => option.textContent?.trim() ?? '',
+      );
+    }
+
+    it('offers the whole media folder first, then each folder in the given order', async () => {
+      const { fixture } = render();
+      expect(await options(fixture)).toEqual([
+        'import.folder.rootOption',
+        'import.folder.option',
+        'import.folder.option',
+        'import.folder.option',
+      ]);
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+        'import.folder.moreFolders',
+      );
+    });
+
+    it('says when not every folder is listed', async () => {
+      const { fixture } = render(true);
+      await fixture.whenStable();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        'import.folder.moreFolders',
+      );
+    });
+
+    it('shows a server error on the folder under the control', async () => {
+      const { fixture, control } = render();
+      const form = new FormGroup({ folder: control });
+      await fixture.whenStable();
+      applyServerErrors(form, [{ field: 'folder', code: 'invalid', message: 'no such folder' }]);
+      await fixture.whenStable();
+      const error = (fixture.nativeElement as HTMLElement).querySelector('mat-error');
+      // No translations are loaded in tests, so the code's text falls back to the server message.
+      expect(error?.textContent).toContain('no such folder');
+    });
+  });
+
   describe('ImportPageComponent', () => {
     let http: HttpTestingController;
     let server: FakeSocketServer;
 
     beforeEach(() => {
       server = new FakeSocketServer();
-      TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(withInterceptors([apiProblemInterceptor])),
-          provideHttpClientTesting(),
-          provideRouter([]),
-          server.provider,
-          { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        ],
-      });
+      TestBed.configureTestingModule({ providers: [server.provider] });
       http = TestBed.inject(HttpTestingController);
       TestBed.inject(RealtimeService).connect();
       server.latest.open();
@@ -61,22 +165,32 @@ describe('import', () => {
         (element) => element.textContent?.trim() === label,
       );
 
-    async function open(list: Inbox = inbox()): Promise<ComponentFixture<unknown>> {
+    async function open(list: Folders = folders()): Promise<ComponentFixture<unknown>> {
       const fixture = TestBed.createComponent(ImportPageComponent);
       await settlePage();
-      http.expectOne('/api/import/inbox').flush(list);
+      http.expectOne('/api/import/folders').flush(list);
       http.expectOne('/api/playlist-types').flush({
-        items: [{ id: 1, code: 'music', name: 'Music' }],
+        items: [{ id: 1, code: 'jingle', name: 'Jingle' }],
       });
       http.expectOne('/api/playlists').flush({ items: [] });
+      http.expectOne('/api/artists').flush({ items: [{ id: 9, name: 'DJ Ann' }] });
       await settlePage();
       return fixture;
     }
 
-    function fill(fixture: ComponentFixture<unknown>): ImportView {
-      const view = fixture.componentInstance as ImportView;
-      view.form.setValue({ type_id: 1, playlist_ids: [4, 5] });
-      return view;
+    const view = (fixture: ComponentFixture<unknown>) => fixture.componentInstance as ImportView;
+
+    async function choose(
+      fixture: ComponentFixture<unknown>,
+      folder: string,
+      list: Files = files(),
+    ): Promise<void> {
+      view(fixture).form.controls.folder.setValue(folder);
+      await settlePage();
+      const request = http.expectOne(filesUrl);
+      expect(request.request.params.get('folder')).toBe(folder || null);
+      request.flush(list);
+      await settlePage();
     }
 
     function completed(id: number, summary: string): void {
@@ -88,35 +202,63 @@ describe('import', () => {
       });
     }
 
-    it('lists the files waiting in the inbox', async () => {
-      const fixture = await open(inbox({ more: true }));
-      const page = fixture.nativeElement as HTMLElement;
-      const rows = page.querySelectorAll('tr.mat-mdc-row');
-      expect(rows).toHaveLength(2);
-      expect(rows[0].textContent).toContain('incoming/a.mp3');
-      expect(rows[0].textContent).toContain('5 MB');
-      expect(page.textContent).toContain('import.inbox.more');
-    });
-
-    it('says where to copy files and keeps Import off while the inbox is empty', async () => {
-      const fixture = await open(inbox({ items: [] }));
-      fill(fixture);
-      await settlePage();
-      const page = fixture.nativeElement as HTMLElement;
-      expect(page.textContent).toContain('import.inbox.empty');
-      expect(button(page, 'import.form.start')?.disabled).toBe(true);
-    });
-
-    it('imports with the type and playlists, follows the progress, and reloads the inbox', async () => {
+    it('asks for a folder first and loads no files', async () => {
       const fixture = await open();
       const page = fixture.nativeElement as HTMLElement;
+      view(fixture).form.controls.type_id.setValue(1);
+      await settlePage();
+      http.expectNone(filesUrl);
+      expect(page.textContent).toContain('import.folder.choose');
       expect(button(page, 'import.form.start')?.disabled).toBe(true);
-      fill(fixture);
+    });
+
+    it('lists the files of the chosen folder with their status', async () => {
+      const fixture = await open();
+      await choose(fixture, 'jingles', files({ more: true }));
+      const page = fixture.nativeElement as HTMLElement;
+      const rows = page.querySelectorAll('tr.mat-mdc-row');
+      expect(rows).toHaveLength(4);
+      expect(rows[0].textContent).toContain('jingles/id1.mp3');
+      expect(rows[0].textContent).toContain('5 MB');
+      expect(rows[0].textContent).toContain('import.folder.statuses.new');
+      expect(rows[1].querySelector('a')?.getAttribute('href')).toBe('/library/17');
+      expect(rows[1].textContent).toContain('import.folder.statuses.in_library');
+      expect(rows[2].querySelector('a')?.getAttribute('href')).toBe('/library/18');
+      expect(rows[2].textContent).toContain('import.folder.statuses.original');
+      expect(rows[3].querySelector('a')).toBeNull();
+      expect(rows[3].textContent).toContain('import.folder.statuses.not_audio');
+      expect(page.textContent).toContain('import.folder.counts');
+      expect(page.textContent).toContain('import.folder.moreFiles');
+    });
+
+    it('loads the whole media folder without a query, and a new choice cancels the old one', async () => {
+      const fixture = await open();
+      view(fixture).form.controls.folder.setValue('music');
+      await settlePage();
+      const first = http.expectOne(filesUrl);
+      view(fixture).form.controls.folder.setValue('');
+      await settlePage();
+      expect(first.cancelled).toBe(true);
+      const root = http.expectOne(filesUrl);
+      expect(root.request.params.keys()).toEqual([]);
+      root.flush(files({ folder: '' }));
+    });
+
+    it('imports a folder with type, playlists, and artist, and reloads after the import', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      await choose(fixture, 'jingles');
+      view(fixture).form.patchValue({ type_id: 1, playlist_ids: [4, 5], artist_id: 9 });
       await settlePage();
 
       button(page, 'import.form.start')?.click();
       const start = http.expectOne({ method: 'POST', url: '/api/import' });
-      expect(start.request.body).toEqual({ type_id: 1, playlist_ids: [4, 5] });
+      expect(start.request.body).toEqual({
+        folder: 'jingles',
+        type_id: 1,
+        playlist_ids: [4, 5],
+        artist_id: 9,
+      });
       start.flush({ operation_id: 31 }, { status: 202, statusText: 'Accepted' });
       await settlePage();
       expect(button(page, 'import.form.start')?.disabled).toBe(true);
@@ -130,27 +272,130 @@ describe('import', () => {
       await settlePage();
       expect(page.textContent).toContain('1 of 2 files');
 
-      completed(31, '1 imported, 1 duplicate');
+      completed(31, 'folder jingles: 2 imported');
       await settlePage();
-      http.expectOne('/api/import/inbox').flush(inbox({ items: inbox().items.slice(1) }));
+      const done = folders({
+        folders: folders().folders.map((folder) =>
+          folder.path === 'jingles' ? { ...folder, new_files: 0 } : folder,
+        ),
+      });
+      http.expectOne('/api/import/folders').flush(done);
+      http.expectOne(filesUrl).flush(files({ items: files().items.slice(1) }));
       await settlePage();
-      expect(page.textContent).toContain('1 imported, 1 duplicate');
+      expect(page.textContent).toContain('folder jingles: 2 imported');
       const link = page.querySelector<HTMLAnchorElement>('a[href*="quality=issues"]');
       expect(link?.getAttribute('href')).toBe('/library?quality=issues');
-      expect(page.querySelectorAll('tr.mat-mdc-row')).toHaveLength(1);
+      expect(view(fixture).form.controls.folder.value).toBe('jingles');
+      expect(button(page, 'import.form.start')?.disabled).toBe(true);
     });
 
-    it('reloads the inbox when an import started elsewhere ends', async () => {
-      await open();
-      completed(40, '2 imported');
-      await settlePage();
-      http.expectOne('/api/import/inbox').flush(inbox({ items: [] }));
-    });
-
-    it('shows a refusal while another media operation runs, and field errors on the control', async () => {
+    it('sends no folder for the whole media folder and no artist when none is chosen', async () => {
       const fixture = await open();
-      const view = fill(fixture);
       const page = fixture.nativeElement as HTMLElement;
+      await choose(fixture, '', files({ folder: '' }));
+      view(fixture).form.patchValue({ type_id: 1 });
+      await settlePage();
+
+      button(page, 'import.form.start')?.click();
+      const start = http.expectOne({ method: 'POST', url: '/api/import' });
+      expect(start.request.body).toEqual({ type_id: 1, playlist_ids: [] });
+      start.flush({ operation_id: 32 }, { status: 202, statusText: 'Accepted' });
+    });
+
+    it('shows a long folder in pages, starting again at the first page for another folder', async () => {
+      const many = (count: number): Files =>
+        files({
+          items: Array.from({ length: count }, (_, index) => ({
+            path: `music/song-${String(index + 1).padStart(3, '0')}.mp3`,
+            size: 1000,
+            modified_at: '2026-10-15T08:00:00Z',
+            status: 'new' as const,
+          })),
+        });
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      const rows = () => [...page.querySelectorAll('tr.mat-mdc-row')];
+      const next = () =>
+        page.querySelector<HTMLButtonElement>('.mat-mdc-paginator-navigation-next')?.click();
+
+      await choose(fixture, 'music', many(25));
+      expect(rows()).toHaveLength(10);
+      expect(rows()[0].textContent).toContain('song-001');
+      expect(page.querySelector('mat-paginator')).not.toBeNull();
+
+      next();
+      await settlePage();
+      expect(rows()[0].textContent).toContain('song-011');
+
+      next();
+      await settlePage();
+      expect(rows()).toHaveLength(5);
+
+      // A reload with fewer files moves back to the last page that still has files.
+      button(page, 'import.refresh')?.click();
+      await settlePage();
+      http.expectOne('/api/import/folders').flush(folders());
+      http.expectOne(filesUrl).flush(many(15));
+      await settlePage();
+      expect(rows()[0].textContent).toContain('song-011');
+
+      await choose(fixture, 'jingles', many(15));
+      expect(rows()[0].textContent).toContain('song-001');
+
+      await choose(fixture, 'music/rock', many(10));
+      expect(page.querySelector('mat-paginator')).toBeNull();
+    });
+
+    it('keeps Import off for a folder without new files', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      await choose(fixture, 'music/rock', files({ folder: 'music/rock', items: [] }));
+      view(fixture).form.patchValue({ type_id: 1 });
+      await settlePage();
+      expect(page.textContent).toContain('import.folder.empty');
+      expect(button(page, 'import.form.start')?.disabled).toBe(true);
+
+      await choose(fixture, 'music');
+      expect(button(page, 'import.form.start')?.disabled).toBe(false);
+    });
+
+    it('reloads when an import started elsewhere ends, and clears a folder that is gone', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      await choose(fixture, 'jingles');
+
+      completed(40, 'folder music: 3 imported');
+      await settlePage();
+      http.expectOne('/api/import/folders').flush(folders({ folders: folders().folders.slice(1) }));
+      http.expectOne(filesUrl).flush(files());
+      await settlePage();
+      expect(view(fixture).form.controls.folder.value).toBeNull();
+      expect(page.textContent).toContain('import.folder.gone');
+      expect(page.textContent).toContain('import.folder.choose');
+    });
+
+    it('keeps a folder past the listing limit', async () => {
+      const fixture = await open();
+      await choose(fixture, 'jingles');
+
+      button(fixture.nativeElement as HTMLElement, 'import.refresh')?.click();
+      await settlePage();
+      http
+        .expectOne('/api/import/folders')
+        .flush(folders({ folders: folders().folders.slice(1), more: true }));
+      http.expectOne(filesUrl).flush(files());
+      await settlePage();
+      expect(view(fixture).form.controls.folder.value).toBe('jingles');
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+        'import.folder.gone',
+      );
+    });
+
+    it('shows a refusal while another media operation runs, and field errors on the controls', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      await choose(fixture, 'jingles');
+      view(fixture).form.patchValue({ type_id: 1, artist_id: 9 });
       await settlePage();
 
       button(page, 'import.form.start')?.click();
@@ -173,12 +418,26 @@ describe('import', () => {
           status: 422,
           code: 'validation_failed',
           title: 'Unprocessable Entity',
-          errors: [{ field: 'type_id', code: 'not_found', message: 'No such type.' }],
+          errors: [
+            { field: 'folder', code: 'invalid', message: 'no such folder in the media folder' },
+            { field: 'artist_id', code: 'unknown_id', message: 'No such artist.' },
+          ],
         },
         { status: 422, statusText: 'Unprocessable Entity' },
       );
       await settlePage();
-      expect(view.form.controls.type_id.hasError('server')).toBe(true);
+      const form = view(fixture).form;
+      expect(form.controls.folder.hasError('server')).toBe(true);
+      expect(form.controls.artist_id.hasError('server')).toBe(true);
+    });
+
+    it('cancels the open requests when the page is left', async () => {
+      const fixture = await open();
+      view(fixture).form.controls.folder.setValue('music');
+      await settlePage();
+      const request = http.expectOne(filesUrl);
+      fixture.destroy();
+      expect(request.cancelled).toBe(true);
     });
 
     it('analyses every track never analysed', async () => {

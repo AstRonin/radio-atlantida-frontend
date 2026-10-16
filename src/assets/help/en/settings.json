@@ -199,14 +199,6 @@
       "label": "Log days",
       "text": "How long log files are kept."
     },
-    "import.inbox_dir": {
-      "label": "Inbox folder",
-      "text": "Folder under the media folder where new files wait for import."
-    },
-    "import.library_dir": {
-      "label": "Library folder",
-      "text": "Folder under the media folder where imported files are moved."
-    },
     "import.target_codec": {
       "label": "Target codec",
       "text": "The broadcast standard format for track files."
