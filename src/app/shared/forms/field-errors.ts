@@ -20,6 +20,7 @@ const ORDER = [
   'weekdays',
   'bothOrNone',
   'relativePath',
+  'controlCharacters',
   'pattern',
   'matDatepickerParse',
   'dateRange',

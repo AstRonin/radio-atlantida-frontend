@@ -1174,7 +1174,8 @@
           "overlap",
           "does_not_fit",
           "order",
-          "blocked"
+          "blocked",
+          "invalid_characters"
         ],
         "type": "string"
       },
@@ -3638,6 +3639,8 @@
           "track_in_use",
           "track_has_history",
           "track_file_not_found",
+          "title_empty",
+          "title_too_long",
           "play_rule_not_found",
           "play_rule_in_use",
           "separation_rule_not_found",
@@ -3676,6 +3679,105 @@
         ],
         "type": "object"
       },
+      "RenameRefusal": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "title_empty: nothing would be left of the title; title_too_long: the title would be over 500 characters (it is not cut).",
+            "enum": [
+              "track_not_found",
+              "title_empty",
+              "title_too_long"
+            ],
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id",
+          "code"
+        ],
+        "type": "object"
+      },
+      "RenameTracksBody": {
+        "additionalProperties": false,
+        "properties": {
+          "dry_run": {
+            "description": "true returns the preview and writes nothing; false writes the titles.",
+            "type": "boolean"
+          },
+          "find": {
+            "description": "Text to find in the titles, literally (no pattern characters); not only white space.",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "match_case": {
+            "description": "Match the case of find; by default the match ignores case.",
+            "type": "boolean"
+          },
+          "replace": {
+            "description": "Text that replaces every occurrence; empty or absent removes it.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "track_ids": {
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids",
+          "find",
+          "dry_run"
+        ],
+        "type": "object"
+      },
+      "RenameTracksResult": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "description": "Tracks whose title changes (dry run) or changed.",
+            "items": {
+              "$ref": "#/components/schemas/TitleChange"
+            },
+            "type": "array"
+          },
+          "refused": {
+            "description": "Tracks left alone, with the reason.",
+            "items": {
+              "$ref": "#/components/schemas/RenameRefusal"
+            },
+            "type": "array"
+          },
+          "unchanged": {
+            "description": "Tracks whose title has no occurrence of find, or stays the same.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "changed",
+          "unchanged",
+          "refused"
+        ],
+        "type": "object"
+      },
       "RescheduleBody": {
         "additionalProperties": false,
         "properties": {
@@ -3710,6 +3812,59 @@
         "required": [
           "target_hour_start_utc",
           "placement"
+        ],
+        "type": "object"
+      },
+      "ReviewTracksBody": {
+        "additionalProperties": false,
+        "properties": {
+          "reviewed": {
+            "description": "true marks the tracks reviewed (a track already reviewed keeps the time of its first mark); false clears the mark.",
+            "type": "boolean"
+          },
+          "track_ids": {
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "track_ids",
+          "reviewed"
+        ],
+        "type": "object"
+      },
+      "ReviewTracksResult": {
+        "additionalProperties": false,
+        "properties": {
+          "not_found": {
+            "description": "Tracks that do not exist, in request order.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "updated": {
+            "description": "Tracks marked or cleared, in request order.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "updated",
+          "not_found"
         ],
         "type": "object"
       },
@@ -4097,6 +4252,28 @@
         ],
         "type": "object"
       },
+      "TitleChange": {
+        "additionalProperties": false,
+        "properties": {
+          "new_title": {
+            "type": "string"
+          },
+          "old_title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id",
+          "old_title",
+          "new_title"
+        ],
+        "type": "object"
+      },
       "Track": {
         "additionalProperties": false,
         "properties": {
@@ -4214,6 +4391,11 @@
           "quality_ok": {
             "description": "Absent until the file is analysed.",
             "type": "boolean"
+          },
+          "reviewed_at": {
+            "description": "When the manager marked the track checked (POST /api/tracks/review); absent when it is not. A change of the title, the artist, the file path, or the file itself (a transcode, a replaced file) clears it.",
+            "format": "date-time",
+            "type": "string"
           },
           "sample_rate": {
             "description": "Hz.",
@@ -8998,20 +9180,35 @@
             }
           },
           {
-            "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders.",
+            "description": "Only tracks with (true) or without (false) the reviewed mark.",
+            "explode": false,
+            "in": "query",
+            "name": "reviewed",
+            "schema": {
+              "description": "Only tracks with (true) or without (false) the reviewed mark.",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders (reviewed: by the time of the mark, tracks not reviewed last).",
             "explode": false,
             "in": "query",
             "name": "sort",
             "schema": {
               "default": "title",
-              "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders.",
+              "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders (reviewed: by the time of the mark, tracks not reviewed last).",
               "enum": [
                 "title",
                 "artist",
                 "type",
                 "duration",
                 "format",
-                "quality"
+                "quality",
+                "reviewed"
               ],
               "type": "string"
             }
@@ -9279,6 +9476,110 @@
         ]
       }
     },
+    "/api/tracks/rename": {
+      "post": {
+        "description": "Replaces every occurrence of find in the titles of the tracks (literal text; case ignored unless match_case), then trims the title and collapses runs of white space. With dry_run true it returns the preview and writes nothing; with false it writes the changed titles in one transaction, computed again from the stored titles, and clears their reviewed mark. A title that would become empty or longer than 500 characters is refused, not cut.",
+        "operationId": "rename-tracks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameTracksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameTracksResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Find and replace in titles",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/review": {
+      "post": {
+        "description": "Sets or clears the reviewed mark of several tracks in one statement. A track already reviewed keeps the time of its first mark. Tracks that do not exist are listed in not_found.",
+        "operationId": "review-tracks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewTracksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTracksResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Mark tracks reviewed",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
     "/api/tracks/transcode": {
       "post": {
         "description": "Starts a transcode operation (Fix loudness, Optimize track). A track is skipped when the fix removes none of its issues, while it is queued, on air, or planned to start within playout.prepush_minutes + 5 minutes, and when the target path belongs to another track. Refused with media_operation_running while another import, analysis, or transcode runs, and with media_tools_unavailable when ffmpeg is missing.",
@@ -9479,7 +9780,7 @@
         ]
       },
       "put": {
-        "description": "Replaces the metadata and the playlists of a track. Optional fields left out are cleared, then metadata is read from the file where it exists.",
+        "description": "Replaces the metadata and the playlists of a track. Optional fields left out are cleared, then metadata is read from the file where it exists. The title is trimmed and runs of white space become one space; control characters (line breaks, tabs) are refused (invalid_characters). A new title, artist, or file path clears the reviewed mark; playlists, type, notes, and the quality override do not. The title and artist go on air with requests pushed to Liquidsoap after the save; items already queued keep the old ones.",
         "operationId": "update-track",
         "parameters": [
           {

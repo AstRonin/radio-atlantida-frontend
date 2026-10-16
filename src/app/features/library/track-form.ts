@@ -1,6 +1,11 @@
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
 import type { ApiSchema } from '../../core/api/api-types';
-import { rangeValidator, relativePathValidator } from '../../shared/forms/validators';
+import {
+  noControlCharacters,
+  notBlankValidator,
+  rangeValidator,
+  relativePathValidator,
+} from '../../shared/forms/validators';
 
 export type Track = ApiSchema<'Track'>;
 export type TrackBody = ApiSchema<'TrackBody'>;
@@ -14,6 +19,19 @@ export const TRACK_LIMITS = {
   durationMaxMs: 21_600_000,
 } as const;
 
+/** The title rule of the backend, on the edit page and in the rename dialog. */
+export const TITLE_VALIDATORS: ValidatorFn[] = [
+  Validators.required,
+  notBlankValidator,
+  Validators.maxLength(TRACK_LIMITS.titleMax),
+  noControlCharacters,
+];
+
+/** Trimmed, with runs of white space as one space, as the backend stores a title. */
+export function cleanTitle(title: string | null): string {
+  return (title ?? '').trim().replace(/\s+/g, ' ');
+}
+
 export type TrackForm = ReturnType<typeof trackForm>;
 
 /**
@@ -22,10 +40,7 @@ export type TrackForm = ReturnType<typeof trackForm>;
  */
 export function trackForm() {
   return new FormGroup({
-    title: new FormControl<string | null>('', [
-      Validators.required,
-      Validators.maxLength(TRACK_LIMITS.titleMax),
-    ]),
+    title: new FormControl<string | null>('', TITLE_VALIDATORS),
     artist_id: new FormControl<number | null>(null),
     type_id: new FormControl<number | null>(null, Validators.required),
     file_path: new FormControl<string | null>('', [
@@ -67,7 +82,7 @@ export function trackFormValue(track: Track): TrackForm['value'] {
 export function trackBody(form: TrackForm, stored: Track | null): TrackBody {
   const value = form.getRawValue();
   return {
-    title: (value.title ?? '').trim(),
+    title: cleanTitle(value.title),
     artist_id: value.artist_id,
     type_id: value.type_id ?? 0,
     file_path: (value.file_path ?? '').trim(),

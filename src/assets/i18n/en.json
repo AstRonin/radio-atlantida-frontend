@@ -272,6 +272,7 @@
       "atLeastOne": "Set at least one of these fields.",
       "pattern": "The value does not have the expected form.",
       "invalid": "The value is not valid.",
+      "controlCharacters": "Remove line breaks and tabs.",
       "relativePath": "Enter a path inside the media folder, such as music/song.mp3: no leading /, no drive letter, no \\, and no ..",
       "fallbackSource": "Choose the playlist or artist for this mode.",
       "dateRange": "Choose a last date on or after the first one, at most {days} days in all.",
@@ -314,10 +315,12 @@
       "overlap": "The value overlaps with another one.",
       "does_not_fit": "It does not fit into the available time.",
       "order": "The values are in the wrong order.",
-      "blocked": "A separation or play rule blocks this choice."
+      "blocked": "A separation or play rule blocks this choice.",
+      "invalid_characters": "Remove line breaks and tabs."
     },
     "weekdays": {
-      "label": "Weekdays"
+      "label": "Weekdays",
+      "all": "All"
     },
     "playlistType": "Playlist type",
     "units": {
@@ -435,6 +438,8 @@
     "track_in_use": "The track is in use and cannot be deleted.",
     "track_has_history": "The track has play history and cannot be deleted.",
     "track_file_not_found": "The audio file of the track was not found.",
+    "title_empty": "Nothing would be left of the title.",
+    "title_too_long": "The title would be longer than 500 characters.",
     "play_rule_not_found": "The play rule was not found.",
     "play_rule_in_use": "The play rule is in use and cannot be deleted.",
     "separation_rule_not_found": "The separation rule was not found.",
@@ -586,13 +591,15 @@
       "format": "Format",
       "bitrate": "Bitrate",
       "sample_rate": "Sample rate",
-      "quality_ok": "Quality"
+      "quality_ok": "Quality",
+      "reviewed": "Reviewed"
     },
     "filters": {
       "search": "Search by title or artist",
       "playlist": "Playlist",
       "type": "Type",
-      "quality": "Quality"
+      "quality": "Quality",
+      "reviewed": "Reviewed"
     },
     "quality": {
       "ok": "OK",
@@ -617,6 +624,11 @@
         "file_missing": "the file is not in the media folder. Put it back or correct the file path."
       }
     },
+    "reviewedFilter": {
+      "true": "Reviewed",
+      "false": "Not reviewed"
+    },
+    "reviewedAt": "Reviewed {time}",
     "edit": {
       "createTitle": "New track",
       "editTitle": "Edit track",
@@ -626,7 +638,9 @@
       "file": "File",
       "kbps": "{kbps} kbps",
       "hz": "{hz} Hz",
-      "qualityOverride": "Quality OK (your choice, until the next analysis)"
+      "qualityOverride": "Quality OK (your choice, until the next analysis)",
+      "titleHint": "Listeners see this title and the artist. A change applies to tracks queued after saving. Changing the title, artist, or file clears the reviewed mark.",
+      "reviewSaveFirst": "Save the changes first."
     },
     "analysis": {
       "source_bitrate": "Source bitrate",
@@ -669,7 +683,7 @@
     },
     "bulkDelete": {
       "delete": "Delete ({count})",
-      "tooMany": "Select at most 1,000 tracks to delete.",
+      "tooMany": "Select at most 1,000 tracks to delete, rename, or mark.",
       "confirmTitle": "Delete {count} tracks?",
       "confirmMessage": "Delete {count} tracks from the library? The files stay on disk. Tracks that have played, are planned, or are in a filler pool are kept.",
       "running": "Deleting {count} tracks…",
@@ -677,6 +691,35 @@
       "refusedTitle": "Kept tracks: {count}. They stay selected.",
       "usedBy": "Filler pool of:",
       "moreRefused": "and {count} more"
+    },
+    "selection": {
+      "rename": "Rename ({count})",
+      "markReviewed": "Mark reviewed ({count})",
+      "markUnreviewed": "Mark not reviewed ({count})",
+      "reviewRunning": "Saving the reviewed mark…",
+      "reviewNotFound": "Tracks no longer in the library: {count}. They left the selection."
+    },
+    "rename": {
+      "title": "Rename track",
+      "button": "Rename {title}",
+      "hint": "Listeners see this title for items queued after saving. Renaming clears the reviewed mark.",
+      "markReviewed": "Mark as reviewed",
+      "reviewFailed": "The title is saved, but the reviewed mark is not."
+    },
+    "bulkRename": {
+      "title": "Rename {count} tracks",
+      "find": "Find",
+      "replace": "Replace with",
+      "replaceHint": "Leave empty to remove the text found.",
+      "matchCase": "Match case",
+      "preview": "Preview",
+      "apply": "Apply",
+      "previewTitle": "Titles that would change: {count}",
+      "appliedTitle": "Titles changed: {count}",
+      "to": "becomes",
+      "unchanged": "Titles without the text or not changed: {count}",
+      "refusedTitle": "Titles left alone: {count}",
+      "reviewNote": "The renamed tracks lost their reviewed mark."
     }
   },
   "playlists": {
@@ -1217,6 +1260,7 @@
       "artist_id": "Artist",
       "start": "Import",
       "running": "Importing…",
+      "reviewNew": "Review the new tracks",
       "showIssues": "Show tracks with quality issues"
     },
     "analyse": {

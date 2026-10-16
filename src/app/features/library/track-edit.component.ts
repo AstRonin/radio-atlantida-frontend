@@ -15,6 +15,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, concatMap, map, merge, of } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
@@ -23,6 +24,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { formatDurationMs } from '../../core/time/duration';
+import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { controlVersion } from '../../shared/forms/field-errors';
 import { NumberInputComponent } from '../../shared/forms/number-input.component';
 import { PlaylistTypeSelectComponent } from '../../shared/forms/playlist-type-select.component';
@@ -45,7 +47,7 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
  * Creates or edits a track: its metadata, its file path under the media root, its playlists, and
  * its play rules. The file is not uploaded here; it must already be in the media folder (new files
  * come in through the import). A stored track shows its analysis and offers Analyse, Fix
- * loudness, and Optimize track.
+ * loudness, and Optimize track, and its reviewed mark, which is sent at once and not with Save.
  */
 @Component({
   selector: 'app-track-edit',
@@ -53,9 +55,11 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
     MatButtonModule,
     MatCheckboxModule,
     MatProgressBarModule,
+    MatSlideToggleModule,
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
+    StationTimePipe,
     ArtistSelectComponent,
     NumberInputComponent,
     PageHeaderComponent,
@@ -92,6 +96,7 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
         <app-text-input
           [control]="form.controls.title"
           label="library.fields.title"
+          hint="library.edit.titleHint"
           [maxLength]="limits.titleMax"
           hintPage="help.library"
           hintField="title"
@@ -159,6 +164,26 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
             }}</mat-checkbox>
             <app-field-hint page="help.library" field="quality_ok" />
           </div>
+          <div class="reviewed">
+            <mat-slide-toggle
+              [checked]="!!track.reviewed_at"
+              [disabled]="dirty() || reviewing()"
+              (change)="setReviewed(track, $event)"
+            >
+              {{ 'library.fields.reviewed' | translate }}
+            </mat-slide-toggle>
+            <app-field-hint page="help.library" field="reviewed" />
+            @if (dirty()) {
+              <span class="muted">{{ 'library.edit.reviewSaveFirst' | translate }}</span>
+            } @else if (track.reviewed_at) {
+              <span class="muted">{{
+                'library.reviewedAt' | translate: { time: (track.reviewed_at | stationTime) }
+              }}</span>
+            }
+          </div>
+          @if (reviewError(); as message) {
+            <p class="form-error" role="alert">{{ message }}</p>
+          }
           <app-track-media-actions
             [tracks]="[track]"
             [counts]="false"
@@ -203,10 +228,15 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
       margin: 0 0 1.25rem;
     }
 
-    .quality-ok {
+    .quality-ok,
+    .reviewed {
       display: flex;
       align-items: center;
       margin: 0.75rem 0;
+    }
+
+    .reviewed {
+      gap: 0.5rem;
     }
   `,
 })
@@ -224,6 +254,8 @@ export default class TrackEditComponent implements PendingChanges {
   protected readonly form = trackForm();
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly reviewing = signal(false);
+  protected readonly reviewError = signal<string | null>(null);
 
   /** The track as last read or saved; null for a new one. */
   protected readonly stored = signal<Track | null>(null);
@@ -291,6 +323,31 @@ export default class TrackEditComponent implements PendingChanges {
 
   hasUnsavedChanges(): boolean {
     return this.form.dirty;
+  }
+
+  /**
+   * Saving a new title, artist, or file clears the mark on the backend, so the toggle waits for a
+   * saved form; the time shown is the backend's, read again after the request.
+   */
+  protected setReviewed(track: Track, change: MatSlideToggleChange): void {
+    const reviewed = change.checked;
+    this.reviewing.set(true);
+    this.reviewError.set(null);
+    this.api
+      .post('/api/tracks/review', { body: { track_ids: [track.id], reviewed } })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.reviewing.set(false);
+          this.track.reload();
+        },
+        error: (error: unknown) => {
+          this.reviewing.set(false);
+          this.reviewError.set(errorMessage(error, this.i18n));
+          // The toggle moved on click; put it back to the stored state.
+          change.source.checked = !reviewed;
+        },
+      });
   }
 
   protected save(): void {

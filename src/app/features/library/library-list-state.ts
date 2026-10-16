@@ -3,6 +3,7 @@ import type { TrackQuery } from '../../core/catalog/catalog.service';
 
 export type TrackSort = NonNullable<TrackQuery['sort']>;
 export type SortOrder = NonNullable<TrackQuery['order']>;
+export type ReviewedFilter = NonNullable<TrackQuery['reviewed']>;
 
 export const LIBRARY_PAGE_SIZES: readonly number[] = [25, 50, 100, 200];
 export const LIBRARY_DEFAULT_PAGE_SIZE = 50;
@@ -15,8 +16,10 @@ const SORTS: Record<TrackSort, true> = {
   duration: true,
   format: true,
   quality: true,
+  reviewed: true,
 };
 const ORDERS: Record<SortOrder, true> = { asc: true, desc: true };
+const REVIEWED: Record<ReviewedFilter, true> = { true: true, false: true };
 
 /** Where the manager is in the library list: the page (0-based), its size, and the order. */
 export interface LibraryListState {
@@ -47,6 +50,11 @@ export function isTrackSort(value: unknown): value is TrackSort {
 
 function isSortOrder(value: unknown): value is SortOrder {
   return typeof value === 'string' && Object.hasOwn(ORDERS, value);
+}
+
+/** The `reviewed` filter from the URL; any other value means all tracks. */
+export function readReviewedFilter(value: string | undefined): ReviewedFilter | null {
+  return value !== undefined && Object.hasOwn(REVIEWED, value) ? (value as ReviewedFilter) : null;
 }
 
 /** Reads the state from the URL; a value not allowed falls back to its default, alone. */

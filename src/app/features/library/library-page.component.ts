@@ -12,6 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -19,6 +20,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   Subject,
@@ -39,30 +41,42 @@ import { I18nService, TranslationParams } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { DurationPipe } from '../../core/time/duration.pipe';
+import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { providePaginatorIntl } from '../../shared/ui/paginator-intl';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 import { BULK_DELETE_MAX, trackBulkDelete } from './track-bulk-delete';
+import {
+  BULK_RENAME_MAX,
+  TrackBulkRenameDialogComponent,
+  TrackBulkRenameDialogData,
+  TrackBulkRenameDialogResult,
+} from './track-bulk-rename-dialog.component';
 import { TrackDeleteResultComponent } from './track-delete-result.component';
 import type { Track } from './track-form';
 import {
   DEFAULT_LIST_STATE,
   LIBRARY_PAGE_SIZES,
   LibraryListState,
+  ReviewedFilter,
   isTrackSort,
   listStateParams,
   readListState,
+  readReviewedFilter,
 } from './library-list-state';
 import { MediaRequest, trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
 import { TrackQualityComponent } from './track-quality.component';
+import { TrackRenameDialogComponent, TrackRenameDialogData } from './track-rename-dialog.component';
+import { BULK_REVIEW_MAX, trackReview } from './track-review';
 
 export const LIBRARY_SEARCH_DEBOUNCE_MS = 300;
 
 type Quality = NonNullable<TrackQuery['quality']>;
 const QUALITIES: readonly Quality[] = ['ok', 'issues', 'unanalysed'];
+const REVIEWED_FILTERS: readonly ReviewedFilter[] = ['true', 'false'];
 
 interface PageRequest {
   query: TrackQuery;
@@ -74,7 +88,8 @@ interface PageRequest {
  * The track library (docs/frontend-init-plan.md F5): search by title or artist, filters by
  * playlist, type, and quality, a play button on every row. The backend sorts and pages the whole
  * filtered list (F18); the page, its size, and the order are kept in the URL. Selected tracks,
- * on any page, can be analysed again or fixed (F10), or deleted with one request (F17).
+ * on any page, can be analysed again or fixed (F10), deleted with one request (F17), renamed
+ * with find and replace, or marked reviewed (F19). A row's title can be corrected in a dialog.
  */
 @Component({
   selector: 'app-library-page',
@@ -88,10 +103,12 @@ interface PageRequest {
     MatSelectModule,
     MatSortModule,
     MatTableModule,
+    MatTooltipModule,
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
     DurationPipe,
+    StationTimePipe,
     PageHeaderComponent,
     OperationStatusComponent,
     PlayButtonComponent,
@@ -140,6 +157,17 @@ interface PageRequest {
           }
         </mat-select>
       </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'library.filters.reviewed' | translate }}</mat-label>
+        <mat-select formControlName="reviewed">
+          <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+          @for (reviewed of reviewedFilters; track reviewed) {
+            <mat-option [value]="reviewed">{{
+              'library.reviewedFilter.' + reviewed | translate
+            }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
     </form>
 
     @if (
@@ -147,7 +175,10 @@ interface PageRequest {
       media.run.state() ||
       bulkDelete.running() ||
       bulkDelete.result() ||
-      bulkDelete.error()
+      bulkDelete.error() ||
+      review.running() ||
+      review.error() ||
+      review.notFound()
     ) {
       <section class="page-section selection" aria-labelledby="selection-heading">
         <h2 id="selection-heading" class="section-title">
@@ -160,19 +191,63 @@ interface PageRequest {
               matButton
               type="button"
               class="danger"
-              [disabled]="tooManyToDelete() || bulkDelete.running() || media.run.running()"
+              [disabled]="tooManyForBulk() || busy()"
               (click)="deleteSelected()"
             >
               {{ 'library.bulkDelete.delete' | translate: { count: selectedTracks().length } }}
             </button>
           }
         </h2>
-        @if (tooManyToDelete()) {
+        @if (selectedTracks().length > 0) {
+          <div class="selection-actions">
+            <button
+              matButton="outlined"
+              type="button"
+              [disabled]="busy() || tooManyForBulk()"
+              (click)="renameSelected()"
+            >
+              {{ 'library.selection.rename' | translate: { count: selectedTracks().length } }}
+            </button>
+            <button
+              matButton="outlined"
+              type="button"
+              [disabled]="busy() || tooManyForBulk()"
+              (click)="reviewSelected(true)"
+            >
+              {{ 'library.selection.markReviewed' | translate: { count: selectedTracks().length } }}
+            </button>
+            <button
+              matButton="outlined"
+              type="button"
+              [disabled]="busy() || tooManyForBulk()"
+              (click)="reviewSelected(false)"
+            >
+              {{
+                'library.selection.markUnreviewed' | translate: { count: selectedTracks().length }
+              }}
+            </button>
+          </div>
+        }
+        @if (tooManyForBulk()) {
           <p class="muted">{{ 'library.bulkDelete.tooMany' | translate }}</p>
+        }
+        @if (review.running()) {
+          <mat-progress-bar
+            mode="indeterminate"
+            [attr.aria-label]="'library.selection.reviewRunning' | translate"
+          />
+        }
+        @if (review.error(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        @if (review.notFound(); as count) {
+          <p class="muted" role="status">
+            {{ 'library.selection.reviewNotFound' | translate: { count } }}
+          </p>
         }
         <app-track-media-actions
           [tracks]="selectedTracks()"
-          [running]="media.run.running() || bulkDelete.running()"
+          [running]="busy()"
           (request)="startMedia($event)"
         />
         @if (media.error(); as message) {
@@ -331,11 +406,45 @@ interface PageRequest {
           </th>
           <td mat-cell *matCellDef="let track"><app-track-quality [track]="track" /></td>
         </ng-container>
+        <ng-container matColumnDef="reviewed">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            mat-sort-header
+            [sortActionDescription]="
+              'library.sort.by' | translate: { column: ('library.fields.reviewed' | translate) }
+            "
+          >
+            {{ 'library.fields.reviewed' | translate }}
+          </th>
+          <td mat-cell *matCellDef="let track">
+            @if (track.reviewed_at) {
+              @let reviewedLabel =
+                'library.reviewedAt' | translate: { time: (track.reviewed_at | stationTime) };
+              <span
+                class="reviewed"
+                role="img"
+                tabindex="0"
+                [matTooltip]="reviewedLabel"
+                [attr.aria-label]="reviewedLabel"
+                >✓</span
+              >
+            }
+          </td>
+        </ng-container>
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>
             <span class="cdk-visually-hidden">{{ 'common.actions' | translate }}</span>
           </th>
           <td mat-cell *matCellDef="let track" class="cell-actions">
+            <button
+              matIconButton
+              type="button"
+              [attr.aria-label]="'library.rename.button' | translate: { title: track.title }"
+              (click)="rename(track)"
+            >
+              <span aria-hidden="true">✎</span>
+            </button>
             <a matButton [routerLink]="['/library', track.id]">{{ 'common.edit' | translate }}</a>
             <button matButton type="button" (click)="remove(track)">
               {{ 'common.delete' | translate }}
@@ -382,6 +491,18 @@ interface PageRequest {
       font-variant-numeric: tabular-nums;
     }
 
+    .selection-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0 0 0.75rem;
+    }
+
+    .reviewed {
+      color: var(--mat-sys-primary);
+      font-weight: 700;
+    }
+
     .danger {
       --mat-button-text-label-text-color: var(--mat-sys-error);
     }
@@ -395,9 +516,12 @@ export default class LibraryPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
 
   /** Query parameter `quality`, as the import's "tracks with issues" link sets it. */
   readonly quality = input<string>();
+  /** Query parameter `reviewed`, as the import's "Review the new tracks" link sets it. */
+  readonly reviewed = input<string>();
   /** Query parameters of the list state (library-list-state.ts), read once when the page opens. */
   readonly page = input<string>();
   readonly size = input<string>();
@@ -413,9 +537,11 @@ export default class LibraryPageComponent implements OnInit {
     'duration',
     'format',
     'quality',
+    'reviewed',
     'actions',
   ];
   protected readonly qualities = QUALITIES;
+  protected readonly reviewedFilters = REVIEWED_FILTERS;
   protected readonly pageSizes = LIBRARY_PAGE_SIZES;
   protected readonly playlists = catalogList(this.catalog.playlists());
   protected readonly types = catalogList(this.catalog.playlistTypes());
@@ -425,6 +551,7 @@ export default class LibraryPageComponent implements OnInit {
     playlist_id: new FormControl<number | null>(null),
     type_id: new FormControl<number | null>(null),
     quality: new FormControl<Quality | null>(null),
+    reviewed: new FormControl<ReviewedFilter | null>(null),
   });
 
   protected readonly list = signal<LibraryListState>(DEFAULT_LIST_STATE);
@@ -442,7 +569,10 @@ export default class LibraryPageComponent implements OnInit {
    */
   protected readonly selected = signal<ReadonlyMap<number, Track>>(new Map());
   protected readonly selectedTracks = computed(() => [...this.selected().values()]);
-  protected readonly tooManyToDelete = computed(() => this.selected().size > BULK_DELETE_MAX);
+  /** Rename and review take as many tracks as a delete; one check covers all three. */
+  protected readonly tooManyForBulk = computed(
+    () => this.selected().size > Math.min(BULK_DELETE_MAX, BULK_REVIEW_MAX, BULK_RENAME_MAX),
+  );
   /** The header checkbox looks at the current page only. */
   protected readonly allSelected = computed(
     () => this.rows().length > 0 && this.rows().every((track) => this.selected().has(track.id)),
@@ -464,6 +594,17 @@ export default class LibraryPageComponent implements OnInit {
     this.deselect(deleted);
     this.reload();
   });
+
+  /** Tracks that no longer exist leave the selection; the others stay selected. */
+  protected readonly review = trackReview((notFound) => {
+    this.deselect(notFound);
+    this.reload();
+  });
+
+  /** One request on the selection at a time. */
+  protected readonly busy = computed(
+    () => this.media.run.running() || this.bulkDelete.running() || this.review.running(),
+  );
 
   private readonly pages = new Subject<PageRequest>();
   /** The filters only; the page and the order come from `list`. */
@@ -523,6 +664,9 @@ export default class LibraryPageComponent implements OnInit {
     if (QUALITIES.includes(quality as Quality)) {
       this.filters.controls.quality.setValue(quality as Quality, { emitEvent: false });
     }
+    this.filters.controls.reviewed.setValue(readReviewedFilter(this.reviewed()), {
+      emitEvent: false,
+    });
     this.list.set(
       readListState({
         page: this.page(),
@@ -543,6 +687,7 @@ export default class LibraryPageComponent implements OnInit {
           playlist_id: value.playlist_id ?? undefined,
           type_id: value.type_id ?? undefined,
           quality: value.quality ?? undefined,
+          reviewed: value.reviewed ?? undefined,
         })),
         distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
         takeUntilDestroyed(this.destroyRef),
@@ -579,7 +724,7 @@ export default class LibraryPageComponent implements OnInit {
   }
 
   protected select(track: Track, checked: boolean): void {
-    this.bulkDelete.clear();
+    this.clearResults();
     this.selected.update((selected) => {
       const next = new Map(selected);
       if (checked) {
@@ -592,7 +737,7 @@ export default class LibraryPageComponent implements OnInit {
   }
 
   protected selectAll(checked: boolean): void {
-    this.bulkDelete.clear();
+    this.clearResults();
     this.selected.update((selected) => {
       const next = new Map(selected);
       for (const track of this.rows()) {
@@ -632,18 +777,64 @@ export default class LibraryPageComponent implements OnInit {
   }
 
   protected clearSelection(): void {
-    this.bulkDelete.clear();
+    this.clearResults();
     this.selected.set(new Map());
   }
 
-  protected startMedia(request: MediaRequest): void {
+  private clearResults(): void {
     this.bulkDelete.clear();
+    this.review.clear();
+  }
+
+  protected startMedia(request: MediaRequest): void {
+    this.clearResults();
     this.media.start(request);
+  }
+
+  protected reviewSelected(reviewed: boolean): void {
+    this.clearResults();
+    this.review.start(
+      this.selectedTracks().map((track) => track.id),
+      reviewed,
+    );
+  }
+
+  protected renameSelected(): void {
+    this.clearResults();
+    this.dialog
+      .open<TrackBulkRenameDialogComponent, TrackBulkRenameDialogData, TrackBulkRenameDialogResult>(
+        TrackBulkRenameDialogComponent,
+        { data: { tracks: this.selectedTracks() }, width: '40rem', maxWidth: 'calc(100vw - 2rem)' },
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        // Escape after an apply closes without a result, so the page is read again either way.
+        if (result) {
+          this.deselect(result.notFound);
+        }
+        this.reload();
+      });
+  }
+
+  protected rename(track: Track): void {
+    this.dialog
+      .open<TrackRenameDialogComponent, TrackRenameDialogData, boolean>(
+        TrackRenameDialogComponent,
+        { data: { track }, width: '32rem', maxWidth: 'calc(100vw - 2rem)' },
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result !== false) {
+          this.reload();
+        }
+      });
   }
 
   protected deleteSelected(): void {
     const ids = this.selectedTracks().map((track) => track.id);
-    this.bulkDelete.clear();
+    this.clearResults();
     this.confirm
       .confirm({
         title: 'library.bulkDelete.confirmTitle',
@@ -671,8 +862,12 @@ export default class LibraryPageComponent implements OnInit {
     this.list.set(state);
     void this.router.navigate([], {
       relativeTo: this.route,
-      // Written with the page, so a quality chosen here does not lose to the one in the URL.
-      queryParams: { ...listStateParams(state), quality: this.filters.value.quality ?? null },
+      // Written with the page, so a filter chosen here does not lose to the one in the URL.
+      queryParams: {
+        ...listStateParams(state),
+        quality: this.filters.value.quality ?? null,
+        reviewed: this.filters.value.reviewed ?? null,
+      },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });

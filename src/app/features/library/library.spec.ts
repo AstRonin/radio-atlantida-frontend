@@ -349,7 +349,14 @@ describe('library', () => {
         expect(navigate).toHaveBeenCalledWith(
           [],
           expect.objectContaining({
-            queryParams: { page: 4, size: 25, sort: 'artist', order: 'desc', quality: null },
+            queryParams: {
+              page: 4,
+              size: 25,
+              sort: 'artist',
+              order: 'desc',
+              quality: null,
+              reviewed: null,
+            },
             queryParamsHandling: 'merge',
             replaceUrl: true,
           }),
@@ -360,7 +367,14 @@ describe('library', () => {
         expect(navigate).toHaveBeenLastCalledWith(
           [],
           expect.objectContaining({
-            queryParams: { page: null, size: 25, sort: 'artist', order: 'desc', quality: null },
+            queryParams: {
+              page: null,
+              size: 25,
+              sort: 'artist',
+              order: 'desc',
+              quality: null,
+              reviewed: null,
+            },
           }),
         );
       });

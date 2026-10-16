@@ -38,8 +38,8 @@ streams it, and PostgreSQL stores the data.
    `docs/f10-import-plan.md`, F11: `docs/f11-logs-plan.md`, F12: `docs/f12-release-plan.md`,
    F13: `docs/f13-grafana-link-plan.md`, F14: `docs/f14-broadcast-status-plan.md`, F15:
    `docs/f15-air-window-plan.md`, F16: `docs/f16-import-in-place-plan.md`, F17:
-   `docs/f17-bulk-delete-plan.md`, F18: `docs/f18-library-pagination-sort-plan.md`). Work only
-   on the current phase.
+   `docs/f17-bulk-delete-plan.md`, F18: `docs/f18-library-pagination-sort-plan.md`, F19:
+   `docs/f19-track-titles-review-weekdays-plan.md`). Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
 
@@ -69,10 +69,16 @@ the media root from `GET /api/import/folders`, sees its files and their status f
 and an optional artist; no inbox, `docs/f16-import-in-place-plan.md`), F17 (bulk track
 delete: "Delete (N)" in the library selection bar sends one `POST /api/tracks/delete` for up to
 1,000 tracks; deleted tracks leave the selection, refused ones stay selected with their reasons,
-`docs/f17-bulk-delete-plan.md`), and F18 (library pages and sort: `mat-paginator` and sortable
+`docs/f17-bulk-delete-plan.md`), F18 (library pages and sort: `mat-paginator` and sortable
 headers on the library, sorted and paged by the backend with `sort`, `order`, `offset`, and
 `total` on `GET /api/tracks`; page, size, and order in the URL (`library-list-state.ts`); the
-selection is kept across pages, `docs/f18-library-pagination-sort-plan.md`) done. A page follows an operation it started (progress,
+selection is kept across pages, `docs/f18-library-pagination-sort-plan.md`), and F19 (track
+titles, reviewed mark, "All" weekdays: a row "Rename" dialog that sends the whole track back with
+`PUT`, "Rename (N)" find-and-replace previewed with `POST /api/tracks/rename` `dry_run`, the
+"Reviewed" column, filter (`reviewed` in the URL), and "Mark reviewed (N)" / "Mark not reviewed
+(N)" with `POST /api/tracks/review` (`track-review.ts`), a "Reviewed" switch on the track page
+sent at once, and "All" in `app-weekdays-input`; the backend clears the mark,
+`docs/f19-track-titles-review-weekdays-plan.md`) done. A page follows an operation it started (progress,
 summary) with `followOperation()` (`core/operations`) and `app-operation-status` (`shared/ui`). The live
 session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
 browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The
