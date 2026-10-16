@@ -4,6 +4,7 @@ import type { TrackQuery } from '../../core/catalog/catalog.service';
 export type TrackSort = NonNullable<TrackQuery['sort']>;
 export type SortOrder = NonNullable<TrackQuery['order']>;
 export type ReviewedFilter = NonNullable<TrackQuery['reviewed']>;
+export type InPlanFilter = NonNullable<TrackQuery['in_plan']>;
 
 export const LIBRARY_PAGE_SIZES: readonly number[] = [25, 50, 100, 200];
 export const LIBRARY_DEFAULT_PAGE_SIZE = 50;
@@ -17,9 +18,11 @@ const SORTS: Record<TrackSort, true> = {
   format: true,
   quality: true,
   reviewed: true,
+  next_planned_at: true,
 };
 const ORDERS: Record<SortOrder, true> = { asc: true, desc: true };
 const REVIEWED: Record<ReviewedFilter, true> = { true: true, false: true };
+const IN_PLAN: Record<InPlanFilter, true> = { true: true, false: true };
 
 /** Where the manager is in the library list: the page (0-based), its size, and the order. */
 export interface LibraryListState {
@@ -55,6 +58,19 @@ function isSortOrder(value: unknown): value is SortOrder {
 /** The `reviewed` filter from the URL; any other value means all tracks. */
 export function readReviewedFilter(value: string | undefined): ReviewedFilter | null {
   return value !== undefined && Object.hasOwn(REVIEWED, value) ? (value as ReviewedFilter) : null;
+}
+
+/** The `in_plan` filter from the URL; any other value means all tracks. */
+export function readInPlanFilter(value: string | undefined): InPlanFilter | null {
+  return value !== undefined && Object.hasOwn(IN_PLAN, value) ? (value as InPlanFilter) : null;
+}
+
+/**
+ * Whether the URL asks for tracks without a playlist (`in_playlist=false`). The panel offers only
+ * that side of the filter: tracks in a playlist are found by the playlist filter.
+ */
+export function readWithoutPlaylist(value: string | undefined): boolean {
+  return value === 'false';
 }
 
 /** Reads the state from the URL; a value not allowed falls back to its default, alone. */

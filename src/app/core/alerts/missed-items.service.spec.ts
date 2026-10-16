@@ -13,6 +13,7 @@ const missed = (id: number): ApiSchema<'PlayHistoryEntry'> => ({
   track_id: 7,
   title: 'News',
   planned_start_utc: '2026-10-15T10:00:00Z',
+  planned_in_ms: 0,
   planned_out_ms: 180_000,
   resolution: 'open',
   outage: { id: 3, component: 'icecast' },

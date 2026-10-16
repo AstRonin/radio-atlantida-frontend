@@ -1,5 +1,10 @@
 import { Provider } from '@angular/core';
-import { PREVIEW_AUDIO_FACTORY, PreviewAudio } from './player.service';
+import {
+  PREVIEW_AUDIO_FACTORY,
+  PREVIEW_FADER_FACTORY,
+  PreviewAudio,
+  PreviewFader,
+} from './player.service';
 
 /**
  * An `HTMLAudioElement` stand-in for unit tests: nothing is fetched or decoded. Tests drive it
@@ -69,6 +74,28 @@ export class FakeAudio implements PreviewAudio {
   }
 }
 
-export function provideFakeAudio(audio: FakeAudio): Provider {
-  return { provide: PREVIEW_AUDIO_FACTORY, useValue: () => audio };
+/** Records the gain the player sets, instead of a Web Audio graph. */
+export class FakeFader implements PreviewFader {
+  readonly schedules: { gain: number; points: (readonly [number, number])[] }[] = [];
+  resumes = 0;
+
+  schedule(gain: number, points: readonly (readonly [number, number])[]): void {
+    this.schedules.push({ gain, points: [...points] });
+  }
+
+  resume(): void {
+    this.resumes++;
+  }
+
+  get last(): { gain: number; points: (readonly [number, number])[] } | undefined {
+    return this.schedules.at(-1);
+  }
+}
+
+/** The fake audio element, and a fake fader (without one, the player has no gain node). */
+export function provideFakeAudio(audio: FakeAudio, fader: FakeFader | null = null): Provider[] {
+  return [
+    { provide: PREVIEW_AUDIO_FACTORY, useValue: () => audio },
+    { provide: PREVIEW_FADER_FACTORY, useValue: () => fader },
+  ];
 }

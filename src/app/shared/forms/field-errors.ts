@@ -8,6 +8,7 @@ import { SERVER_ERROR, ServerFieldError } from './server-errors';
 // The first matching key wins, so the most useful message is shown when several apply.
 const ORDER = [
   SERVER_ERROR,
+  'cueTime',
   'required',
   'range',
   'step',

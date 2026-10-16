@@ -1,4 +1,4 @@
-import { DestroyRef, inject, signal } from '@angular/core';
+import { DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, filter, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
@@ -46,6 +46,8 @@ export function trackMedia(done: (state: OperationState) => void) {
   return {
     run,
     error: error.asReadonly(),
+    /** Tracks whose start and stop points the new file reset, from the summary. */
+    cueReset: computed(() => cueResetNote(run.state()?.summary)),
     start(request: MediaRequest): void {
       error.set(null);
       // The request is sent after the dialog closes, because the page follows its operation ID.
@@ -72,4 +74,19 @@ export function trackMedia(done: (state: OperationState) => void) {
         });
     },
   };
+}
+
+export interface CueResetNote {
+  count: number;
+  /** At most five paths, as the backend lists them. */
+  paths: string;
+}
+
+/**
+ * Reads `cue_reset N: [paths]` from the summary of an analysis or a transcode (backend phase 22
+ * §10): a new file that is shorter than a track's stop point resets its cue.
+ */
+export function cueResetNote(summary: string | undefined): CueResetNote | null {
+  const match = summary ? /cue_reset (\d+): \[([^\]]*)\]/.exec(summary) : null;
+  return match ? { count: Number(match[1]), paths: match[2] } : null;
 }

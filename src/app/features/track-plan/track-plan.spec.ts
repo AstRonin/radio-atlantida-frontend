@@ -31,6 +31,8 @@ const hour = (overrides: Partial<TrackPlanHour> = {}): TrackPlanHour => ({
       artist_name: 'Ani',
       duration_ms: 200_000,
       planned_start_utc: '2026-10-15T06:00:00Z',
+      // Cut from 0:20 by its cue: 3:00 on air, not the out point 3:20.
+      planned_in_ms: 20_000,
       planned_out_ms: 200_000,
       truncated: false,
       source: 'clock',
@@ -43,6 +45,7 @@ const hour = (overrides: Partial<TrackPlanHour> = {}): TrackPlanHour => ({
       title: 'Long Outro',
       duration_ms: 300_000,
       planned_start_utc: '2026-10-15T06:57:00Z',
+      planned_in_ms: 0,
       planned_out_ms: 180_000,
       truncated: true,
       source: 'filler_random',
@@ -123,6 +126,9 @@ describe('TrackPlanPageComponent', () => {
     expect(page.textContent).toContain('trackPlan.sources.filler_random');
     expect(page.textContent).toContain('trackPlan.truncated');
     expect(page.querySelectorAll('app-play-button')).toHaveLength(2);
+    const firstRow = page.querySelector('tbody tr')?.textContent ?? '';
+    expect(firstRow).toContain('3:00');
+    expect(firstRow).not.toContain('3:20');
   });
 
   it('shows the warnings of the current build only', async () => {

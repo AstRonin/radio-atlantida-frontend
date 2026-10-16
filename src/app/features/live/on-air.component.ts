@@ -3,7 +3,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import type { ApiSchema } from '../../core/api/api-types';
 import type { PreviewTrack } from '../../core/player/player.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
-import { DurationPipe } from '../../core/time/duration.pipe';
+import { DurationPipe, PlannedLengthPipe } from '../../core/time/duration.pipe';
+import { plannedLengthMs } from '../../core/time/duration';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 
@@ -25,6 +26,7 @@ export interface QueuedRow {
     MatProgressBarModule,
     TranslatePipe,
     DurationPipe,
+    PlannedLengthPipe,
     StationTimePipe,
     PlayButtonComponent,
   ],
@@ -87,7 +89,7 @@ export interface QueuedRow {
               | translate: { time: (now.started_at | stationTime: 'time-seconds') }
           }}
           @if (now.out_ms !== undefined) {
-            · {{ elapsedMs() | duration }} / {{ now.out_ms | duration }}
+            · {{ elapsedMs() | duration }} / {{ now.out_ms | plannedLength: now.in_ms }}
           }
         </p>
         @if (progress() !== null) {
@@ -123,7 +125,9 @@ export interface QueuedRow {
               <td><app-play-button [track]="row.preview" /></td>
               <td>{{ row.item.title }}</td>
               <td>{{ row.item.artist_name }}</td>
-              <td class="time">{{ row.item.planned_out_ms | duration }}</td>
+              <td class="time">
+                {{ row.item.planned_out_ms | plannedLength: row.item.planned_in_ms }}
+              </td>
             </tr>
           } @empty {
             <tr>
@@ -193,7 +197,8 @@ export class OnAirComponent {
 
   /** 0..100; null when the length is unknown. */
   protected readonly progress = computed(() => {
-    const out = this.status().now_playing?.out_ms;
-    return out ? Math.min(100, (this.elapsedMs() / out) * 100) : null;
+    const playing = this.status().now_playing;
+    const length = playing ? plannedLengthMs(playing.in_ms, playing.out_ms) : undefined;
+    return length ? Math.min(100, (this.elapsedMs() / length) * 100) : null;
   });
 }

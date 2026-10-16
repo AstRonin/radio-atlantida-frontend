@@ -197,7 +197,9 @@
         "harbor_port": "Harbor port",
         "control_host": "Control host",
         "control_port": "Control port",
-        "media_root": "Media folder in Liquidsoap"
+        "media_root": "Media folder in Liquidsoap",
+        "cue_fade_in_ms": "Default fade in at a start point",
+        "cue_fade_out_ms": "Default fade out at a stop point"
       },
       "rotation": {
         "grid_horizon_days": "Grid horizon",
@@ -278,7 +280,8 @@
       "dateRange": "Choose a last date on or after the first one, at most {days} days in all.",
       "date": "Enter a date as YYYY-MM-DD, or choose one in the calendar.",
       "dateMin": "Choose {date} or a later date.",
-      "dateMax": "Choose {date} or an earlier date."
+      "dateMax": "Choose {date} or an earlier date.",
+      "cueTime": "Enter a time as m:ss.mmm, for example 1:02.340."
     },
     "timepicker": {
       "format": "HH:MM",
@@ -316,7 +319,11 @@
       "does_not_fit": "It does not fit into the available time.",
       "order": "The values are in the wrong order.",
       "blocked": "A separation or play rule blocks this choice.",
-      "invalid_characters": "Remove line breaks and tabs."
+      "invalid_characters": "Remove line breaks and tabs.",
+      "cue_order": "The stop point must be after the start point.",
+      "cue_beyond_end": "The point is past the end of the file.",
+      "air_too_short": "Leave at least 5 seconds on air.",
+      "fades_too_long": "The fades together are longer than the part on air."
     },
     "weekdays": {
       "label": "Weekdays",
@@ -340,6 +347,9 @@
       "label": "Hours",
       "all": "All hours",
       "none": "No hours"
+    },
+    "cueTime": {
+      "format": "m:ss.mmm"
     }
   },
   "filler": {
@@ -462,7 +472,10 @@
     "live_unavailable": "The live voice bridge is not available on the server.",
     "network_error": "The server cannot be reached. Check that the backend is running.",
     "timeout": "The server did not answer in time. Try again.",
-    "unexpected_response": "The server sent an unexpected answer. Try again in a moment."
+    "unexpected_response": "The server sent an unexpected answer. Try again in a moment.",
+    "track_on_air": "The track is on air or queued; try again after it has played.",
+    "track_not_analysed": "Analyse the track first: its length is not known.",
+    "waveform_unavailable": "The file cannot be read."
   },
   "nav": {
     "live": "Live",
@@ -592,14 +605,17 @@
       "bitrate": "Bitrate",
       "sample_rate": "Sample rate",
       "quality_ok": "Quality",
-      "reviewed": "Reviewed"
+      "reviewed": "Reviewed",
+      "next_planned_at": "In plan"
     },
     "filters": {
       "search": "Search by title or artist",
       "playlist": "Playlist",
       "type": "Type",
       "quality": "Quality",
-      "reviewed": "Reviewed"
+      "reviewed": "Reviewed",
+      "inPlan": "In plan",
+      "withoutPlaylist": "Without playlist"
     },
     "quality": {
       "ok": "OK",
@@ -679,7 +695,8 @@
         "title": "Replace the original files?",
         "message": "The fixed files replace the originals of {count} tracks. The originals are deleted from the media folder and cannot be restored.",
         "confirm": "Replace"
-      }
+      },
+      "cueReset": "The start and stop points of {count} tracks were reset: the new file is shorter. {paths}"
     },
     "bulkDelete": {
       "delete": "Delete ({count})",
@@ -720,6 +737,43 @@
       "unchanged": "Titles without the text or not changed: {count}",
       "refusedTitle": "Titles left alone: {count}",
       "reviewNote": "The renamed tracks lost their reviewed mark."
+    },
+    "cue": {
+      "title": "Start and stop",
+      "loadingWaveform": "Reading the waveform. The first time takes a few seconds.",
+      "analyseFirst": "Analyse the track first: the start and stop points need the length of the file.",
+      "cue_in_ms": "Start",
+      "cue_out_ms": "Stop",
+      "fade_in_ms": "Fade in",
+      "fade_out_ms": "Fade out",
+      "fadeChoices": "Quick choices",
+      "setFade": "{fade}: {seconds} s",
+      "seconds": "{seconds} s",
+      "onAir": "On air: {air} (file {file})",
+      "playIn": "Play from start point",
+      "playBeforeOut": "Play last 5 s before stop",
+      "reset": "Reset",
+      "markReviewed": "Mark as reviewed",
+      "onAirHint": {
+        "on_air": "The track is on air now. Save after it has played.",
+        "queued": "The track is queued for air. Save after it has played."
+      },
+      "save": "Save start and stop",
+      "saved": "Start and stop are saved.",
+      "savedReviewed": "Start and stop are saved, and the track is marked as reviewed.",
+      "rebuilding": "Rebuilding the planned hours with the new cut…",
+      "reviewFailed": "The start and stop points are saved, but the reviewed mark is not."
+    },
+    "inPlanFilter": {
+      "true": "Yes",
+      "false": "No"
+    },
+    "usage": {
+      "on_air": "On air",
+      "queued": "Queued",
+      "cut": "{air} on air, file {file}",
+      "playlists": "In {count} playlists: {names}",
+      "nextPlanned": "Next in plan: {time}"
     }
   },
   "playlists": {
@@ -1301,5 +1355,20 @@
     "empty": "No entries match the filters.",
     "offsetLimit": "Older entries of this file cannot be read here. Narrow the filters to see them.",
     "openGrafana": "Search in Grafana"
+  },
+  "waveform": {
+    "label": "Waveform. Click to place the cursor.",
+    "cueIn": "Start point",
+    "cueOut": "Stop point",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit",
+    "enlarged": "×{factor}",
+    "enlargedHint": "Enlarged {factor} times, so the loudest point ({peak}) fills the height. The level lines show the real level.",
+    "realLevel": "Real level",
+    "realLevelHint": "Draw the waveform at its real level: the full height is 0 dB.",
+    "scroll": "Scroll the waveform",
+    "keyboard": "Keyboard shortcuts",
+    "shortcuts": "Waveform: Space plays or pauses from the cursor, I sets the start point and O the stop point at the cursor, + and − zoom, 0 fits the whole track. Start or stop point: ← and → move it by 100 ms, with Shift by 1 s, with Alt by 10 ms; Page Up and Page Down by 10 s; Home and End go as far as it can."
   }
 }

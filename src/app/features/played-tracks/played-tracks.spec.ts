@@ -27,6 +27,7 @@ const aired: PlayHistoryEntry = {
   artist_name: 'Ani',
   planned_start_utc: '2026-10-15T00:30:00Z',
   started_at: '2026-10-15T00:30:01Z',
+  planned_in_ms: 0,
   planned_out_ms: 200_000,
   actual_duration_ms: 199_000,
   clock: { id: 2, name: 'Night' },
@@ -39,7 +40,8 @@ const missed: PlayHistoryEntry = {
   track_id: 8,
   title: 'Hourly News',
   planned_start_utc: '2026-10-15T00:10:00Z',
-  planned_out_ms: 180_000,
+  planned_in_ms: 10_000,
+  planned_out_ms: 190_000,
   clock: { id: 3 },
   outage: { id: 4, component: 'icecast', reason: 'mount missing' },
   resolution: 'open',
@@ -167,6 +169,8 @@ describe('PlayedTracksPageComponent', () => {
       'playedTracks.statuses.missed',
     );
     expect(missedRow.textContent).toContain('mount missing');
+    // Its planned length, out − in, not the out point.
+    expect(missedRow.textContent).toContain('3:00');
     expect(missedRow.textContent).toContain('playedTracks.deletedClock');
     const resolve = [...missedRow.querySelectorAll('a')].find(
       (link) => link.textContent?.trim() === 'playedTracks.resolve',

@@ -9,6 +9,7 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -40,6 +41,7 @@ import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 import { TRACK_LIMITS, Track, trackBody, trackForm, trackFormValue } from './track-form';
 import { TrackAnalysisComponent } from './track-analysis.component';
+import { TrackCueComponent } from './track-cue.component';
 import { trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
 
@@ -48,6 +50,7 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
  * its play rules. The file is not uploaded here; it must already be in the media folder (new files
  * come in through the import). A stored track shows its analysis and offers Analyse, Fix
  * loudness, and Optimize track, and its reviewed mark, which is sent at once and not with Save.
+ * Its start and stop points have a section and a Save of their own (`app-track-cue`).
  */
 @Component({
   selector: 'app-track-edit',
@@ -71,6 +74,7 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
     FieldHintComponent,
     OperationStatusComponent,
     TrackAnalysisComponent,
+    TrackCueComponent,
     TrackMediaActionsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -81,6 +85,16 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
     >
       @if (stored(); as track) {
         <app-play-button [track]="track" />
+        @if (track.playout_state; as state) {
+          <span class="badge" [class.warn]="state === 'on_air'">{{
+            'library.usage.' + state | translate
+          }}</span>
+        }
+        @if (track.next_planned_at) {
+          <span class="muted">{{
+            'library.usage.nextPlanned' | translate: { time: (track.next_planned_at | stationTime) }
+          }}</span>
+        }
       }
     </app-page-header>
 
@@ -195,6 +209,11 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
             <p class="form-error" role="alert">{{ message }}</p>
           }
           <app-operation-status [state]="media.run.state()" runningLabel="library.media.running" />
+          @if (media.cueReset(); as reset) {
+            <p class="muted" role="status">
+              {{ 'library.media.cueReset' | translate: { count: reset.count, paths: reset.paths } }}
+            </p>
+          }
         </section>
       }
       <app-text-input
@@ -216,6 +235,15 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
         <a matButton routerLink="/library">{{ 'common.back' | translate }}</a>
       </div>
     </form>
+
+    @if (edited(); as track) {
+      <!-- The canvas editor is not needed for the first view of the page. -->
+      @defer (on idle) {
+        <app-track-cue [track]="track" (saved)="stored.set($event)" />
+      } @placeholder {
+        <p class="muted">{{ 'library.cue.title' | translate }}</p>
+      }
+    }
   `,
   styles: `
     .section-title {
@@ -256,9 +284,12 @@ export default class TrackEditComponent implements PendingChanges {
   protected readonly error = signal<string | null>(null);
   protected readonly reviewing = signal(false);
   protected readonly reviewError = signal<string | null>(null);
+  private readonly cue = viewChild(TrackCueComponent);
 
   /** The track as last read or saved; null for a new one. */
   protected readonly stored = signal<Track | null>(null);
+  /** A stored track opened for editing; a track created here goes back to the library. */
+  protected readonly edited = computed(() => (this.id() === undefined ? null : this.stored()));
   protected readonly trackId = computed(() => {
     const id = this.id();
     return this.stored()?.id ?? (id === undefined ? null : Number(id));
@@ -322,7 +353,7 @@ export default class TrackEditComponent implements PendingChanges {
   }
 
   hasUnsavedChanges(): boolean {
-    return this.form.dirty;
+    return this.form.dirty || !!this.cue()?.hasUnsavedChanges();
   }
 
   /**

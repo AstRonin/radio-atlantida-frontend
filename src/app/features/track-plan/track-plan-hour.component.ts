@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import type { ApiSchema } from '../../core/api/api-types';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import type { PreviewTrack } from '../../core/player/player.service';
-import { DurationPipe } from '../../core/time/duration.pipe';
+import { DurationPipe, PlannedLengthPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 
@@ -28,7 +28,14 @@ export interface PlanHourView {
  */
 @Component({
   selector: 'app-track-plan-hour',
-  imports: [RouterLink, TranslatePipe, DurationPipe, StationTimePipe, PlayButtonComponent],
+  imports: [
+    RouterLink,
+    TranslatePipe,
+    DurationPipe,
+    PlannedLengthPipe,
+    StationTimePipe,
+    PlayButtonComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let hour = view().hour;
@@ -83,7 +90,7 @@ export interface PlanHourView {
                 <td>{{ item.title }}</td>
                 <td>{{ item.artist_name }}</td>
                 <td class="time">
-                  {{ item.planned_out_ms | duration }}
+                  {{ item.planned_out_ms | plannedLength: item.planned_in_ms }}
                   @if (item.truncated) {
                     <span class="badge warn">
                       {{

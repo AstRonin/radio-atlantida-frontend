@@ -31,7 +31,8 @@ const item = (overrides: Partial<MissedItem> = {}): MissedItem => ({
   track_id: 8,
   title: 'Hourly News',
   planned_start_utc: '2026-10-15T00:10:00Z',
-  planned_out_ms: 180_000,
+  planned_in_ms: 15_000,
+  planned_out_ms: 195_000,
   clock: { id: 3, name: 'Night' },
   outage: { id: 4, component: 'icecast', reason: 'mount missing' },
   resolution: 'open',
@@ -145,6 +146,7 @@ describe('MissedItemsPageComponent', () => {
 
     expect(page.textContent).toContain('Hourly News');
     expect(page.textContent).toContain('mount missing');
+    expect(page.textContent).toContain('3:00');
     expect(button(page, 'missedItems.dismiss')).toBeDefined();
 
     (fixture.componentInstance as MissedView).resolutionFilter.setValue('dismissed');

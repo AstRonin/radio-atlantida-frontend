@@ -58,13 +58,16 @@ import { TrackDeleteResultComponent } from './track-delete-result.component';
 import type { Track } from './track-form';
 import {
   DEFAULT_LIST_STATE,
+  InPlanFilter,
   LIBRARY_PAGE_SIZES,
   LibraryListState,
   ReviewedFilter,
   isTrackSort,
   listStateParams,
+  readInPlanFilter,
   readListState,
   readReviewedFilter,
+  readWithoutPlaylist,
 } from './library-list-state';
 import { MediaRequest, trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
@@ -73,10 +76,13 @@ import { TrackRenameDialogComponent, TrackRenameDialogData } from './track-renam
 import { BULK_REVIEW_MAX, trackReview } from './track-review';
 
 export const LIBRARY_SEARCH_DEBOUNCE_MS = 300;
+/** A start or a rebuild comes with several events; the page is read once after them. */
+export const LIBRARY_USAGE_RELOAD_MS = 1000;
 
 type Quality = NonNullable<TrackQuery['quality']>;
 const QUALITIES: readonly Quality[] = ['ok', 'issues', 'unanalysed'];
 const REVIEWED_FILTERS: readonly ReviewedFilter[] = ['true', 'false'];
+const IN_PLAN_FILTERS: readonly InPlanFilter[] = ['true', 'false'];
 
 interface PageRequest {
   query: TrackQuery;
@@ -90,6 +96,8 @@ interface PageRequest {
  * filtered list (F18); the page, its size, and the order are kept in the URL. Selected tracks,
  * on any page, can be analysed again or fixed (F10), deleted with one request (F17), renamed
  * with find and replace, or marked reviewed (F19). A row's title can be corrected in a dialog.
+ * Each row shows whether the track is in use (F20): its next planned start, on air or queued,
+ * and its playlists; the marks follow the air through the playout and plan events.
  */
 @Component({
   selector: 'app-library-page',
@@ -168,6 +176,20 @@ interface PageRequest {
           }
         </mat-select>
       </mat-form-field>
+      <mat-form-field>
+        <mat-label>{{ 'library.filters.inPlan' | translate }}</mat-label>
+        <mat-select formControlName="in_plan">
+          <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+          @for (inPlan of inPlanFilters; track inPlan) {
+            <mat-option [value]="inPlan">{{
+              'library.inPlanFilter.' + inPlan | translate
+            }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-checkbox class="filter-check" formControlName="without_playlist">
+        {{ 'library.filters.withoutPlaylist' | translate }}
+      </mat-checkbox>
     </form>
 
     @if (
@@ -254,6 +276,11 @@ interface PageRequest {
           <p class="form-error" role="alert">{{ message }}</p>
         }
         <app-operation-status [state]="media.run.state()" runningLabel="library.media.running" />
+        @if (media.cueReset(); as reset) {
+          <p class="muted" role="status">
+            {{ 'library.media.cueReset' | translate: { count: reset.count, paths: reset.paths } }}
+          </p>
+        }
         @if (bulkDelete.count(); as count) {
           <div role="status">
             <mat-progress-bar
@@ -331,6 +358,18 @@ interface PageRequest {
           </th>
           <td mat-cell *matCellDef="let track">
             <a [routerLink]="['/library', track.id]">{{ track.title }}</a>
+            @if (track.playout_state; as state) {
+              @let stateLabel = 'library.usage.' + state | translate;
+              <span
+                class="playout"
+                [class.on-air]="state === 'on_air'"
+                role="img"
+                tabindex="0"
+                [matTooltip]="stateLabel"
+                [attr.aria-label]="stateLabel"
+                >{{ state === 'on_air' ? '●' : '◷' }}</span
+              >
+            }
           </td>
         </ng-container>
         <ng-container matColumnDef="artist">
@@ -374,9 +413,65 @@ interface PageRequest {
           </th>
           <td mat-cell *matCellDef="let track" class="numeric">
             @if (track.duration_ms) {
-              {{ track.duration_ms | duration }}
+              {{ track.air_duration_ms ?? track.duration_ms | duration }}
+              @if (isCut(track)) {
+                @let cutLabel =
+                  'library.usage.cut'
+                    | translate
+                      : {
+                          air: (track.air_duration_ms | duration),
+                          file: (track.duration_ms | duration),
+                        };
+                <span
+                  class="cut"
+                  role="img"
+                  tabindex="0"
+                  [matTooltip]="cutLabel"
+                  [attr.aria-label]="cutLabel"
+                  >✂</span
+                >
+              }
             } @else {
               <span class="badge warn">{{ 'library.noDuration' | translate }}</span>
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="inPlan">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            mat-sort-header="next_planned_at"
+            [sortActionDescription]="
+              'library.sort.by'
+                | translate: { column: ('library.fields.next_planned_at' | translate) }
+            "
+          >
+            {{ 'library.fields.next_planned_at' | translate }}
+          </th>
+          <td mat-cell *matCellDef="let track" class="numeric">
+            @if (track.next_planned_at) {
+              {{ track.next_planned_at | stationTime }}
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="playlists">
+          <th mat-header-cell *matHeaderCellDef>
+            {{ 'library.fields.playlist_ids' | translate }}
+          </th>
+          <td mat-cell *matCellDef="let track" class="numeric">
+            @if (track.playlist_ids.length > 0) {
+              @let names = playlistNames(track);
+              <span
+                tabindex="0"
+                [matTooltip]="names"
+                [attr.aria-label]="
+                  'library.usage.playlists'
+                    | translate: { count: track.playlist_ids.length, names: names }
+                "
+                >{{ track.playlist_ids.length }}</span
+              >
+            } @else {
+              <span class="muted">0</span>
             }
           </td>
         </ng-container>
@@ -503,6 +598,20 @@ interface PageRequest {
       font-weight: 700;
     }
 
+    .playout,
+    .cut {
+      margin-left: 0.375rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .playout.on-air {
+      color: var(--mat-sys-error);
+    }
+
+    .filter-check {
+      align-self: center;
+    }
+
     .danger {
       --mat-button-text-label-text-color: var(--mat-sys-error);
     }
@@ -522,6 +631,9 @@ export default class LibraryPageComponent implements OnInit {
   readonly quality = input<string>();
   /** Query parameter `reviewed`, as the import's "Review the new tracks" link sets it. */
   readonly reviewed = input<string>();
+  /** Query parameters of the usage filters (F20), named as the router passes them. */
+  readonly in_plan = input<string>();
+  readonly in_playlist = input<string>();
   /** Query parameters of the list state (library-list-state.ts), read once when the page opens. */
   readonly page = input<string>();
   readonly size = input<string>();
@@ -535,6 +647,8 @@ export default class LibraryPageComponent implements OnInit {
     'artist',
     'type',
     'duration',
+    'inPlan',
+    'playlists',
     'format',
     'quality',
     'reviewed',
@@ -542,6 +656,7 @@ export default class LibraryPageComponent implements OnInit {
   ];
   protected readonly qualities = QUALITIES;
   protected readonly reviewedFilters = REVIEWED_FILTERS;
+  protected readonly inPlanFilters = IN_PLAN_FILTERS;
   protected readonly pageSizes = LIBRARY_PAGE_SIZES;
   protected readonly playlists = catalogList(this.catalog.playlists());
   protected readonly types = catalogList(this.catalog.playlistTypes());
@@ -552,7 +667,13 @@ export default class LibraryPageComponent implements OnInit {
     type_id: new FormControl<number | null>(null),
     quality: new FormControl<Quality | null>(null),
     reviewed: new FormControl<ReviewedFilter | null>(null),
+    in_plan: new FormControl<InPlanFilter | null>(null),
+    without_playlist: new FormControl(false, { nonNullable: true }),
   });
+
+  private readonly playlistNamesById = computed(
+    () => new Map(this.playlists().items.map((playlist) => [playlist.id, playlist.name])),
+  );
 
   protected readonly list = signal<LibraryListState>(DEFAULT_LIST_STATE);
   protected readonly rows = signal<readonly Track[]>([]);
@@ -656,6 +777,18 @@ export default class LibraryPageComponent implements OnInit {
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.reload());
+
+    // The usage marks follow the air without polling: the same events as the air window (F15).
+    merge(
+      realtime.on('playout.now_playing'),
+      realtime.on('playout.track_ended'),
+      realtime.on('track_plan.completed'),
+      realtime.on('clock_build.completed'),
+      realtime.on('reschedule.completed'),
+      realtime.on('missed_items.completed'),
+    )
+      .pipe(debounceTime(LIBRARY_USAGE_RELOAD_MS), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reload());
   }
 
   ngOnInit(): void {
@@ -665,6 +798,10 @@ export default class LibraryPageComponent implements OnInit {
       this.filters.controls.quality.setValue(quality as Quality, { emitEvent: false });
     }
     this.filters.controls.reviewed.setValue(readReviewedFilter(this.reviewed()), {
+      emitEvent: false,
+    });
+    this.filters.controls.in_plan.setValue(readInPlanFilter(this.in_plan()), { emitEvent: false });
+    this.filters.controls.without_playlist.setValue(readWithoutPlaylist(this.in_playlist()), {
       emitEvent: false,
     });
     this.list.set(
@@ -688,6 +825,8 @@ export default class LibraryPageComponent implements OnInit {
           type_id: value.type_id ?? undefined,
           quality: value.quality ?? undefined,
           reviewed: value.reviewed ?? undefined,
+          in_plan: value.in_plan ?? undefined,
+          in_playlist: value.without_playlist ? ('false' as const) : undefined,
         })),
         distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
         takeUntilDestroyed(this.destroyRef),
@@ -867,10 +1006,22 @@ export default class LibraryPageComponent implements OnInit {
         ...listStateParams(state),
         quality: this.filters.value.quality ?? null,
         reviewed: this.filters.value.reviewed ?? null,
+        in_plan: this.filters.value.in_plan ?? null,
+        in_playlist: this.filters.value.without_playlist ? 'false' : null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+  }
+
+  /** A cut track plays shorter than its file. */
+  protected isCut(track: Track): boolean {
+    return track.air_duration_ms !== undefined && track.air_duration_ms !== track.duration_ms;
+  }
+
+  protected playlistNames(track: Track): string {
+    const names = this.playlistNamesById();
+    return track.playlist_ids.map((id) => names.get(id) ?? `#${id}`).join(', ');
   }
 
   protected remove(track: Track): void {
