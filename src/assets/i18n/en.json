@@ -570,6 +570,10 @@
     "add": "Add track",
     "preview": "Preview",
     "noDuration": "No length",
+    "pageStatus": "Page {page} of {pages}, {total} tracks",
+    "sort": {
+      "by": "Sort by {column}"
+    },
     "fields": {
       "title": "Title",
       "artist_id": "Artist",

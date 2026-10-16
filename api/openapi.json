@@ -4442,12 +4442,19 @@
             "type": "array"
           },
           "next_cursor": {
-            "description": "Pass as cursor to read the next page; absent on the last page.",
+            "description": "Pass as cursor to read the next page; set only in the default order (title, asc), absent on the last page.",
             "type": "string"
+          },
+          "total": {
+            "description": "Tracks matching the filters, on every page.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
-          "items"
+          "items",
+          "total"
         ],
         "type": "object"
       },
@@ -8925,7 +8932,7 @@
     },
     "/api/tracks": {
       "get": {
-        "description": "Tracks in title order, a page at a time: pass next_cursor as cursor for the next page. The filters combine.",
+        "description": "Tracks matching the filters, sorted by `sort` and `order` (ties by title and ID), a page at a time: read the next page with `offset`, or with `next_cursor` as `cursor` in the default title order. `total` counts every matching track. The filters combine.",
         "operationId": "list-tracks",
         "parameters": [
           {
@@ -8991,12 +8998,58 @@
             }
           },
           {
-            "description": "next_cursor of the previous page.",
+            "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders.",
+            "explode": false,
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "default": "title",
+              "description": "Sort key; ties are ordered by title and ID. Tracks without the value are last in both orders.",
+              "enum": [
+                "title",
+                "artist",
+                "type",
+                "duration",
+                "format",
+                "quality"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "default": "asc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Tracks to skip in the sorted list.",
+            "explode": false,
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "description": "Tracks to skip in the sorted list.",
+              "format": "int64",
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "next_cursor of the previous page; only in the default order (title, asc) and without offset.",
             "explode": false,
             "in": "query",
             "name": "cursor",
             "schema": {
-              "description": "next_cursor of the previous page.",
+              "description": "next_cursor of the previous page; only in the default order (title, asc) and without offset.",
               "maxLength": 2000,
               "type": "string"
             }

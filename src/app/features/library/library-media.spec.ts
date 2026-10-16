@@ -96,7 +96,7 @@ describe('library media actions', () => {
       http.expectOne('/api/playlists').flush({ items: [] });
       http.expectOne('/api/playlist-types').flush({ items: [] });
       const request = tracksRequest();
-      request.flush({ items: rows });
+      request.flush({ items: rows, total: rows.length });
       await settlePage();
       return { fixture, page: fixture.nativeElement as HTMLElement };
     }
@@ -134,7 +134,7 @@ describe('library media actions', () => {
       // One reload for the own operation; the event's reload replaces it.
       const reloads = http.match((req) => req.url === '/api/tracks');
       expect(reloads.length).toBeGreaterThan(0);
-      reloads.at(-1)?.flush({ items: [track(1, { format: 'mp3', fixes: [] })] });
+      reloads.at(-1)?.flush({ items: [track(1, { format: 'mp3', fixes: [] })], total: 1 });
       await settlePage();
       expect(page.textContent).toContain('1 optimized');
       expect(
@@ -224,7 +224,7 @@ describe('library media actions', () => {
         data: { kind: 'import', summary: '3 imported' },
       });
       await settlePage();
-      tracksRequest().flush({ items: [track(1)] });
+      tracksRequest().flush({ items: [track(1)], total: 1 });
     });
   });
 

@@ -448,9 +448,13 @@ Track responses carry the analysis columns, `quality_issues`, and `fixes` (the t
 
 | Method and path | Purpose |
 |-----------------|---------|
-| `POST /api/tracks/delete` | Body: `track_ids` (1 to 1,000, unique). Deletes each track like `DELETE /api/tracks/{id}`, in order, each in its own statement (not all or nothing); the files are not touched. Returns 200 with `deleted` (IDs) and `refused` (`track_id`, `code` `track_in_use`, `track_has_history` or `track_not_found`, `title`, `used_by` for `track_in_use`). Synchronous, not an operation; runs to the end when the client disconnects (at most 25 s). An unexpected error stops it with 500 and a detail naming how many tracks were deleted before it |
+| `POST /api/tracks/delete` | Body: `track_ids` (1 to 1,000, unique). Deletes, in one statement, every listed track that `DELETE /api/tracks/{id}` would delete; a refused track does not keep the others; the files are not touched. Returns 200 with `deleted` (IDs) and `refused` (`track_id`, `code` `track_in_use`, `track_has_history` or `track_not_found`, `title`, `used_by` for `track_in_use`). Synchronous, not an operation; runs to the end when the client disconnects. An unexpected error gives 500 with a detail naming how many tracks were deleted |
 
 An analysis or transcode that reaches a track deleted after it started counts it as `track deleted`, not as a failure.
+
+**Track list pages and sort (v7-20, `docs/phase-20-plan.md` §2)**
+
+`GET /api/tracks` also takes `sort` (`title` default, `artist`, `type`, `duration`, `format`, `quality`), `order` (`asc` default, `desc`), and `offset` (0 to 1,000,000), and its response carries `total`, the number of tracks matching the filters on every page. PostgreSQL sorts the whole filtered set; tracks without the value (no artist, no duration, no format, never analysed) are last in both orders, and ties are ordered by title and ID ascending. The `quality` order is: no issues, with issues (more issues first), never analysed. An offset past the end returns no items and the correct `total`. `cursor` and `next_cursor` work only in the default order (`title`, `asc`) and without `offset`; any other combination is a 422 on `query.cursor`.
 
 **Endpoints added in v7-8 (play rules and track preview)**
 

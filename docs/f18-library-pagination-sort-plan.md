@@ -1,6 +1,6 @@
 # F18 Plan — Library Pages and Sort (radio-atlantida-frontend)
 
-Status: Planned
+Status: Done
 Based on: `docs/tech-design.md` (§6), `docs/frontend-init-plan.md` (F5 library), `docs/f10-import-plan.md` (selection), `docs/f17-bulk-delete-plan.md`, backend `docs/phase-20-plan.md`
 Last updated: 2026-10-16
 
