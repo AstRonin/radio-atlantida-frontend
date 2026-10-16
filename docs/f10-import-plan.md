@@ -4,6 +4,8 @@ Status: Done
 Based on: `docs/base.md` (Audio Quality Analysis, Audio Transcoding), `docs/tech-design.md` (§4, §6.2, §6.3, §6.4 v7-14, §6.5, §8.7, §11 item 27), `docs/frontend-init-plan.md` §8 item 10, backend `docs/phase-11-plan.md` (import, quality analysis, and transcoding, done)
 Last updated: 2026-10-15
 
+> Note (2026-10-16): the inbox section of the import page is replaced by the folder choice of `docs/f16-import-in-place-plan.md` (backend phase 18): files are imported where they lie, with no inbox and no library folder.
+
 ## 1. Goal
 
 New audio files reach the library without typing metadata: the manager copies them into the inbox

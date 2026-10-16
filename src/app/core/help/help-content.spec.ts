@@ -47,6 +47,12 @@ describe('help files', () => {
     expect(isHelpContent(file)).toBe(true);
   });
 
+  it('explains every control of the import form', () => {
+    expect(Object.keys(importHelp.fields).sort()).toEqual(
+      ['artist_id', 'folder', 'playlist_ids', 'type_id'].sort(),
+    );
+  });
+
   it('names files after the page ID without the prefix', () => {
     expect(helpFileName('help.play-rules')).toBe('play-rules.json');
   });

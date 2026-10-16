@@ -1,7 +1,7 @@
 # Radio Automation System: Technical Design
 
 Status: Draft (v7-18)
-Last updated: 2026-10-15
+Last updated: 2026-10-16
 
 ## 1. Overview
 
@@ -160,6 +160,7 @@ Entities are stored in separate tables and linked by IDs. Foreign keys are enfor
   - `clock_element_id` (nullable, FK to `clock_elements`, `ON DELETE SET NULL`): the element the item was planned for; null for filler. `filler_pool_id` (nullable, FK to `clock_filler_pool`, `ON DELETE SET NULL`): the pool row a `filler_pool` item took; a rebuild of the hour sets that row's `used_at` back to null (v7-11).
 - **plan_hours**: hour_start_utc (primary key), clock_id (FK, `ON DELETE CASCADE`), clock_updated_at, grid_slot_id (nullable, `ON DELETE SET NULL`), seed, built_at, filler_request_id (nullable, `ON DELETE SET NULL`). One row per built hour of the track plan (v7-11, `docs/phase-8-plan.md` §2). An hour is stale when the grid now assigns another clock or none, or the clock's `updated_at` changed; the seed makes a rebuild after a reminder answer reproducible.
 - **hour_inserts**: id, hour_start_utc, track_id (FK, `ON DELETE RESTRICT`), missed_id (nullable, FK to `play_log`, `ON DELETE SET NULL`), placement (`start`, `end`, `fixed`), fixed_minute, fixed_tolerance_ms, created_at. One-time elements of a single hour: a missed item rescheduled into it (§7.1, §7.2). Every build of the hour places them; the clock template is not changed (v7-13, `docs/phase-10-plan.md` §2).
+- **broadcast_state**: one row (`id = 1`): state (`connected`, `reconnecting`, `unreachable`), since (the last change of the derived broadcast state), reason (nullable: the open outage's reason or component), updated_at. Written only when the state changes, so the panel's timer survives a restart of the backend (§7.1, v7-16, `docs/phase-16-plan.md`). An empty table means the state is unknown; `unknown` is never stored.
 - **backend_heartbeat**: one row, alive_at. Written by the outage detector every 30 seconds, so a restart can tell how long the backend was down (v7-13).
 - **broadcast_outages**: id, started_at (timestamptz, UTC), ended_at (timestamptz, UTC, nullable while the outage is open), detected_by (`icecast`, `liquidsoap_callback`, `liquidsoap_control`, `backend`), component (`icecast`, `liquidsoap`, `backend`, `network`), reason (short text, nullable), reconciled_at (timestamptz, nullable). One row per interruption. An open outage has `ended_at` null.
 - **play_rules**: id, name, window_from (time, nullable), window_to (time, nullable), weekdays (array of 1 to 7, nullable; null means every day), min_interval_minutes (int, nullable), max_per_hour (int, nullable), notes, created_at. A reusable, named rule (see §7.3). Times are station local time (§10.2).
@@ -228,7 +229,7 @@ All database access goes through a repository layer. Business logic never contai
 ## 6. API and Data Transfer
 
 - REST over JSON for commands and data queries.
-- WebSocket for UI events from the backend to the panel: now playing, track progress, live on/off, Liquidsoap state, Icecast connection state, outage start and end, missed-item updates, error alerts, filler requests, and the outcome of asynchronous operations (§6.5). The panel does not poll for these.
+- WebSocket for UI events from the backend to the panel: now playing, track progress, live on/off, Liquidsoap state, Icecast connection state, broadcast state, outage start and end, missed-item updates, error alerts, filler requests, and the outcome of asynchronous operations (§6.5). The panel does not poll for these.
 - Error alerts are shown in the panel as a popup window with the error text. Errors are also written to the log file (see §10.1).
 - All timestamps in the API are ISO 8601 in UTC (ending with `Z`).
 - Database structs are never sent to or accepted from the frontend directly.
@@ -318,11 +319,12 @@ Everything the backend needs is managed by the manager in the Angular admin pane
 - **Stream output (Icecast)**: host, port, mount point, codec, bitrate, sample rate, channels, loudness target, stream metadata, HLS on or off.
 - **Liquidsoap**: default music gain, the music level under live voice (`liquidsoap.duck_gain`, default 0.2; v7-15), fade lengths (including `fade_out_ms`, default 2500, allowed 2000 to 3000), harbor input port, control host and port, and the media directory as Liquidsoap sees it (`liquidsoap.media_root`, default `/media`).
 - **Playout**: the emergency playlist (§8.6), and how long before its start an hour's first items are pushed to Liquidsoap (`playout.prepush_minutes`, default 5). From then on the hour is frozen: it is not rebuilt, and its reminders cannot be answered.
+- **Air window** (v7-17): how many played items (`air.played_count`, default 10, allowed 1 to 50) and queued items (`air.queued_count`, default 9, allowed 0 to 50) `GET /api/air-window` returns around the item on air. A change applies to the next request.
 - **Rotation**: planning horizons (grid up to 30 days, track plan 24 to 48 hours), lookahead depth (2 to 3 tracks), default separation values, tolerance defaults, the shortest gap that gets filler (`rotation.min_filler_gap_ms`, default 10 s), and the limit of the emergency tolerance relaxation (`rotation.max_relaxed_tolerance_ms`, default 120 s). The global fallback filler mode, used when a clock has no default filler mode of its own (§4, §6.2).
 - **Filler**: default deadline for filler reminders (default 2 hours before air), default fallback mode (`random`).
 - **Outage detection**: heartbeat timeout for the Liquidsoap callback and control link (default 10 seconds), Icecast mount check interval (default 5 seconds), and the number of consecutive failed checks before an outage is opened (default 2).
 - **Retention**: play log days (default 10), application log days (default 10). Missed items are not subject to the play log days setting while they are open (see §4.1).
-- **Import** (v7-14): the inbox folder (`import.inbox_dir`, default `incoming`) and the library folder (`import.library_dir`, default `library`) under the media root; the broadcast standard of track files: target codec (`mp3`, `aac`, or `vorbis`; default `mp3`), bitrate (320 kbps), sample rate (44100 Hz), channels (2); the lowest acceptable bitrate of a lossy file (128 kbps), the loudness tolerance around `stream.loudness_target_lufs` (2 LU), and the highest true peak (−1 dBTP).
+- **Import** (v7-14; the inbox and library folder settings are removed in v7-18, the import registers files where they lie, §8.7): the broadcast standard of track files: target codec (`mp3`, `aac`, or `vorbis`; default `mp3`), bitrate (320 kbps), sample rate (44100 Hz), channels (2); the lowest acceptable bitrate of a lossy file (128 kbps), the loudness tolerance around `stream.loudness_target_lufs` (2 LU), and the highest true peak (−1 dBTP).
 - Any future backend setting follows the same pattern.
 
 Playlist types are data in the `playlist_types` table, not entries in the `settings` table. They are listed on the settings pages for convenience, and they are served by their own endpoints (§6.4). A clock's default filler mode is data of the clock (§4), so it is edited in the clock editor, not on the settings pages.
@@ -403,8 +405,8 @@ Clock endpoints (§6.0) take `playlist_ids` (an array) on each element instead o
 
 | Method and path | Purpose |
 |-----------------|---------|
-| `GET /api/import/inbox` | Files waiting in the inbox folder (at most 1,000) |
-| `POST /api/import` | Body: `type_id`, `playlist_ids`. Imports the inbox; returns `accepted` with an operation ID (`import`) |
+| `GET /api/import/inbox` | Files waiting in the inbox folder (at most 1,000). Removed in v7-18 |
+| `POST /api/import` | Body: `type_id`, `playlist_ids`. Imports the inbox; returns `accepted` with an operation ID (`import`). Takes a folder since v7-18 |
 | `POST /api/tracks/analyse` | Body: `track_ids` (absent: every track never analysed), `force`. Returns `accepted` (`analyse`) |
 | `POST /api/tracks/transcode` | Body: `track_ids`, `fix` (`loudness` or `optimize`), `output` (`replace` or `copy`). Returns `accepted` (`transcode`) |
 
@@ -419,6 +421,28 @@ Track responses carry the analysis columns, `quality_issues`, and `fixes` (the t
 | `GET /api/live/status` | State of the live input (`off`, `connecting`, `on_air`, `reconnecting`), session, harbor connection, packets |
 
 `GET /api/status/live` now answers `on_air` (a live session sends audio), `open_outage_id`, and `current_clock` (the clock the grid assigns to the current hour). The live state is sent as the `live.state` event.
+
+**Endpoints added in v7-16 (broadcast status, `docs/phase-16-plan.md` §4)**
+
+| Method and path | Purpose |
+|-----------------|---------|
+| `GET /api/broadcast/status` | The derived broadcast state (`connected`, `reconnecting`, `unreachable`, `unknown`), `since` (null while unknown), `reason` and `outage_id` (unreachable only), `mount_ok` and `last_check_at` (the last Icecast mount check), and the server `time`. The panel reads it when its event connection opens; each change is sent as the `broadcast.state` event (§6.5, §7.1) |
+
+**Endpoints added in v7-17 (air window, `docs/phase-17-plan.md` §2)**
+
+| Method and path | Purpose |
+|-----------------|---------|
+| `GET /api/air-window` | The air in air order: the last `air.played_count` play log rows that were due (aired, truncated, missed, by `COALESCE(started_at, planned_start_utc)`), the item on air (from the playout state; absent between tracks and while the control link is down), and the next `air.queued_count` plan items that start at or after the item on air (or now). One row shape for every kind (`kind`, `status`, `item_id`, `track_id`, `title`, `artist_name`, `source`, `start_utc`, `end_utc`, `truncated`, `resolution`, `outage_id`, `in_liquidsoap`), plus `generated_at` and `control_link_connected`. Read only; 200 with the control link down. The panel reloads it on existing events |
+
+**Endpoints added in v7-18 (import in place, `docs/phase-18-plan.md` §3)**
+
+| Method and path | Purpose |
+|-----------------|---------|
+| `GET /api/import/folders` | Every folder under the media root, nested ones included, in path order (at most 500, `more`), with `audio_files` and `new_files` in the folder and its subfolders, and the same counts for the whole root. Hidden folders and symbolic links are skipped. The counts compare paths only, without reading a file |
+| `GET /api/import/files?folder=` | The files of a folder and its subfolders (at most 1,000, `more`): `path`, `size`, `modified_at`, `status` (`new`, `in_library` or `original` with `track_id`, `not_audio`). A folder that is not a clean relative path, is hidden, or does not exist is refused per field (`folder`, `invalid`) |
+| `POST /api/import` | Body: `folder` (absent or empty: the media root), `type_id`, `playlist_ids`, `artist_id` (an existing artist; it wins over the artist tag and the file name). Every audio file of the folder that is not a track yet becomes one where it lies; nothing is moved, and existing tracks are not changed. Returns `accepted` (`import`); the summary starts with the folder |
+
+`GET /api/import/inbox` is removed. The title of a new track is its title tag, else the title part of the file name; its artist is `artist_id`, else the artist tag, else the artist part of the file name (`Title - Artist` with exactly one hyphen, en dash, or em dash), else none.
 
 **Endpoints added in v7-8 (play rules and track preview)**
 
@@ -449,8 +473,14 @@ Some backend operations take time and run asynchronously. Examples: building a t
 
 - `broadcast_outage.started`: outage opened, with `started_at`, `component`, and `reason`.
 - `broadcast_outage.ended`: outage closed, with `started_at`, `ended_at`, and the number of items marked missed.
-- `icecast.state`: connection state of the Icecast output (connected, disconnected, reconnecting).
+- `icecast.state`: connection state of the Icecast output (`connected`, `disconnected`): the raw report of Liquidsoap. The panel does not show it.
+- `broadcast.state`: the derived broadcast state (§7.1): `state` (`connected`, `reconnecting`, `unreachable`, `unknown`), `since`, `reason`, `outage_id`, `mount_ok`, `last_check_at`. Sent only when the state changes (v7-16).
 - `live.state`: state of the live voice input (`off`, `connecting`, `on_air`, `reconnecting`), with the reason when a session ends (v7-15).
+
+**Playout events (from Liquidsoap's track callbacks; not sent for journal replay)**
+
+- `playout.now_playing`: a track has started on air: the plan item (absent for an emergency track), the track, `started_at`, `out_ms`, `truncated`.
+- `playout.track_ended`: a track has left the air and its end is in the play log: the plan item (absent for an emergency track), the track, `source`, the final `status` (`aired` or `truncated`), `started_at`, `ended_at`, `actual_duration_ms`. Sent after the write, once per item (a repeated end sends nothing). The panel clears its now playing unless a newer track has started, and reloads the air window (v7-17).
 
 **Operation tracking**
 
@@ -552,6 +582,17 @@ An outage is a period when the station's audio did not reach listeners, for exam
 - Missed items are moved to `play_log` with `status = missed`, `resolution = 'open'`, and `outage_id` set, so the played-tracks list shows them next to aired items.
 
 **Implementation decisions (v7-13, `docs/phase-10-plan.md` §2).** The journal decides what aired: an item Liquidsoap started counts as aired even if Icecast was down at that moment. Items that did not air while no outage was open (a leftover flushed at the hour switch, an item more than 30 seconds late) are dropped from the plan like tracks removed by overflow: not missed, no separation count. Before marking or dropping, the journal of the window is replayed through the same idempotent logic as the callbacks, so no cursor is kept. At startup, if the backend was down longer than the heartbeat timeout and planned items did not air, the downtime is recorded as a closed outage (`component = backend`) and its items are marked missed.
+
+**Broadcast state (v7-16, `docs/phase-16-plan.md` §2)**
+
+The panel shows on every page whether the stream reaches Icecast, and for how long. The backend derives one state from the signals above, in this order:
+
+- `unreachable` while any outage is open (every component: listeners hear nothing).
+- `unknown` while Liquidsoap's heartbeat is silent beyond the timeout, and after the backend starts until the first evidence (an output report or a mount check). Liquidsoap's last output report is forgotten while the heartbeat is silent.
+- `connected` or `reconnecting` from Liquidsoap's last output report (connected or not). `reconnecting` is the time before the detector opens an outage; Liquidsoap retries on its own.
+- Without an output report since the start (Liquidsoap reports the output only when it changes), the last mount check decides in the same way.
+
+The timer measures continuous broadcasting: `since` is the moment of the last state change, and any drop resets it. For `unreachable` it is the outage's start (the first failed check) when that is not before the previous change. The state is stored in `broadcast_state` only when it changes; a transition caused by an outage is stored in the same transaction as the outage row. After a restart of the backend, the first evidence that confirms the stored state keeps its `since`; evidence that contradicts it starts a new `since` at that moment, so after a restart with the stream down `since` is the first failed check. A failed write leaves the state unchanged and is retried at the next signal.
 
 **Reconciliation after backend downtime**
 
@@ -704,9 +745,9 @@ Liquidsoap performs the fade itself, so control-path latency does not affect it.
 Audio files are about 800 files and must not be copied into Docker images or volumes.
 
 - Media files stay on the host filesystem, outside Docker, in a single directory configured as `MEDIA_ROOT`.
-- The host directory is bind-mounted into the containers that need it: `liquidsoap` (read-only) and `backend` (read-write: an import moves files from the inbox folder into the library folder, and a transcode writes fixed files; v7-14).
+- The host directory is bind-mounted into the containers that need it: `liquidsoap` (read-only) and `backend` (read-write: a transcode writes fixed files; v7-14).
 - PostgreSQL stores only metadata and the path relative to `MEDIA_ROOT`. Relative paths let the same database work on different machines where the absolute location differs.
-- Import and quality analysis (ffmpeg) read files from the mounted directory. New files arrive through an inbox folder under the media root; there is no upload through the panel. Transcoded output is written under the media root, so Liquidsoap can play it: the manager chooses whether it replaces the original or is written as `<name>.optimal.<ext>` next to it, the original then staying on disk (decided 2026-10-14, v7-14, `docs/phase-11-plan.md` §2). It is written to a hidden temporary file first and renamed into place, and a track that is queued, on air, or about to be pushed is skipped.
+- Import and quality analysis (ffmpeg) read files from the mounted directory. The manager keeps the audio in folders of the media root (for example `music`, `music/rock`, `jingles`) and imports a folder: every audio file in it and its subfolders that is not a track yet is registered where it lies, with the path relative to the media root; an import never moves, renames, or deletes a file, and importing a folder again adds only the new files (v7-18, `docs/phase-18-plan.md`). The original of a transcoded `.optimal` copy is not imported again. A file with the checksum of an existing track (copied or moved on disk) is reported as a duplicate; a track whose file has gone is only reported (`file_missing`), never re-linked or removed automatically. There is no upload through the panel. Transcoded output is written under the media root, so Liquidsoap can play it: the manager chooses whether it replaces the original or is written as `<name>.optimal.<ext>` next to it, the original then staying on disk (decided 2026-10-14, v7-14, `docs/phase-11-plan.md` §2). It is written to a hidden temporary file first and renamed into place, and a track that is queued, on air, or about to be pushed is skipped.
 - Checksums are stored so that a moved or changed file can be detected.
 - The backend also streams a track to the panel for preview, through the same read-only mount (§6.6).
 
@@ -1018,7 +1059,7 @@ The open questions from the previous version are closed. The decisions are recor
 25. **Journal path is an environment variable.** `PLAYOUT_JOURNAL_ROOT` is a host path set in `.env`, like `MEDIA_ROOT` and `LOG_ROOT`. Liquidsoap writes the journal to it, and the backend reads it read-only (§3.1, §7.1, §9).
 
 26. **Repository layer.** All SQL lives in `internal/repository/<domain>`, one package per domain, named as the domain package. Domain code depends on interfaces it declares itself, and the repositories implement them. Reason: business rules stay free of SQL and driver errors, and a domain rename changes the domain and its repository in the same change (§5.1).
-27. **Import and transcoding.** New files arrive through an inbox folder under the media root and are moved into the library folder on import; there is no upload through the panel. Analysis flags problems against the broadcast standard set in the admin settings, and nothing changes audio without the manager: the panel offers "Fix loudness" and "Optimize track", and the manager chooses whether the fixed file replaces the original or is kept as an optimal copy next to it (§8.7, decided 2026-10-14).
+27. **Import and transcoding.** The manager imports a folder of the media root, and its new files are registered where they lie (v7-18, decided 2026-10-16; the inbox and library folders of v7-14 are gone); there is no upload through the panel. Analysis flags problems against the broadcast standard set in the admin settings, and nothing changes audio without the manager: the panel offers "Fix loudness" and "Optimize track", and the manager chooses whether the fixed file replaces the original or is kept as an optimal copy next to it (§8.7, decided 2026-10-14).
 28. **Live voice without transcoding.** The bridge relays the browser's Opus packets to the harbor as Ogg/Opus, without decoding, using `pion/webrtc` (pure Go, no cgo). Its UDP port and public addresses are environment variables like `HTTP_ADDR`, because they belong to the compose port mapping (§8.4, decided 2026-10-14).
 29. **Database monitoring is a live view.** An optional Grafana reads PostgreSQL's statistics views directly through a read-only role, with a login, bound to localhost. No metrics history, no Prometheus, and no backend changes; a metrics history can be added later without backend changes (§10.3, decided 2026-10-15).
 30. **Log search in Grafana.** Loki stores the application logs and the playout journal, collected by Grafana Alloy from the files on the host (not from container stdout), with 10 days of retention like the files. No alerts in this version; the backend does not change (§10.4, decided 2026-10-15).

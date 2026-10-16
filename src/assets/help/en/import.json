@@ -1,57 +1,79 @@
 {
   "title": "Import",
-  "summary": "The import brings new audio files into the library without typing their details. You copy the files into the inbox folder on the station computer, and the import reads their tags, checks their sound against the broadcast standard, moves them into the library folder, and adds them as tracks.",
+  "summary": "The import adds the audio files of a folder to the library without typing their details. The station's audio lies in folders of the media folder on the station computer, for example music, jingles, and news. You choose one folder, and every new audio file in it becomes a track where it lies: nothing is moved, renamed, or uploaded. Importing the same folder again later adds only the files copied in since.",
   "entities": [
     {
-      "term": "Inbox",
-      "text": "A folder inside the media folder (incoming by default, set in Settings under Import) where new files wait. Subfolders are allowed. Files are not uploaded through the panel: copy them into this folder on the station computer."
+      "term": "Folder",
+      "text": "A folder of the media folder, for example jingles or music/rock. Nested folders are listed with their full path. An import of a folder includes its subfolders; \"Whole media folder\" imports every folder at once. Each folder shows how many of its audio files are new."
+    },
+    {
+      "term": "New file",
+      "text": "An audio file (mp3, m4a, aac, ogg, oga, flac, wav) that is not a library track yet. A file marked \"In library\" is a track already and is left as it is. \"Original of an optimised copy\" is a file whose optimised copy is the track, so it is not imported again. Hidden and temporary files are skipped."
     },
     {
       "term": "Batch",
-      "text": "One import takes every file in the inbox. All of them get the same type and the same playlists, so import songs and jingles as separate batches."
+      "text": "One import takes every new file of the folder. All of them get the same type, the same playlists, and the artist if you choose one, so keep songs, jingles, and news in separate folders."
     },
     {
       "term": "Title and artist",
-      "text": "Read from the file's tags. Without a title tag, the file name is used. An artist is found by name or added to the Artists page."
+      "text": "The title is read from the file's title tag, else taken from the file name. The artist is the one chosen in the form; without one it is read from the artist tag, else taken from the file name. An artist read from a tag or a file name is found by name on the Artists page or added there."
+    },
+    {
+      "term": "File names",
+      "text": "Name files \"Title - Artist.mp3\". With exactly one hyphen, the part before it is the title and the part after it the artist: \"Morning - DJ Ann.mp3\" becomes the track \"Morning\" by \"DJ Ann\". A name without a hyphen, such as \"Morning.mp3\", gives only the title. A name with more than one hyphen, such as \"Jay-Z - Song.mp3\", gives no artist, and the whole name is the title. The folder and the extension are never part of the title."
     },
     {
       "term": "Analysis",
-      "text": "Every file is measured: format, bitrate, sample rate, channels, length, loudness, and true peak. The result is compared with the broadcast standard in the settings, and problems appear as quality issues in the library."
+      "text": "Every new file is measured: format, bitrate, sample rate, channels, length, loudness, and true peak. The result is compared with the broadcast standard in the settings, and problems appear as quality issues in the library."
     },
     {
       "term": "Duplicate",
-      "text": "A file whose content is already in the library. It is not imported again and stays in the inbox."
+      "text": "A new file whose content is already in the library under another path, for example a copy or a moved file. It is not imported and is left where it is."
+    },
+    {
+      "term": "Missing file",
+      "text": "A track whose file was moved or deleted on disk. The import does not look for it; the next analysis marks it as missing in the library. Edit the track's file path or delete the track there."
     }
   ],
-  "usage": "Check the list of waiting files, choose the type and playlists for the whole batch, and start the import. The progress shows how many files are done; when it finishes, the summary counts the imported, duplicate, unreadable, and skipped files. Files that were not imported stay in the inbox. Then open the tracks with issues in the library and fix them there.",
+  "usage": "Choose a folder and check its files: the ones marked New are imported. Choose the type for the whole batch, and optionally playlists and an artist, then start the import. The progress shows how many files are done; when it finishes, the summary counts the imported files, the files already in the library, and the duplicate, unreadable, and skipped files. The files stay in their folder. Then open the tracks with issues in the library and fix them there.",
   "steps": [
-    "Copy the new audio files into the inbox folder on the station computer.",
-    "Press Refresh and check that the list shows them.",
-    "Choose the type, for example music, and the playlists the tracks should join.",
+    "Copy the new audio files into a folder of the media folder on the station computer, and wait until the copy has finished.",
+    "Press Refresh and choose the folder; check that its new files are listed as New.",
+    "Choose the type, for example jingle, and if you like the playlists and the artist of the tracks.",
     "Press Import and wait for the summary.",
     "Open the tracks with issues and use Fix loudness or Optimize track where offered."
   ],
   "mistakes": [
-    "Mixing songs and jingles in one batch: every file gets the same type and playlists. Import them one batch at a time.",
-    "Expecting a file that is still being copied to be imported. Wait until the copy has finished; temporary and hidden files are skipped.",
-    "Starting an import while an analysis or a fix runs. Only one of them runs at a time; wait until the other finishes.",
-    "Looking for a duplicate in the library under a new name: it was not imported because the same content is already there."
+    "Mixing songs and jingles in one folder: every new file gets the same type and playlists. Keep them in separate folders and import each folder on its own.",
+    "Choosing an artist for a folder with songs of several artists: the chosen artist is set on every new track. Leave it empty so the artist comes from the tags or the file names.",
+    "Naming a file \"Artist - Title.mp3\": the part before the hyphen is read as the title. Name it \"Title - Artist.mp3\".",
+    "Importing while files are still being copied: a half-copied file may be unreadable or too short. Wait until the copy has finished.",
+    "Moving or renaming a file of a track on disk: the track then points to a missing file, and the import sees the moved file as a duplicate. Edit the track's file path in the library instead.",
+    "Starting an import while an analysis or a fix runs. Only one of them runs at a time; wait until the other finishes."
   ],
   "example": {
-    "title": "Importing new songs",
-    "text": "Ten MP3 files are copied into incoming/2026-10. The inbox lists them. Choose the type Music and the playlist \"Daytime pop\", then press Import. The summary says 9 imported and 1 duplicate. The duplicate stays in the inbox; the nine tracks are in the library and the playlist, and two of them are flagged as too loud."
+    "title": "Importing new jingles",
+    "text": "Two jingles are copied into D:\\radio\\media\\jingles. After Refresh the folder reads \"jingles (2 new of 2)\". Choose jingles and the type Jingle, leave playlists empty, and press Import. The summary says 2 imported; the files are still in the jingles folder, they now show In library, and the folder reads \"jingles (0 new of 2)\". A week later a third jingle is copied in: the folder reads \"jingles (1 new of 3)\", and a second import adds only the third one."
   },
   "operations": {
-    "create": "An import adds tracks; it never changes or deletes existing ones. A file that fails stays in the inbox, and the summary says why."
+    "create": "An import adds tracks for new files; it never changes, moves, or deletes existing tracks or files. A file that fails stays new, and the summary says why."
   },
   "fields": {
+    "folder": {
+      "label": "Folder",
+      "text": "The folder whose new files are imported, with its subfolders. \"Whole media folder\" imports every folder. The numbers show the new files and all audio files in it."
+    },
     "type_id": {
       "label": "Type",
-      "text": "The type of every track in this batch, for example music or jingle."
+      "text": "The type of every new track in this batch, for example music or jingle."
     },
     "playlist_ids": {
       "label": "Playlists",
-      "text": "Every imported track joins these playlists. Leave empty to add the tracks to playlists later."
+      "text": "Every new track joins these playlists. Leave empty to add the tracks to playlists later."
+    },
+    "artist_id": {
+      "label": "Artist",
+      "text": "Set on every new track of the batch. Leave empty to take the artist from the file tags, else from the file name (\"Title - Artist.mp3\"). Only existing artists are offered; add a new one on the Artists page first."
     }
   }
 }
