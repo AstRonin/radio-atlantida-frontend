@@ -102,7 +102,7 @@ interface PageRequest {
   providers: [providePaginatorIntl()],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="library.title" helpPage="help.library">
+    <app-page-header titleKey="library.title" helpPage="help.library">
       <a matButton="filled" routerLink="/library/new">{{ 'library.add' | translate }}</a>
     </app-page-header>
 

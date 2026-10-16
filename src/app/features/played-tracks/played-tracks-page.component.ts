@@ -96,7 +96,7 @@ export function outageChunks(range: HistoryRange): HistoryRange[] {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="playedTracks.title" helpPage="help.played-tracks" />
+    <app-page-header titleKey="playedTracks.title" helpPage="help.played-tracks" />
 
     <section class="page-section" aria-labelledby="range-heading">
       <h2 id="range-heading" class="section-title">

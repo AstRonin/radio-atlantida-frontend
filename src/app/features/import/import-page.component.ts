@@ -81,7 +81,7 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
   providers: [providePaginatorIntl()],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="import.title" helpPage="help.import">
+    <app-page-header titleKey="import.title" helpPage="help.import">
       <button
         matButton
         type="button"

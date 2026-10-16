@@ -32,7 +32,7 @@ const PROGRESS_TICK_MS = 1000;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="airWindow.title" helpPage="help.air-window" />
+    <app-page-header titleKey="airWindow.title" helpPage="help.air-window" />
 
     <section class="page-section">
       <p class="muted">{{ 'airWindow.note' | translate: { zone: zone() } }}</p>

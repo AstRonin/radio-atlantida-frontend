@@ -38,7 +38,7 @@ type Playlist = ApiSchema<'Playlist'>;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="playlists.title" helpPage="help.playlists">
+    <app-page-header titleKey="playlists.title" helpPage="help.playlists">
       <a matButton="filled" routerLink="/playlists/new">{{ 'playlists.add' | translate }}</a>
     </app-page-header>
 

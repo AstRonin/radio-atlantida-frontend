@@ -23,7 +23,7 @@ const clocks: HelpContent = {
 @Component({
   imports: [PageHeaderComponent, FieldHintComponent],
   template: `
-    <app-page-header title="clocks.title" helpPage="help.clocks">
+    <app-page-header titleKey="clocks.title" helpPage="help.clocks">
       <button type="button">Add clock</button>
     </app-page-header>
     <app-field-hint page="help.clocks" field="nominal_duration_ms" />
@@ -52,6 +52,8 @@ describe('help UI', () => {
 
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('h1')?.textContent).toContain('clocks.title');
+    // A host `title` attribute would show the raw key as a browser tooltip.
+    expect(element.querySelector('app-page-header')?.hasAttribute('title')).toBe(false);
     const helpButton = [...element.querySelectorAll('app-page-header button')].find((button) =>
       button.textContent?.includes('help.button'),
     );

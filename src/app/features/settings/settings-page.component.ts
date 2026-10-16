@@ -75,7 +75,7 @@ interface SaveResult {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="settings.title" helpPage="help.settings">
+    <app-page-header titleKey="settings.title" helpPage="help.settings">
       <a matButton routerLink="/playlist-types">{{ 'settings.playlistTypesLink' | translate }}</a>
     </app-page-header>
 

@@ -57,7 +57,7 @@ interface PlanRange {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="trackPlan.title" helpPage="help.track-plan" />
+    <app-page-header titleKey="trackPlan.title" helpPage="help.track-plan" />
 
     <section class="page-section" aria-labelledby="range-heading">
       <h2 id="range-heading" class="section-title">{{ 'trackPlan.range.title' | translate }}</h2>

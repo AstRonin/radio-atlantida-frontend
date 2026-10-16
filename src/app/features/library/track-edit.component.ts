@@ -72,7 +72,7 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header
-      [title]="trackId() === null ? 'library.edit.createTitle' : 'library.edit.editTitle'"
+      [titleKey]="trackId() === null ? 'library.edit.createTitle' : 'library.edit.editTitle'"
       helpPage="help.library"
     >
       @if (stored(); as track) {

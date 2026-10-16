@@ -79,7 +79,7 @@ interface MissedRow {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="missedItems.title" helpPage="help.missed-items" />
+    <app-page-header titleKey="missedItems.title" helpPage="help.missed-items" />
 
     <div class="list-filters">
       <mat-form-field>

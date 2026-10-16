@@ -34,7 +34,7 @@ export const ARTIST_SEARCH_DEBOUNCE_MS = 300;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="artists.title" helpPage="help.library">
+    <app-page-header titleKey="artists.title" helpPage="help.library">
       <button matButton="filled" type="button" (click)="create()">
         {{ 'artists.add' | translate }}
       </button>
