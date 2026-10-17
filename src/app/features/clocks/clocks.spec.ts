@@ -2,101 +2,132 @@ import { OverlayContainer } from '@angular/cdk/overlay';
 import { Location } from '@angular/common';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ComponentRef } from '@angular/core';
+import { ComponentRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl } from '@angular/forms';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
-import type { ApiSchema } from '../../core/api/api-types';
+import { Observable, map } from 'rxjs';
 import { apiProblemInterceptor } from '../../core/api/api.interceptors';
-import { OperationsService } from '../../core/operations/operations.service';
+import { OperationState, OperationsService } from '../../core/operations/operations.service';
 import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testing';
+import { SettingsService } from '../../core/settings/settings.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import ClockEditComponent from './clock-edit.component';
-import { Clock, ClockForm, ClockSaveResult } from './clock-form';
+import { Clock, ClockForm, ClockSaveResult, Playlist, fillShares } from './clock-form';
 import ClocksPageComponent from './clocks-page.component';
 
-type ClockSegment = ApiSchema<'ClockSegment'>;
-
-const segment = (overrides: Partial<ClockSegment> = {}): ClockSegment => ({
-  index: 0,
-  start_ms: 0,
-  end_ms: 3_600_000,
-  content_ms: 3_600_000,
-  shortfall_ms: 0,
-  overflow_ms: 0,
-  element_indexes: [0],
-  holder_index: 0,
-  filler_mode: 'none',
-  ...overrides,
+const playlist = (
+  id: number,
+  name: string,
+  clockRule: Playlist['clock_rule'],
+  clockCount?: number,
+): Playlist => ({
+  id,
+  name,
+  clock_rule: clockRule,
+  ...(clockCount !== undefined ? { clock_count: clockCount } : {}),
+  track_count: 40,
+  play_rule_ids: [],
+  created_at: '2026-10-01T00:00:00Z',
+  type: { id: 1, code: 'music', name: 'Music' },
 });
+
+const MUSIC = playlist(3, 'Music', 'fill');
+const JINGLES = playlist(4, 'Jingles', 'spread', 2);
+const GOLD = playlist(5, 'Gold', 'fill');
+const PLAYLISTS = [MUSIC, JINGLES, GOLD];
 
 const clock = (overrides: Partial<Clock> = {}): Clock => ({
   id: 7,
-  name: 'News hour',
-  status: 'complete',
+  name: 'Music hour',
   updated_at: '2026-10-15T08:00:00Z',
-  elements: [
-    {
-      id: 11,
-      placement: 'fixed',
-      fixed_minute: 0,
-      fixed_tolerance_ms: 60_000,
-      nominal_duration_ms: 300_000,
-      duration_tolerance_ms: 30_000,
-      filler_mode: 'none',
-      playlist_ids: [3],
-    },
-    {
-      id: 12,
-      placement: 'flow',
-      fixed_tolerance_ms: 60_000,
-      nominal_duration_ms: 210_000,
-      duration_tolerance_ms: 30_000,
-      filler_mode: 'none',
-      playlist_ids: [4],
-    },
+  playlists: [
+    { playlist_id: 3, position: 0, effective_rule: 'fill' },
+    { playlist_id: 4, position: 1, effective_rule: 'spread', effective_count: 2 },
   ],
-  layout: { shortfall_ms: 0, segments: [segment()] },
+  inserts: [
+    { id: 21, offset_ms: 1_800_000, tolerance_ms: 60_000, playlist_id: 4 },
+    { id: 20, offset_ms: 1_780_000, tolerance_ms: 60_000, track_id: 9 },
+  ],
   ...overrides,
 });
 
-const saveResult = (overrides: Partial<ClockSaveResult['check']> = {}, saved = clock()) => ({
+const saveResult = (
+  saved = clock(),
+  overrides: Partial<ClockSaveResult> = {},
+): ClockSaveResult => ({
   clock: saved,
-  check: {
-    shortfall_ms: 0,
-    requires_filler_choice: false,
-    short_segments: [],
-    warnings: [],
-    replaced_elements: [],
-    ...overrides,
+  sample: {
+    hour_start_utc: '2026-10-15T10:00:00Z',
+    items: [
+      {
+        offset_ms: 0,
+        length_ms: 372_000,
+        track_id: 1,
+        title: 'Long song',
+        artist: 'Band',
+        source: 'fill',
+        playlist_id: 3,
+        truncated: false,
+      },
+      {
+        offset_ms: 1_780_000,
+        length_ms: 20_000,
+        track_id: 9,
+        title: 'Pre-news jingle',
+        source: 'insert',
+        insert_index: 0,
+        truncated: false,
+      },
+    ],
   },
+  warnings: [],
   build_operation_id: 40,
+  ...overrides,
 });
 
 interface EditView {
   form: ClockForm;
+  addPlaylist: FormControl<number | null>;
   save(): void;
-  addElement(): void;
-  move(index: number, by: -1 | 1): void;
+  addInsert(): void;
+  removePlaylist(index: number): void;
 }
 
 describe('clocks', () => {
   let http: HttpTestingController;
   let overlay: HTMLElement;
-  let waitFor: ReturnType<typeof vi.fn>;
+  let runOperation: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    waitFor = vi.fn((id: number) => of({ id, kind: 'clock_build', status: 'completed' }));
+    const build: OperationState = {
+      id: 40,
+      kind: 'clock_build',
+      status: 'completed',
+      updatedAt: '2026-10-15T08:00:05Z',
+    };
+    runOperation = vi.fn((start: Observable<{ operation_id: number }>) =>
+      start.pipe(map(() => build)),
+    );
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([apiProblemInterceptor])),
         provideHttpClientTesting(),
         provideRouter([]),
         provideFakeAudio(new FakeAudio()),
-        { provide: OperationsService, useValue: { waitFor } },
+        {
+          provide: OperationsService,
+          useValue: { operations: signal([build]).asReadonly(), runOperation },
+        },
+        {
+          provide: SettingsService,
+          useValue: {
+            get: (key: string) =>
+              key === 'rotation.default_fixed_tolerance_ms' ? { key, value: 30_000 } : undefined,
+          },
+        },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     });
@@ -114,10 +145,16 @@ describe('clocks', () => {
   // The pickers read their lists when they appear; the tests do not need any entries.
   function flushCatalog(): void {
     for (const request of http.match((req) =>
-      ['/api/playlists', '/api/artists', '/api/tracks'].includes(req.url),
+      ['/api/playlists', '/api/tracks', '/api/playlist-types'].includes(req.url),
     )) {
       if (!request.cancelled) {
-        request.flush({ items: [] });
+        request.flush({ items: request.request.url === '/api/playlists' ? PLAYLISTS : [] });
+      }
+    }
+    // The track picker reads the chosen tracks to show their titles.
+    for (const request of http.match((item) => /^\/api\/tracks\/\d+$/.test(item.url))) {
+      if (!request.cancelled) {
+        request.flush(null, { status: 404, statusText: 'Not Found' });
       }
     }
   }
@@ -128,16 +165,16 @@ describe('clocks', () => {
     );
 
   describe('ClocksPageComponent', () => {
-    it('lists clocks with their status and names the slots that block a delete', async () => {
+    it('lists clocks with their playlists and inserts, and names the slots that block a delete', async () => {
       const fixture = TestBed.createComponent(ClocksPageComponent);
       await settlePage();
       http.expectOne('/api/clocks').flush({
         items: [
           {
             id: 7,
-            name: 'News hour',
-            status: 'incomplete',
-            element_count: 14,
+            name: 'Music hour',
+            playlist_count: 2,
+            insert_count: 3,
             updated_at: '2026-10-15T08:00:00Z',
           },
         ],
@@ -145,7 +182,9 @@ describe('clocks', () => {
       await settlePage();
 
       const page = fixture.nativeElement as HTMLElement;
-      expect(page.querySelector('.badge.warn')?.textContent).toContain('clocks.status.incomplete');
+      const cells = [...page.querySelectorAll('td')].map((cell) => cell.textContent?.trim());
+      expect(cells).toContain('2');
+      expect(cells).toContain('3');
       button(page, 'common.delete')?.click();
       await settlePage();
       button(overlay, 'common.delete')?.click();
@@ -164,13 +203,19 @@ describe('clocks', () => {
   });
 
   describe('ClockEditComponent', () => {
+    // The editor reads the playlists for their own rules; the add select reads them too.
+    function flushPlaylists(): void {
+      for (const request of http.match('/api/playlists')) {
+        request.flush({ items: PLAYLISTS });
+      }
+    }
+
     async function create(): Promise<{ view: EditView; ref: ComponentRef<ClockEditComponent> }> {
       const fixture = TestBed.createComponent(ClockEditComponent);
       await settlePage();
-      return {
-        view: fixture.componentInstance as unknown as EditView,
-        ref: fixture.componentRef,
-      };
+      flushPlaylists();
+      await settlePage();
+      return { view: fixture.componentInstance as unknown as EditView, ref: fixture.componentRef };
     }
 
     async function open(stored = clock()): Promise<{
@@ -181,183 +226,197 @@ describe('clocks', () => {
       fixture.componentRef.setInput('id', String(stored.id));
       await settlePage();
       http.expectOne(`/api/clocks/${stored.id}`).flush(stored);
+      flushPlaylists();
       await settlePage();
-      return {
-        view: fixture.componentInstance as unknown as EditView,
-        ref: fixture.componentRef,
-      };
+      return { view: fixture.componentInstance as unknown as EditView, ref: fixture.componentRef };
     }
 
-    function flushPool(items: ApiSchema<'FillerPoolEntry'>[] = []): void {
-      http.expectOne('/api/clocks/7/filler-pool').flush({ items });
-    }
-
-    it('sends the template, then asks for the filler of the short segment', async () => {
+    it('needs a fill playlist, then sends the playlists and inserts and shows the sample', async () => {
       const { view, ref } = await create();
       const replaceState = vi.spyOn(TestBed.inject(Location), 'replaceState');
       const form = view.form;
-      form.controls.name.setValue('News hour');
-      view.addElement();
-      view.addElement();
+      const page = ref.location.nativeElement as HTMLElement;
+      form.controls.name.setValue('Music hour');
+
+      view.addPlaylist.setValue(JINGLES.id);
       await settlePage();
-      const [news, music] = form.controls.elements.controls;
-      news.controls.placement.setValue('fixed');
-      news.controls.fixed_minute.setValue(0);
-      news.controls.nominal_duration_ms.setValue(300_000);
-      news.controls.playlist_ids.setValue([3]);
-      music.controls.duration_tolerance_ms.setValue(30_000);
-      music.controls.playlist_ids.setValue([4, 9]);
+      expect(form.controls.playlists.hasError('fillPlaylistRequired')).toBe(true);
+      expect(page.textContent).toContain('clocks.playlists.fillRequired');
+      expect(form.invalid).toBe(true);
+
+      view.addPlaylist.setValue(MUSIC.id);
+      // The same playlist is not added twice.
+      view.addPlaylist.setValue(MUSIC.id);
+      await settlePage();
+      expect(form.controls.playlists.length).toBe(2);
+      expect(view.addPlaylist.value).toBeNull();
+
+      view.addInsert();
+      await settlePage();
+      const insert = form.controls.inserts.at(0);
+      // A new insert proposes the tolerance of the setting.
+      expect(insert.controls.tolerance_ms.value).toBe(30_000);
+      const offset = page.querySelector('app-offset-input input') as HTMLInputElement;
+      offset.value = '29:40';
+      offset.dispatchEvent(new Event('input'));
+      insert.controls.track_id.setValue([9]);
+      await settlePage();
+      expect(form.valid).toBe(true);
       view.save();
 
       const post = http.expectOne({ method: 'POST', url: '/api/clocks' });
-      // Empty tolerances are left out, so the backend applies its default settings.
+      // No override and no share: the playlists keep their own rules.
       expect(post.request.body).toEqual({
-        name: 'News hour',
-        default_filler_mode: null,
-        elements: [
-          {
-            placement: 'fixed',
-            fixed_minute: 0,
-            nominal_duration_ms: 300_000,
-            playlist_ids: [3],
-            filler_mode: 'none',
-          },
-          {
-            placement: 'flow',
-            nominal_duration_ms: 210_000,
-            duration_tolerance_ms: 30_000,
-            playlist_ids: [4, 9],
-            filler_mode: 'none',
-          },
-        ],
+        name: 'Music hour',
+        playlists: [{ playlist_id: 4 }, { playlist_id: 3 }],
+        inserts: [{ offset_ms: 1_780_000, tolerance_ms: 30_000, track_id: 9 }],
       });
-      const short = segment({ start_ms: 300_000, shortfall_ms: 40_000, element_indexes: [1] });
       post.flush(
-        saveResult(
-          { shortfall_ms: 40_000, requires_filler_choice: true, short_segments: [0] },
-          clock({ status: 'incomplete', layout: { shortfall_ms: 40_000, segments: [short] } }),
-        ),
-      );
-      await settlePage();
-      expect(replaceState).toHaveBeenCalledWith('/clocks/7');
-      flushPool();
-
-      const dialog = TestBed.inject(MatDialog).openDialogs[0];
-      expect(dialog).toBeDefined();
-      const dialogForm = (
-        dialog.componentInstance as unknown as {
-          form: {
-            controls: { segments: { at(i: number): { controls: { filler_mode: FormControl } } } };
-          };
-        }
-      ).form;
-      dialogForm.controls.segments.at(0).controls.filler_mode.setValue('random');
-      await settlePage();
-      button(overlay, 'filler.dialog.save')?.click();
-
-      const filler = http.expectOne({ method: 'POST', url: '/api/clocks/7/save-with-filler' });
-      expect(filler.request.body).toEqual({ segments: [{ segment: 0, filler_mode: 'random' }] });
-      filler.flush(saveResult({}, clock({ status: 'complete' })));
-      await settlePage();
-
-      const page = ref.location.nativeElement as HTMLElement;
-      expect(page.textContent).toContain('clocks.status.complete');
-      expect(waitFor).toHaveBeenCalledWith(40);
-      expect(page.textContent).toContain('clocks.build.completed');
-    });
-
-    it('puts an element field error on that element', async () => {
-      const { view } = await open();
-      flushPool();
-      view.form.controls.elements.at(1).controls.nominal_duration_ms.setValue(3_500_000);
-      view.form.markAsDirty();
-      view.save();
-
-      const put = http.expectOne({ method: 'PUT', url: '/api/clocks/7' });
-      expect(put.request.body.elements.map((element: { id: number }) => element.id)).toEqual([
-        11, 12,
-      ]);
-      put.flush(
-        {
-          status: 422,
-          code: 'validation_failed',
-          title: 'Unprocessable Entity',
-          errors: [
-            {
-              field: 'elements[0].fixed_minute',
-              code: 'does_not_fit',
-              message: 'the material before it does not fit',
-            },
-          ],
-        },
-        { status: 422, statusText: 'Unprocessable Entity' },
-      );
-      await settlePage();
-      expect(view.form.controls.elements.at(0).controls.fixed_minute.hasError('server')).toBe(true);
-      expect(view.form.controls.elements.at(1).controls.fixed_minute.hasError('server')).toBe(
-        false,
-      );
-    });
-
-    it('shows replaced fixed elements and the warnings of the dry check', async () => {
-      const { view, ref } = await open();
-      flushPool();
-      view.move(1, -1);
-      view.save();
-
-      const put = http.expectOne({ method: 'PUT', url: '/api/clocks/7' });
-      expect(put.request.body.elements.map((element: { id: number }) => element.id)).toEqual([
-        12, 11,
-      ]);
-      put.flush(
-        saveResult({
-          replaced_elements: [{ ...clock().elements[0], id: 5, fixed_minute: 30 }],
+        saveResult(clock(), {
           warnings: [
             {
-              code: 'element_no_fitting_track',
-              element_index: 1,
-              message: 'no track fits element 2',
+              code: 'fill_no_interval_rule',
+              message: 'no interval',
+              playlist_index: 0,
             },
           ],
         }),
       );
       await settlePage();
 
-      const page = ref.location.nativeElement as HTMLElement;
-      expect(page.textContent).toContain('clocks.check.replaced');
-      expect(page.querySelectorAll('app-clock-element')[1].textContent).toContain(
-        'no track fits element 2',
+      expect(replaceState).toHaveBeenCalledWith('/clocks/7');
+      expect(runOperation).toHaveBeenCalledOnce();
+      expect(page.textContent).toContain('operationStatus.completed');
+      const sample = page.querySelector('app-clock-sample') as HTMLElement;
+      expect(sample.textContent).toContain('Long song');
+      expect(sample.textContent).toContain('29:40');
+      expect(sample.querySelector('.item.insert')?.textContent).toContain('Pre-news jingle');
+      // Tests load no translations, so the backend's message is shown.
+      expect(page.querySelector('.result .warnings')?.textContent).toContain('no interval');
+      // The warning names a playlist row, so the row shows it too.
+      expect(page.querySelectorAll('app-clock-playlist-row')[0].textContent).toContain(
+        'no interval',
       );
-      expect(view.form.dirty).toBe(false);
+      expect(form.dirty).toBe(false);
     });
 
-    it('edits the unused tracks of the filler pool and keeps the used ones as history', async () => {
-      const { ref } = await open();
-      flushPool([
-        { track_id: 1, title: 'Used song', position: 1, used_at: '2026-10-14T10:00:00Z' },
-        { track_id: 2, title: 'Waiting song', position: 2 },
+    it('loads the clock with its own rules and sends an override and shares', async () => {
+      const { view } = await open();
+      const rows = view.form.controls.playlists;
+      // The inserts are shown in time order.
+      expect(view.form.controls.inserts.controls.map((item) => item.value.offset_ms)).toEqual([
+        1_780_000, 1_800_000,
       ]);
-      await settlePage();
+      expect(view.form.controls.inserts.at(1).controls.source.value).toBe('playlist');
 
-      const page = ref.location.nativeElement as HTMLElement;
-      expect(page.querySelector('app-clock-filler-pool')?.textContent).toContain('Used song');
-      const pool = ref.instance['pool']() as unknown as { unused: FormControl<number[] | null> };
-      expect(pool.unused.value).toEqual([2]);
-      pool.unused.setValue([2, 5]);
-      pool.unused.markAsDirty();
-      expect(ref.instance.hasUnsavedChanges()).toBe(true);
-      await settlePage();
-      button(page, 'clocks.pool.save')?.click();
+      const jingles = rows.at(1);
+      jingles.controls.override.setValue(true);
+      // An override starts from the playlist's own rule.
+      expect(jingles.controls.clock_rule.value).toBe('spread');
+      expect(jingles.controls.clock_count.value).toBe(2);
+      jingles.controls.clock_count.setValue(4);
 
-      const put = http.expectOne({ method: 'PUT', url: '/api/clocks/7/filler-pool' });
-      expect(put.request.body).toEqual({ track_ids: [2, 5] });
-      put.flush({ items: [{ track_id: 2, title: 'Waiting song', position: 2 }] });
+      view.addPlaylist.setValue(GOLD.id);
+      rows.at(0).controls.fill_weight.setValue(30);
+      expect(rows.hasError('fillWeightsPartial')).toBe(true);
+      rows.at(2).controls.fill_weight.setValue(70);
+      expect(rows.valid).toBe(true);
+      expect(fillShares(rows.controls)).toEqual([30, null, 70]);
       await settlePage();
+      view.save();
+
+      const put = http.expectOne({ method: 'PUT', url: '/api/clocks/7' });
+      expect(put.request.body).toEqual({
+        name: 'Music hour',
+        playlists: [
+          { playlist_id: 3, fill_weight: 30 },
+          { playlist_id: 4, clock_rule: 'spread', clock_count: 4 },
+          { playlist_id: 5, fill_weight: 70 },
+        ],
+        inserts: [
+          { offset_ms: 1_780_000, tolerance_ms: 60_000, track_id: 9 },
+          { offset_ms: 1_800_000, tolerance_ms: 60_000, playlist_id: 4 },
+        ],
+      });
+      put.flush(saveResult());
+      await settlePage();
+    });
+
+    it('turns a share off when an override makes the row a rule row', async () => {
+      const { view } = await open();
+      const music = view.form.controls.playlists.at(0);
+      music.controls.fill_weight.setValue(50);
+      music.controls.override.setValue(true);
+      music.controls.clock_rule.setValue('start');
+
+      expect(music.controls.fill_weight.disabled).toBe(true);
+      expect(music.controls.clock_count.disabled).toBe(true);
+      // Music no longer fills, and Jingles never did.
+      expect(view.form.controls.playlists.hasError('fillPlaylistRequired')).toBe(true);
+
+      music.controls.override.setValue(false);
+      expect(music.controls.clock_rule.disabled).toBe(true);
+      expect(music.controls.fill_weight.enabled).toBe(true);
+      expect(view.form.controls.playlists.valid).toBe(true);
+    });
+
+    it('needs the source of an insert and sends only the chosen one', async () => {
+      const { view } = await open();
+      const insert = view.form.controls.inserts.at(0);
+      insert.controls.source.setValue('playlist');
+      expect(insert.hasError('insertSource')).toBe(true);
+      insert.controls.playlist_id.setValue(4);
+      expect(insert.valid).toBe(true);
+      await settlePage();
+      view.save();
+
+      const put = http.expectOne({ method: 'PUT', url: '/api/clocks/7' });
+      expect(put.request.body.inserts[0]).toEqual({
+        offset_ms: 1_780_000,
+        tolerance_ms: 60_000,
+        playlist_id: 4,
+      });
+      put.flush(saveResult());
+      await settlePage();
+    });
+
+    it('puts an insert field error on that insert', async () => {
+      const { view } = await open();
+      view.form.markAsDirty();
+      view.save();
+
+      http.expectOne({ method: 'PUT', url: '/api/clocks/7' }).flush(
+        {
+          status: 422,
+          code: 'validation_failed',
+          title: 'Unprocessable Entity',
+          errors: [
+            {
+              field: 'inserts[1].offset_ms',
+              code: 'insert_offset_taken',
+              message: 'two inserts at 30:00',
+            },
+            {
+              field: 'playlists',
+              code: 'fill_playlist_required',
+              message: 'no fill playlist',
+            },
+          ],
+        },
+        { status: 422, statusText: 'Unprocessable Entity' },
+      );
+      await settlePage();
+      const inserts = view.form.controls.inserts;
+      expect(inserts.at(1).controls.offset_ms.hasError('server')).toBe(true);
+      expect(inserts.at(0).controls.offset_ms.hasError('server')).toBe(false);
+      expect(view.form.controls.playlists.hasError('server')).toBe(true);
+    });
+
+    it('keeps unsaved changes until a save', async () => {
+      const { view, ref } = await open();
       expect(ref.instance.hasUnsavedChanges()).toBe(false);
-      // The picker reads the chosen tracks to show their titles.
-      for (const request of http.match((req) => /^\/api\/tracks\/\d+$/.test(req.url))) {
-        request.flush(null, { status: 404, statusText: 'Not Found' });
-      }
+      view.removePlaylist(1);
+      expect(ref.instance.hasUnsavedChanges()).toBe(true);
     });
   });
 });

@@ -40,6 +40,7 @@ const track = (id: number, title: string, artist?: string): ApiSchema<'Track'> =
 const playlist = (id: number, name: string, type: string): ApiSchema<'Playlist'> => ({
   id,
   name,
+  clock_rule: 'fill',
   play_rule_ids: [],
   track_count: 12,
   created_at: '2026-10-01T00:00:00Z',

@@ -9,6 +9,7 @@ import { SERVER_ERROR, ServerFieldError } from './server-errors';
 const ORDER = [
   SERVER_ERROR,
   'cueTime',
+  'hourOffset',
   'required',
   'range',
   'step',

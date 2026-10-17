@@ -24,10 +24,12 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { OperationStatus, OperationsService } from '../../core/operations/operations.service';
 import type { PreviewTrack } from '../../core/player/player.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
+import { HOUR_OFFSET_MAX_MS } from '../../core/time/duration';
 import { PlannedLengthPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { FieldHintComponent } from '../../shared/ui/field-hint.component';
-import { NumberInputComponent } from '../../shared/forms/number-input.component';
+import { OffsetInputComponent } from '../../shared/forms/offset-input.component';
+import { SecondsInputComponent } from '../../shared/forms/seconds-input.component';
 import { controlErrorMessage, controlVersion } from '../../shared/forms/field-errors';
 import { applySubmitError } from '../../shared/forms/server-errors';
 import { rangeValidator } from '../../shared/forms/validators';
@@ -43,8 +45,8 @@ type Resolution = NonNullable<
 
 export const RESOLUTIONS: readonly Resolution[] = ['open', 'rescheduled', 'dismissed'];
 export const PLACEMENTS: readonly Placement[] = ['start', 'end', 'fixed'];
-/** `RescheduleBody` limits. */
-export const RESCHEDULE_LIMITS = { minuteMax: 59, toleranceMax: 600_000 } as const;
+/** `RescheduleBody` limits; the tolerance in seconds (0 to 600 000 ms). */
+export const RESCHEDULE_LIMITS = { toleranceSeconds: { min: 0, max: 600 } } as const;
 /** Target hours are offered from the plan of the next 7 days, the most the API reads at once. */
 export const TARGET_WINDOW_MS = 7 * 86_400_000;
 
@@ -55,7 +57,8 @@ interface MissedRow {
 
 /**
  * Missed items (design §7.1): items an outage kept off the air. Each open one is rescheduled into a
- * later planned hour, at its start, its end, or a fixed minute, for that hour only, or dismissed.
+ * later planned hour, at its start, its end, or a fixed time with seconds, for that hour only, or
+ * dismissed.
  * The reschedule is a `reschedule` operation: the backend rebuilds the hour around the item and
  * refuses it when the track breaks a rule at its place or does not fit, which arrives as an
  * error popup.
@@ -73,7 +76,8 @@ interface MissedRow {
     PlannedLengthPipe,
     StationTimePipe,
     FieldHintComponent,
-    NumberInputComponent,
+    OffsetInputComponent,
+    SecondsInputComponent,
     PageHeaderComponent,
     PlayButtonComponent,
   ],
@@ -234,24 +238,19 @@ interface MissedRow {
                         <app-field-hint page="help.missed-items" field="placement" />
                       </div>
                       @if (fixed()) {
-                        <app-number-input
-                          [control]="form.controls.fixed_minute"
-                          label="missedItems.fields.fixed_minute"
-                          [min]="0"
-                          [max]="limits.minuteMax"
-                          suffix="forms.units.minutes"
+                        <app-offset-input
+                          [control]="form.controls.offset_ms"
+                          label="missedItems.fields.offset_ms"
                           hintPage="help.missed-items"
-                          hintField="fixed_minute"
+                          hintField="offset_ms"
                         />
-                        <app-number-input
-                          [control]="form.controls.fixed_tolerance_ms"
-                          label="missedItems.fields.fixed_tolerance_ms"
-                          [min]="0"
-                          [max]="limits.toleranceMax"
-                          [step]="1000"
-                          suffix="forms.units.ms"
+                        <app-seconds-input
+                          [control]="form.controls.tolerance_ms"
+                          label="missedItems.fields.tolerance_ms"
+                          [min]="limits.toleranceSeconds.min"
+                          [max]="limits.toleranceSeconds.max"
                           hintPage="help.missed-items"
-                          hintField="fixed_tolerance_ms"
+                          hintField="tolerance_ms"
                         />
                       }
                     </div>
@@ -352,14 +351,11 @@ export default class MissedItemsPageComponent {
   protected readonly form = new FormGroup({
     target_hour_start_utc: new FormControl<string | null>(null, Validators.required),
     placement: new FormControl<Placement>('start', { nonNullable: true }),
-    fixed_minute: new FormControl<number | null>({ value: null, disabled: true }, [
+    offset_ms: new FormControl<number | null>({ value: null, disabled: true }, [
       Validators.required,
-      rangeValidator({ min: 0, max: RESCHEDULE_LIMITS.minuteMax, step: 1 }),
+      rangeValidator({ min: 0, max: HOUR_OFFSET_MAX_MS, step: 1000 }),
     ]),
-    fixed_tolerance_ms: new FormControl<number | null>(
-      { value: null, disabled: true },
-      rangeValidator({ min: 0, max: RESCHEDULE_LIMITS.toleranceMax, step: 1 }),
-    ),
+    tolerance_ms: new FormControl<number | null>({ value: null, disabled: true }),
   });
   private readonly version = controlVersion(signal(this.form));
   protected readonly canSave = computed(() => {
@@ -425,8 +421,8 @@ export default class MissedItemsPageComponent {
     this.form.reset({
       target_hour_start_utc: null,
       placement: 'start',
-      fixed_minute: null,
-      fixed_tolerance_ms: null,
+      offset_ms: null,
+      tolerance_ms: null,
     });
     this.syncFixed('start');
     this.error.set(null);
@@ -451,10 +447,8 @@ export default class MissedItemsPageComponent {
     const body: ApiSchema<'RescheduleBody'> = {
       target_hour_start_utc: value.target_hour_start_utc,
       placement: value.placement,
-      ...(fixed && value.fixed_minute !== null ? { fixed_minute: value.fixed_minute } : {}),
-      ...(fixed && value.fixed_tolerance_ms !== null
-        ? { fixed_tolerance_ms: value.fixed_tolerance_ms }
-        : {}),
+      ...(fixed && value.offset_ms !== null ? { offset_ms: value.offset_ms } : {}),
+      ...(fixed && value.tolerance_ms !== null ? { tolerance_ms: value.tolerance_ms } : {}),
     };
     this.busy.set(true);
     this.error.set(null);
@@ -510,10 +504,7 @@ export default class MissedItemsPageComponent {
 
   /** The fixed minute and its tolerance apply only to a fixed placement; otherwise not sent. */
   private syncFixed(placement: Placement): void {
-    for (const control of [
-      this.form.controls.fixed_minute,
-      this.form.controls.fixed_tolerance_ms,
-    ]) {
+    for (const control of [this.form.controls.offset_ms, this.form.controls.tolerance_ms]) {
       if (placement === 'fixed') {
         control.enable({ emitEvent: false });
       } else {

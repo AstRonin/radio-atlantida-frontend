@@ -17,9 +17,8 @@ import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 type ClockSummary = ApiSchema<'ClockSummary'>;
 
 /**
- * Clocks with their status and element count. An incomplete clock has a short segment without a
- * filler and creates reminders. A clock used in the grid or with play history cannot be deleted;
- * the refusal names the slots.
+ * Clocks with the number of their playlists and timed inserts (design §7.2). A clock used in the
+ * grid or with play history cannot be deleted; the refusal names the slots.
  */
 @Component({
   selector: 'app-clocks-page',
@@ -58,17 +57,13 @@ type ClockSummary = ApiSchema<'ClockSummary'>;
             <a [routerLink]="['/clocks', clock.id]">{{ clock.name }}</a>
           </td>
         </ng-container>
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>{{ 'clocks.statusLabel' | translate }}</th>
-          <td mat-cell *matCellDef="let clock">
-            <span class="badge" [class.warn]="clock.status === 'incomplete'">
-              {{ 'clocks.status.' + clock.status | translate }}
-            </span>
-          </td>
+        <ng-container matColumnDef="playlists">
+          <th mat-header-cell *matHeaderCellDef>{{ 'clocks.playlistCount' | translate }}</th>
+          <td mat-cell *matCellDef="let clock">{{ clock.playlist_count }}</td>
         </ng-container>
-        <ng-container matColumnDef="elements">
-          <th mat-header-cell *matHeaderCellDef>{{ 'clocks.elementCount' | translate }}</th>
-          <td mat-cell *matCellDef="let clock">{{ clock.element_count }}</td>
+        <ng-container matColumnDef="inserts">
+          <th mat-header-cell *matHeaderCellDef>{{ 'clocks.insertCount' | translate }}</th>
+          <td mat-cell *matCellDef="let clock">{{ clock.insert_count }}</td>
         </ng-container>
         <ng-container matColumnDef="updated">
           <th mat-header-cell *matHeaderCellDef>{{ 'clocks.updatedAt' | translate }}</th>
@@ -104,7 +99,7 @@ export default class ClocksPageComponent {
   private readonly confirm = inject(ConfirmService);
   private readonly i18n = inject(I18nService);
 
-  protected readonly columns = ['name', 'status', 'elements', 'updated', 'actions'];
+  protected readonly columns = ['name', 'playlists', 'inserts', 'updated', 'actions'];
 
   protected readonly clocks = rxResource({
     stream: () => this.api.get('/api/clocks').pipe(map((list) => list.items)),

@@ -15,7 +15,8 @@
     "yes": "Yes",
     "no": "No",
     "loadMore": "Load more",
-    "opensInNewTab": "(opens in a new tab)"
+    "opensInNewTab": "(opens in a new tab)",
+    "remove": "Remove"
   },
   "paginator": {
     "itemsPerPage": "Rows per page",
@@ -103,7 +104,8 @@
       "reschedule": "Rescheduling a missed item",
       "import": "Import",
       "analyse": "Audio analysis",
-      "transcode": "Transcoding"
+      "transcode": "Transcoding",
+      "hour_insert": "One-time insert"
     }
   },
   "alerts": {
@@ -141,7 +143,6 @@
       "stream": "Stream output (Icecast)",
       "liquidsoap": "Liquidsoap",
       "rotation": "Rotation",
-      "filler": "Filler",
       "outage": "Outage detection",
       "retention": "Retention",
       "playout": "Playout and emergency playlist",
@@ -166,10 +167,6 @@
       "note": "Set in the server environment and changed by a restart, never in the panel.",
       "set": "Set",
       "notSet": "Not set"
-    },
-    "fallback": {
-      "playlist": "Fallback playlist",
-      "artist": "Fallback artist"
     },
     "fields": {
       "station": {
@@ -205,14 +202,8 @@
         "grid_horizon_days": "Grid horizon",
         "plan_horizon_hours": "Plan horizon",
         "lookahead_items": "Lookahead",
-        "default_duration_tolerance_ms": "Default tolerance",
-        "default_fixed_tolerance_ms": "Default fixed tolerance",
-        "min_filler_gap_ms": "Smallest filler gap",
-        "max_relaxed_tolerance_ms": "Emergency tolerance limit"
-      },
-      "filler": {
-        "fallback": "Global fallback filler",
-        "reminder_deadline_minutes": "Reminder deadline"
+        "default_fixed_tolerance_ms": "Default insert tolerance",
+        "min_gap_ms": "Smallest gap for music"
       },
       "outage": {
         "heartbeat_timeout_seconds": "Heartbeat timeout",
@@ -276,12 +267,12 @@
       "invalid": "The value is not valid.",
       "controlCharacters": "Remove line breaks and tabs.",
       "relativePath": "Enter a path inside the media folder, such as music/song.mp3: no leading /, no drive letter, no \\, and no ..",
-      "fallbackSource": "Choose the playlist or artist for this mode.",
       "dateRange": "Choose a last date on or after the first one, at most {days} days in all.",
       "date": "Enter a date as YYYY-MM-DD, or choose one in the calendar.",
       "dateMin": "Choose {date} or a later date.",
       "dateMax": "Choose {date} or an earlier date.",
-      "cueTime": "Enter a time as m:ss.mmm, for example 1:02.340."
+      "cueTime": "Enter a time as m:ss.mmm, for example 1:02.340.",
+      "hourOffset": "Enter a time in the hour as mm:ss, from 00:00 to 59:59."
     },
     "timepicker": {
       "format": "HH:MM",
@@ -318,12 +309,20 @@
       "overlap": "The value overlaps with another one.",
       "does_not_fit": "It does not fit into the available time.",
       "order": "The values are in the wrong order.",
-      "blocked": "A separation or play rule blocks this choice.",
+      "blocked": "A play rule blocks this choice.",
       "invalid_characters": "Remove line breaks and tabs.",
       "cue_order": "The stop point must be after the start point.",
       "cue_beyond_end": "The point is past the end of the file.",
       "air_too_short": "Leave at least 5 seconds on air.",
-      "fades_too_long": "The fades together are longer than the part on air."
+      "fades_too_long": "The fades together are longer than the part on air.",
+      "interval_beyond_retention": "Longer than the play log is kept. Shorten the interval or keep the play log longer (Settings).",
+      "fill_playlist_required": "Add at least one playlist that fills the hour.",
+      "fill_weights_partial": "Give every fill playlist a share, or none.",
+      "clock_count_required": "Enter how many tracks to spread over the hour.",
+      "clock_count_not_allowed": "A number of tracks is only set for the spread rule.",
+      "fill_weight_not_allowed": "Only a fill playlist has a share.",
+      "insert_offset_taken": "Another insert of this clock starts at the same time.",
+      "insert_source_required": "Choose a track or a playlist for the insert."
     },
     "weekdays": {
       "label": "Weekdays",
@@ -341,7 +340,8 @@
       "days": "days",
       "lufs": "LUFS",
       "lu": "LU",
-      "dbtp": "dBTP"
+      "dbtp": "dBTP",
+      "s": "s"
     },
     "hours": {
       "label": "Hours",
@@ -350,30 +350,40 @@
     },
     "cueTime": {
       "format": "m:ss.mmm"
-    }
-  },
-  "filler": {
-    "modeLabel": "Filler mode",
-    "modes": {
-      "none": "None",
-      "ask": "Ask at air time",
-      "random": "Random track",
-      "playlist": "From a playlist",
-      "artist": "By an artist",
-      "pool": "From the clock's pool",
-      "global": "Global fallback (settings)"
     },
-    "dialog": {
-      "title": "The clock \"{clock}\" is short",
-      "intro": "Choose how to fill each short segment. Short segments: {count}.",
-      "segment": "Segment {number}: {from} to {to}",
-      "shortfall": "Short by {duration}",
-      "sourcePlaylist": "Playlist for the filler",
-      "sourceArtist": "Artist for the filler",
-      "pool": "Tracks for the clock's pool",
-      "poolNote": "Pool tracks are used in this order. Leave the list empty to keep the clock's current pool.",
-      "save": "Save with filler",
-      "saveIncomplete": "Save incomplete"
+    "hourOffset": {
+      "format": "mm:ss"
+    },
+    "interval": {
+      "hours": "Hours",
+      "minutes": "Minutes",
+      "short": {
+        "hours": "{hours} h",
+        "minutes": "{minutes} min",
+        "hoursMinutes": "{hours} h {minutes} min"
+      }
+    },
+    "clockRule": {
+      "label": "Placement in clocks",
+      "count": "Tracks per hour",
+      "spreadCount": "{count} × spread",
+      "inherited": "Its own rule: {rule}",
+      "rules": {
+        "fill": "Fill",
+        "spread": "Spread",
+        "start": "Start",
+        "end": "End",
+        "start_end": "Start and end",
+        "middle": "Middle"
+      },
+      "hints": {
+        "fill": "Fills all the time that inserts and other rules leave.",
+        "spread": "Spreads this many tracks over the hour, apart from each other.",
+        "start": "Plays the first track of the hour.",
+        "end": "Plays the last track of the hour, ending at 60:00.",
+        "start_end": "Plays one track at the start and one at the end of the hour.",
+        "middle": "Plays one track starting at about 30:00 (25:00 to 35:00)."
+      }
     }
   },
   "pickers": {
@@ -396,8 +406,7 @@
       "moveDown": "Move \"{title}\" down",
       "remove": "Remove \"{title}\""
     },
-    "clock": "Clock",
-    "clockIncomplete": "incomplete"
+    "clock": "Clock"
   },
   "dialogs": {
     "delete": {
@@ -410,11 +419,11 @@
         "playlist": "Playlist",
         "track": "Track",
         "clock": "Clock",
-        "clock_element": "Clock element",
         "play_rule": "Play rule",
         "playlist_type": "Playlist type",
         "artist": "Artist",
-        "grid_slot": "Grid slot"
+        "grid_slot": "Grid slot",
+        "hour_insert": "One-time insert"
       }
     },
     "unsaved": {
@@ -440,7 +449,7 @@
     "system_type_not_deletable": "A system playlist type cannot be deleted.",
     "playlist_type_in_use": "The playlist type is in use and cannot be deleted.",
     "playlist_not_found": "The playlist was not found.",
-    "playlist_in_use": "The playlist is used by clocks and cannot be deleted.",
+    "playlist_in_use": "The playlist is used by clocks (as a playlist or an insert) and cannot be deleted.",
     "artist_not_found": "The artist was not found.",
     "artist_in_use": "The artist is in use and cannot be deleted.",
     "artist_has_history": "The artist has play history and cannot be deleted.",
@@ -452,15 +461,12 @@
     "title_too_long": "The title would be longer than 500 characters.",
     "play_rule_not_found": "The play rule was not found.",
     "play_rule_in_use": "The play rule is in use and cannot be deleted.",
-    "separation_rule_not_found": "The separation rule was not found.",
     "clock_not_found": "The clock was not found.",
     "clock_in_use": "The clock is used in the grid and cannot be deleted.",
     "clock_has_history": "The clock has play history and cannot be deleted.",
     "grid_slot_not_found": "The grid slot was not found.",
     "grid_conflict": "Another change to the same grid hours was saved at the same time. Reload the grid and try again.",
-    "filler_request_not_found": "The filler reminder was not found.",
-    "filler_request_closed": "The filler reminder is already closed.",
-    "filler_request_not_answerable": "This reminder is closed by refilling the clock's filler pool, not by choosing a track.",
+    "hour_insert_not_found": "The one-time insert was not found; it may have been removed already.",
     "hour_started": "This hour is on air, over, or about to start, so its plan cannot be changed.",
     "liquidsoap_unavailable": "Liquidsoap cannot be reached. Try again when the playout is connected.",
     "missed_item_not_found": "The missed item was not found.",
@@ -486,11 +492,9 @@
     "playlists": "Playlists",
     "playlistTypes": "Playlist types",
     "playRules": "Play rules",
-    "separationRules": "Separation rules",
     "clocks": "Clocks",
     "grid": "Grid",
     "trackPlan": "Track plan",
-    "fillerReminders": "Filler reminders",
     "playedTracks": "Played tracks",
     "missedItems": "Missed items",
     "logs": "Logs",
@@ -530,23 +534,6 @@
       "renameTitle": "Rename artist"
     }
   },
-  "separationRules": {
-    "title": "Separation rules",
-    "hours": "{hours} h",
-    "fields": {
-      "scope": "Applies to",
-      "min_interval_hours": "Minimum interval",
-      "notes": "Notes"
-    },
-    "scopes": {
-      "track": "Same track",
-      "artist": "Same artist"
-    },
-    "dialog": {
-      "title": "Separation: {scope}",
-      "retentionNote": "At most {hours} hours: separation is checked against the aired history, which is kept for the play log retention period (Settings)."
-    }
-  },
   "playRules": {
     "title": "Play rules",
     "add": "Add play rule",
@@ -555,7 +542,8 @@
       "window_from": "Allowed from",
       "window_to": "Allowed until",
       "weekdays": "Weekdays",
-      "min_interval_minutes": "Minimum interval",
+      "min_interval_minutes": "Track interval",
+      "artist_min_interval_minutes": "Artist interval",
       "max_per_hour": "Plays per hour",
       "notes": "Notes",
       "track_ids": "Tracks",
@@ -566,9 +554,11 @@
       "windowRange": "{from} to {to}",
       "anyTime": "Any time",
       "everyDay": "Every day",
-      "minutes": "{minutes} min",
       "uses": "Used by",
-      "usesValue": "{tracks} tracks, {playlists} playlists"
+      "usesValue": "{tracks} tracks, {playlists} playlists",
+      "intervals": "Intervals",
+      "trackInterval": "Track {interval}",
+      "artistInterval": "Artist {interval}"
     },
     "edit": {
       "createTitle": "New play rule",
@@ -579,7 +569,7 @@
       "targets": "Applies to"
     },
     "errors": {
-      "atLeastOne": "Set at least one limit: a time window, weekdays, a minimum interval, or plays per hour.",
+      "atLeastOne": "Set at least one limit: a time window, weekdays, a track or artist interval, or plays per hour.",
       "sameWindow": "The window must end at a different time than it starts."
     }
   },
@@ -802,100 +792,95 @@
       "add": "Add",
       "addOne": "Add \"{title}\"",
       "inPlaylist": "In playlist"
+    },
+    "clockRule": {
+      "title": "In clocks",
+      "note": "How this playlist is placed in every clock that uses it. A clock may set its own rule for it.",
+      "column": "In clocks",
+      "rebuilding": "Rebuilding the planned hours of the clocks that use this playlist…"
     }
   },
   "clocks": {
     "title": "Clocks",
     "add": "Add clock",
-    "statusLabel": "Status",
-    "elementCount": "Elements",
+    "playlistCount": "Playlists",
+    "insertCount": "Inserts",
     "updatedAt": "Changed",
-    "status": {
-      "complete": "Complete",
-      "incomplete": "Incomplete"
-    },
-    "placements": {
-      "flow": "In flow",
-      "start": "At the start",
-      "end": "At the end",
-      "fixed": "At a fixed minute"
-    },
     "fields": {
-      "name": "Name",
-      "default_filler_mode": "Default filler mode",
-      "filler_playlist": "Filler playlist",
-      "filler_artist": "Filler artist",
-      "placement": "Placement",
-      "fixed_minute": "Fixed minute",
-      "fixed_tolerance_ms": "Fixed tolerance",
-      "nominal_duration_ms": "Nominal duration",
-      "duration_tolerance_ms": "Tolerance",
-      "playlist_ids": "Playlists"
+      "name": "Name"
     },
     "edit": {
       "createTitle": "New clock",
       "editTitle": "Edit clock",
-      "elements": "Elements",
-      "elementsNote": "The order of flow elements is the order of play. Start and end elements open and close the hour; fixed elements start at their minute.",
-      "addElement": "Add element",
-      "noElements": "Add at least one element.",
       "save": "Save and check"
     },
-    "element": {
-      "title": "Element {number}",
-      "new": "new",
-      "moveUp": "Up",
-      "moveDown": "Down",
-      "remove": "Remove",
-      "moveUpLabel": "Move element {number} up",
-      "moveDownLabel": "Move element {number} down",
-      "removeLabel": "Remove element {number}",
-      "defaultTolerance": "Empty: the default from the settings"
+    "playlists": {
+      "title": "Playlists",
+      "note": "The system lays out the hour from these playlists by their placement rules. The order decides which start or end track comes first.",
+      "add": "Add a playlist",
+      "trackCount": "{count} tracks",
+      "share": "{percent} %",
+      "override": "Own rule in this clock",
+      "weight": "Share",
+      "moveUp": "Move {name} up",
+      "moveDown": "Move {name} down",
+      "unknown": "Playlist #{id}",
+      "required": "Add at least one playlist.",
+      "fillRequired": "At least one playlist must fill the hour (rule Fill).",
+      "weightsPartial": "Give every fill playlist a share, or none."
     },
-    "check": {
-      "title": "Dry check",
-      "incompleteNote": "A short segment has no filler. Reminders are created for its hours until you choose one.",
-      "shortfall": "The clock is short by {duration} in total.",
-      "full": "The clock fills the hour.",
-      "replaced": "These fixed elements were replaced by a new element at the same time:",
-      "replacedElement": "Fixed element at :{minute}, {duration}",
-      "warnings": "Warnings:"
+    "inserts": {
+      "title": "Timed inserts",
+      "note": "An insert plays at its time in every hour of this clock, within its tolerance. Inserts close together play back to back.",
+      "add": "Add insert",
+      "offset": "Time (mm:ss)",
+      "tolerance": "Start tolerance",
+      "source": "Plays",
+      "sources": {
+        "track": "A track",
+        "playlist": "A track from a playlist"
+      },
+      "track": "Track",
+      "playlist": "Playlist",
+      "sourceRequired": "Choose what the insert plays."
+    },
+    "sample": {
+      "title": "Sample hour",
+      "hour": "Built for the hour starting {hour}. Planned hours may differ in the tracks chosen.",
+      "stale": "This is the sample of the saved clock. Save to check your changes.",
+      "empty": "The sample hour has no tracks.",
+      "unavailable": "The sample hour could not be built. The error is in the logs.",
+      "warnings": "Warnings:",
+      "noWarnings": "No warnings.",
+      "truncated": "cut",
+      "sources": {
+        "fill": "Fill",
+        "rule": "Rule",
+        "insert": "Insert",
+        "hour_insert": "One-time insert",
+        "reschedule": "Rescheduled",
+        "general": "Whole library"
+      }
     },
     "warnings": {
-      "element_no_tracks": "Element {element}: its playlists have no track with a known duration.",
-      "element_no_fitting_track": "Element {element}: no track fits the nominal duration within the tolerance.",
-      "element_few_tracks": "Element {element}: too few fitting tracks for the separation rules; tracks may repeat or be skipped.",
-      "element_blocked_by_play_rules": "Element {element}: play rules block every fitting track in these grid hours: {hours}.",
-      "segment_overflow": "Segment {segment} runs past the end of the hour; the last track is cut and faded out."
+      "playlist_no_tracks": "Playlist {playlist} has no track that can play.",
+      "fill_few_tracks": "Playlist {playlist}: too few tracks for the minimum interval of its play rules; the hour may run out of music.",
+      "fill_no_interval_rule": "Playlist {playlist} fills the hour but none of its play rules sets a minimum interval, so its tracks may repeat within the hour.",
+      "rule_blocked_by_play_rules": "Playlist {playlist}: play rules block every track in these grid hours: {hours}.",
+      "insert_replaced": "The insert at {insert} is replaced by a one-time insert in that hour.",
+      "insert_skipped": "The insert at {insert} was skipped: no track can play there.",
+      "hour_insert_dropped": "A one-time insert could not be placed and was dropped.",
+      "rule_slot_skipped": "Playlist {playlist}: a rule track was skipped; the fill covers its time.",
+      "fill_general_pool": "No fill track was allowed; a track was taken from the whole library.",
+      "fill_emergency": "No track was allowed at all; the emergency playlist covers the gap.",
+      "gap_unfilled": "A gap is left that no track could fill.",
+      "reschedule_dropped": "A rescheduled item could not be placed."
     },
     "build": {
       "accepted": "Rebuilding the planned hours…",
       "running": "Rebuilding the planned hours…",
       "completed": "The planned hours are rebuilt.",
       "failed": "Rebuilding the planned hours failed."
-    },
-    "layout": {
-      "title": "Layout of the hour (nominal durations)",
-      "stale": "This is the layout as saved. Save to check your changes.",
-      "caption": "Segments of the hour",
-      "segment": "Segment",
-      "time": "Time",
-      "elements": "Elements",
-      "content": "Content",
-      "fixed": "Fixed element",
-      "shortfall": "Short",
-      "overflow": "Overflow",
-      "filler": "Filler",
-      "overflowBy": "Over by {duration}",
-      "holder": "element {number}"
-    },
-    "pool": {
-      "title": "Filler pool",
-      "note": "Specific tracks used one after another when a segment in pool mode needs filler. Used tracks stay listed as history.",
-      "unused": "Tracks waiting in the pool",
-      "save": "Save pool",
-      "saved": "The pool is saved.",
-      "used": "Already used"
     }
   },
   "grid": {
@@ -944,9 +929,6 @@
       "describe": "{day} {hour} · {clock} · {from} to {to}"
     }
   },
-  "rotation": {
-    "pendingReminders": "Filler reminders: {count}"
-  },
   "trackPlan": {
     "title": "Track plan",
     "fields": {
@@ -968,7 +950,6 @@
       "empty": "No planned hours on these dates. The plan covers the next 24 to 48 hours; later hours are built as the time comes."
     },
     "builtAt": "Built {time}",
-    "reminder": "Filler reminder",
     "warningsLabel": "Warnings of this hour",
     "noItems": "No tracks are planned in this hour.",
     "truncated": "cut (file {length})",
@@ -982,13 +963,12 @@
       "status": "Status"
     },
     "sources": {
-      "clock": "Clock",
-      "filler_pool": "Filler: pool",
-      "filler_random": "Filler: random",
-      "filler_playlist": "Filler: playlist",
-      "filler_artist": "Filler: artist",
-      "filler_answer": "Filler: your answer",
-      "reschedule": "Rescheduled"
+      "fill": "Fill",
+      "rule": "Rule",
+      "insert": "Insert",
+      "hour_insert": "One-time insert",
+      "reschedule": "Rescheduled",
+      "general": "Whole library"
     },
     "statuses": {
       "planned": "Planned",
@@ -998,59 +978,38 @@
       "replaced": "Replaced"
     },
     "warnings": {
-      "element_blocked_by_play_rules": "Element {element}: play rules block every track, so the element is skipped.",
-      "element_tolerance_relaxed": "Element {element}: no track fit the tolerance; one was chosen with a wider tolerance.",
-      "element_general_pool": "Element {element}: no track of its playlists fit; one was taken from the whole library.",
-      "element_emergency": "Element {element}: no track at all; the element is skipped and the emergency playlist covers it.",
-      "pool_track_refused": "Segment {segment}: the pool track {track} breaks a separation or play rule and was skipped.",
-      "pool_empty": "Segment {segment}: the filler pool is empty, so the default filler mode was used. Refill the pool.",
-      "filler_waiting": "Segment {segment}: waits for the answer to a filler reminder.",
-      "gap_unfilled": "Segment {segment}: a gap is left that no filler could close.",
-      "element_replaced": "Element {element}: replaced in this hour by a rescheduled item.",
+      "insert_replaced": "The clock insert {insert} is replaced by a one-time insert in this hour.",
+      "insert_skipped": "Insert {insert} was skipped: no track can play there.",
+      "hour_insert_dropped": "The one-time insert at {insert} could not be placed and was dropped.",
+      "rule_slot_skipped": "A rule track of playlist {playlist} was skipped; the fill covers its time.",
+      "rule_blocked_by_play_rules": "Play rules block every track of playlist {playlist} in this hour.",
+      "fill_general_pool": "No fill track was allowed; {track} was taken from the whole library.",
+      "fill_emergency": "No track was allowed at all; the emergency playlist covers the gap.",
+      "gap_unfilled": "A gap is left that no track could fill.",
       "reschedule_dropped": "A rescheduled item could not be placed in this hour."
+    },
+    "inserts": {
+      "title": "One-time inserts",
+      "label": "Insert",
+      "add": "Add insert",
+      "addTitle": "Add a one-time insert",
+      "hour": "To the hour starting {hour}. The hour is rebuilt around it; the clock is not changed.",
+      "offset": "Time in the hour (mm:ss)",
+      "tolerance": "Start tolerance",
+      "trackType": "Track type",
+      "track": "Track",
+      "rescheduled": "rescheduled missed item",
+      "placements": {
+        "start": "At the start",
+        "end": "At the end",
+        "fixed": "At a fixed time"
+      },
+      "removeLabel": "Remove the insert {title}",
+      "removeTitle": "Remove the insert?",
+      "removeMessage": "“{title}” at {at} is removed and the hour is rebuilt without it.",
+      "removeRescheduledMessage": "“{title}” at {at} is removed and the hour is rebuilt without it. The missed item is open again.",
+      "running": "Rebuilding the hour…"
     }
-  },
-  "fillerReminders": {
-    "title": "Filler reminders",
-    "statusLabel": "Status",
-    "filter": {
-      "pending": "Waiting",
-      "answered": "Answered",
-      "defaulted": "Default used",
-      "expired": "Expired",
-      "all": "All"
-    },
-    "statuses": {
-      "pending": "Waiting",
-      "answered": "Answered",
-      "defaulted": "Default used",
-      "expired": "Expired"
-    },
-    "reasons": {
-      "short_clock": "Short clock",
-      "pool_empty": "Filler pool empty"
-    },
-    "modes": {
-      "none": "no filler chosen",
-      "ask": "ask at air time",
-      "pool": "pool"
-    },
-    "columns": {
-      "hour": "Hour",
-      "clock": "Clock",
-      "reason": "Reason",
-      "deadline": "Deadline"
-    },
-    "fields": {
-      "track_id": "Track"
-    },
-    "overdue": "deadline passed",
-    "answer": "Answer",
-    "refillPool": "Refill the pool",
-    "answerNote": "Choose a track for the short segment of “{clock}” at {hour}. The hour is rebuilt with it.",
-    "save": "Use this track",
-    "answered": "The answer is saved; the hour of “{clock}” is rebuilt.",
-    "empty": "No reminders here."
   },
   "playedTracks": {
     "title": "Played tracks",
@@ -1116,13 +1075,13 @@
     "fields": {
       "target_hour_start_utc": "Target hour",
       "placement": "Placement",
-      "fixed_minute": "Fixed minute",
-      "fixed_tolerance_ms": "Fixed tolerance"
+      "offset_ms": "Time in the hour",
+      "tolerance_ms": "Start tolerance"
     },
     "placements": {
       "start": "At the start",
       "end": "At the end",
-      "fixed": "At a fixed minute"
+      "fixed": "At a fixed time"
     },
     "reschedule": "Reschedule",
     "rescheduleNote": "Choose a later planned hour for “{title}”. The hour is rebuilt around it, once; the clock does not change.",

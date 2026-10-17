@@ -1,41 +1,49 @@
 {
   "title": "Track plan",
-  "summary": "The track plan shows the concrete tracks planned for the coming hours. The system builds it from the grid and keeps it 24 to 48 hours ahead.",
+  "summary": "The track plan shows the concrete tracks planned for the coming hours. The system builds it from the grid and keeps it 24 to 48 hours ahead. You can add a one-time insert, such as today's news, to an hour that has not started.",
   "entities": [
     {
       "term": "Planned hour",
-      "text": "An hour whose tracks are chosen. It is rebuilt automatically when its clock or the grid changes."
+      "text": "An hour whose tracks are chosen. It is rebuilt automatically when its clock, a playlist's placement rule, or the grid changes."
     },
     {
       "term": "Frozen hour",
-      "text": "An hour that is on air or about to start. Its first items are already sent to Liquidsoap, so it is not rebuilt."
+      "text": "An hour that is on air or about to start. Its first items are already sent to Liquidsoap, so it is not rebuilt and its inserts cannot change."
+    },
+    {
+      "term": "One-time insert",
+      "text": "A track added to one planned hour at a time with seconds, for example today's news at 18:30:00. The hour is rebuilt around it, and it stays when the hour is rebuilt again later. The clock template does not change."
     },
     {
       "term": "Source",
-      "text": "Why an item is there: the clock, filler (pool, playlist, artist, random, or an answer to a reminder), or a rescheduled missed item."
+      "text": "Why an item is there: Fill or Rule (a playlist of the clock), Insert (a timed insert of the clock), One-time insert, Rescheduled (a missed item), or Whole library (no fill track was allowed). Inserts are highlighted."
     },
     {
       "term": "Warning",
-      "text": "A problem the engine found while planning, for example an element skipped because play rules blocked every track."
+      "text": "A problem the engine found while planning, for example a rule track skipped because play rules blocked every track."
     }
   ],
-  "usage": "Look ahead to check what will play. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
+  "usage": "Look ahead to check what will play. To add today's news, use Add insert on its hour. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
   "steps": [
     "Choose the hours to look at (up to 7 days).",
     "Read the warnings of each hour.",
-    "Fix the cause on the Clocks, Playlists, or Play rules page.",
+    "For a one-time insert, click Add insert on the hour, set the time and tolerance, choose the track (news tracks are shown first), and add it.",
+    "Fix the cause of a warning on the Clocks, Playlists, or Play rules page.",
     "Rebuild the range and follow the operation in the header."
   ],
   "mistakes": [
-    "Trying to change the hour on air. Frozen hours keep their plan.",
+    "Trying to change the hour on air. Frozen hours keep their plan and their inserts.",
+    "Adding an insert where the inserts of the clock leave no room. The insert is refused and an error explains why.",
     "Rebuilding without fixing the cause. The same warning comes back."
   ],
   "example": {
-    "title": "A skipped jingle",
-    "text": "Tomorrow 09:15 shows the warning \"element skipped: blocked by play rules\". Both jingles of \"Jingles\" are limited to 06:00 to 08:00 and 10:00 to 12:00. Add a jingle without a window to the playlist and rebuild tomorrow; the 09:15 slot is now filled."
+    "title": "Today's news at half past six",
+    "text": "Click Add insert on the 18:00 hour, enter 30:00, keep ±60 seconds, and choose today's news file. The hour is rebuilt: the music before 18:30 ends inside the window or fades out, and the news plays. If the grid changes later, the hour is rebuilt again and the news stays."
   },
   "operations": {
-    "edit": "A rebuild changes only planned items in hours that have not started."
+    "create": "Adding an insert rebuilds its hour; the status line under the dates shows when it is done.",
+    "edit": "A rebuild changes only planned items in hours that have not started; one-time inserts stay.",
+    "delete": "Removing a one-time insert rebuilds its hour without it. Removing a rescheduled missed item opens the missed item again."
   },
   "fields": {
     "from": {
@@ -45,6 +53,22 @@
     "to": {
       "label": "To",
       "text": "Last hour, at most 7 days after the first."
+    },
+    "offset_ms": {
+      "label": "Time in the hour",
+      "text": "When the insert starts, as mm:ss from 00:00 to 59:59. The arrow keys move it by a second; with Shift, or Page Up and Page Down, by a minute."
+    },
+    "tolerance_ms": {
+      "label": "Start tolerance",
+      "text": "How many seconds the insert may start before or after its time, 0 to 600."
+    },
+    "track_type": {
+      "label": "Track type",
+      "text": "Limits the track list to one type. News is chosen first; choose All to see every track."
+    },
+    "track_id": {
+      "label": "Track",
+      "text": "The track to insert. Use the play button to listen to it. It plays whole and follows its play rules."
     }
   }
 }

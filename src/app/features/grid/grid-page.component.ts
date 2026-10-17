@@ -229,9 +229,6 @@ const WEEK_DAYS = 7;
                 <td>{{ hourText(slot.hour) }}</td>
                 <td>
                   <a [routerLink]="['/clocks', slot.clock.id]">{{ slot.clock.name }}</a>
-                  @if (slot.clock.status === 'incomplete') {
-                    <span class="badge warn">{{ 'clocks.status.incomplete' | translate }}</span>
-                  }
                 </td>
                 <td>{{ dateText(slot.valid_from) }}</td>
                 <td>

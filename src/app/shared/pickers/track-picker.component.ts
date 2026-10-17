@@ -18,6 +18,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
   Subject,
   catchError,
+  combineLatest,
   debounceTime,
   distinctUntilChanged,
   map,
@@ -45,14 +46,15 @@ export const TRACK_PAGE_SIZE = 25;
 
 interface PageRequest {
   q: string;
+  typeId: number | null;
   cursor?: string;
 }
 
 /**
  * Searchable track picker (docs/frontend-init-plan.md F4): rows show title, artist, and duration,
  * each with a play button for the preview (design §6.6). The value is a list of track IDs: one at
- * most in single mode, and in the order of choice when `ordered` (a filler pool is used in order).
- * The search matches title or artist name on the backend.
+ * most in single mode, and in the order of choice when `ordered`. The search matches title or
+ * artist name on the backend, limited to tracks of one type when `typeId` is set.
  */
 @Component({
   selector: 'app-track-picker',
@@ -272,6 +274,8 @@ export class TrackPickerComponent {
   readonly multiple = input(true);
   /** Shows move up and down buttons; the order of the value is significant. */
   readonly ordered = input(false);
+  /** Only tracks of this type (`type_id`), for example news for a one-time insert; null for all. */
+  readonly typeId = input<number | null>(null);
   readonly hintPage = input<HelpPageId | null>(null);
   readonly hintField = input<string | null>(null);
 
@@ -286,7 +290,7 @@ export class TrackPickerComponent {
   private readonly known = signal<ReadonlyMap<number, Track>>(new Map());
   private readonly requested = new Set<number>();
   private readonly pages = new Subject<PageRequest>();
-  private query = '';
+  private query: Omit<PageRequest, 'cursor'> = { q: '', typeId: null };
 
   protected readonly chosenIds = computed(() => {
     this.version();
@@ -304,7 +308,12 @@ export class TrackPickerComponent {
           this.loading.set(true);
           this.loadError.set(null);
           return this.catalog
-            .tracks({ q: request.q || undefined, cursor: request.cursor, limit: TRACK_PAGE_SIZE })
+            .tracks({
+              q: request.q || undefined,
+              type_id: request.typeId ?? undefined,
+              cursor: request.cursor,
+              limit: TRACK_PAGE_SIZE,
+            })
             .pipe(
               map((page) => ({ request, page, error: null })),
               catchError((error: unknown) => of({ request, page: null, error })),
@@ -323,18 +332,18 @@ export class TrackPickerComponent {
         this.nextCursor.set(page.next_cursor ?? null);
       });
 
-    toObservable(this.search)
-      .pipe(
-        map((text) => text.trim()),
-        skip(1),
-        debounceTime(TRACK_SEARCH_DEBOUNCE_MS),
-        startWith(''),
-        distinctUntilChanged(),
-        takeUntilDestroyed(),
-      )
-      .subscribe((q) => {
-        this.query = q;
-        this.pages.next({ q });
+    const search = toObservable(this.search).pipe(
+      map((text) => text.trim()),
+      skip(1),
+      debounceTime(TRACK_SEARCH_DEBOUNCE_MS),
+      startWith(''),
+      distinctUntilChanged(),
+    );
+    combineLatest([search, toObservable(this.typeId).pipe(distinctUntilChanged())])
+      .pipe(takeUntilDestroyed())
+      .subscribe(([q, typeId]) => {
+        this.query = { q, typeId };
+        this.pages.next(this.query);
       });
 
     // A form that starts with chosen tracks knows only their IDs; read the ones not seen yet.
@@ -365,7 +374,7 @@ export class TrackPickerComponent {
   protected loadMore(): void {
     const cursor = this.nextCursor();
     if (cursor) {
-      this.pages.next({ q: this.query, cursor });
+      this.pages.next({ ...this.query, cursor });
     }
   }
 

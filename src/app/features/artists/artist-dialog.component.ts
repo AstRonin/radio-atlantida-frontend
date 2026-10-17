@@ -20,7 +20,7 @@ export interface ArtistDialogData {
   artist?: Artist;
 }
 
-/** Creates or renames an artist. Names are unique, because artist separation counts by artist. */
+/** Creates or renames an artist. Names are unique, because the artist interval counts by artist. */
 @Component({
   selector: 'app-artist-dialog',
   imports: [

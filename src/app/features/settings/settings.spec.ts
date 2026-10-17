@@ -11,14 +11,7 @@ import { apiProblemInterceptor } from '../../core/api/api.interceptors';
 import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { Setting } from '../../core/settings/settings.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
-import {
-  FallbackGroup,
-  SecretStatus,
-  controlValue,
-  isChanged,
-  settingControl,
-  settingKind,
-} from './settings-form';
+import { SecretStatus, isChanged, settingControl, settingKind } from './settings-form';
 import SettingsPageComponent from './settings-page.component';
 
 function setting(key: string, overrides: Partial<Setting> = {}): Setting {
@@ -74,10 +67,12 @@ const queuedCount = setting('air.queued_count', {
   minimum: 0,
   maximum: 50,
 });
-const fallback = setting('filler.fallback', {
-  type: 'object',
-  value: { mode: 'random' },
-  default: { mode: 'random' },
+const minGap = setting('rotation.min_gap_ms', {
+  value: 10000,
+  default: 10000,
+  minimum: 0,
+  maximum: 60000,
+  unit: 'ms',
 });
 
 const SECRETS: SecretStatus[] = [
@@ -108,7 +103,6 @@ describe('settings', () => {
       expect(
         settingKind(setting('playout.emergency_playlist_id', { nullable: true, value: null })),
       ).toBe('playlist');
-      expect(settingKind(fallback)).toBe('fallback');
     });
 
     it('mirrors the range and the length limits of the backend', () => {
@@ -165,23 +159,7 @@ describe('settings', () => {
       expect(control.valid).toBe(true);
     });
 
-    it('needs the source of a playlist or artist fallback, and sends none for random', () => {
-      const group = settingControl(fallback) as FallbackGroup;
-      expect(group.valid).toBe(true);
-      expect(controlValue(fallback, group)).toEqual({ mode: 'random' });
-
-      group.controls.mode.setValue('playlist');
-      expect(group.hasError('fallbackSource')).toBe(true);
-      group.controls.source_id.setValue(4);
-      expect(group.valid).toBe(true);
-      expect(controlValue(fallback, group)).toEqual({ mode: 'playlist', source_id: 4 });
-    });
-
-    it('compares values, not object key order or absent fields', () => {
-      const stored = { ...fallback, value: { source_id: null, mode: 'random' } };
-      const group = settingControl(stored);
-      expect(isChanged(stored, group)).toBe(false);
-
+    it('compares the value with the saved one', () => {
       const name = settingControl(stationName) as FormControl<string | null>;
       expect(isChanged(stationName, name)).toBe(false);
       name.setValue('Atlantida');
@@ -213,7 +191,7 @@ describe('settings', () => {
       await settlePage();
       http
         .expectOne('/api/settings')
-        .flush({ items: [stationName, icecastHost, fadeOut, fallback, playedCount, queuedCount] });
+        .flush({ items: [stationName, icecastHost, fadeOut, minGap, playedCount, queuedCount] });
       http.expectOne('/api/settings/secrets').flush({ items: SECRETS });
       await settlePage();
     });
@@ -248,7 +226,7 @@ describe('settings', () => {
         'settings.groups.station',
         'settings.groups.stream',
         'settings.groups.liquidsoap',
-        'settings.groups.filler',
+        'settings.groups.rotation',
         'settings.groups.air',
       ]);
     });

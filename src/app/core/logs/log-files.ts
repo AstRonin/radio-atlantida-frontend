@@ -12,7 +12,6 @@ const COMPONENTS: Record<LogComponent, true> = {
   api: true,
   db: true,
   rotation: true,
-  filler: true,
   liquidsoap: true,
   icecast: true,
   webrtc: true,

@@ -9,7 +9,7 @@ import { controlErrorMessage } from '../forms/field-errors';
 import { FieldHintComponent } from '../ui/field-hint.component';
 
 /**
- * Select of one playlist of any type, for example the source of `playlist` filler or the
+ * Select of one playlist of any type, for example the source of a clock insert or the
  * emergency playlist. The value is the playlist ID.
  */
 @Component({

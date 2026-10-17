@@ -24,7 +24,7 @@
     },
     {
       "term": "Delete selected tracks",
-      "text": "Delete (N) next to Clear selection removes up to 1,000 selected tracks from the library in one step. The files stay on disk. A track that has aired, is planned, or is in a clock's filler pool is kept: the result lists each kept track with the reason, links the clocks whose filler pool holds it, and leaves it selected."
+      "text": "Delete (N) next to Clear selection removes up to 1,000 selected tracks from the library in one step. The files stay on disk. A track that has aired, is planned, or is a timed insert of a clock or a one-time insert is kept: the result lists each kept track with the reason, links the clocks that use it, and leaves it selected."
     },
     {
       "term": "Renaming tracks",
@@ -44,7 +44,7 @@
     },
     {
       "term": "Artist",
-      "text": "The performer of a track, kept on the Artists page. Artist separation counts plays per artist, so each artist has one entry with a unique name. Jingles and station IDs need no artist."
+      "text": "The performer of a track, kept on the Artists page. The artist interval of play rules counts plays per artist, so each artist has one entry with a unique name. Jingles and station IDs need no artist."
     },
     {
       "term": "Start and stop points",
@@ -86,7 +86,7 @@
   "operations": {
     "create": "The file must already be in the media folder. The panel does not upload files; use the Import page for new files.",
     "edit": "Changing the playlists or rules affects only hours that are not planned yet or are rebuilt.",
-    "delete": "A track that has aired or is planned cannot be deleted, so the played-tracks list stays complete; a track in a clock's filler pool cannot be deleted until it is removed from the pool. Remove such a track from its playlists instead. Deleting selected tracks applies the same rules to each track: the others are deleted, and the kept ones stay selected with the reason."
+    "delete": "A track that has aired or is planned cannot be deleted, so the played-tracks list stays complete; a track used as an insert cannot be deleted until it is removed from the clock or the planned hour. Remove such a track from its playlists instead. Deleting selected tracks applies the same rules to each track: the others are deleted, and the kept ones stay selected with the reason."
   },
   "fields": {
     "title": {
@@ -95,11 +95,11 @@
     },
     "artist_id": {
       "label": "Artist",
-      "text": "Leave empty for material without an artist, such as jingles. Artist separation uses this field."
+      "text": "Leave empty for material without an artist, such as jingles. The artist interval of play rules uses this field."
     },
     "type_id": {
       "label": "Type",
-      "text": "A label for filtering and badges. It does not limit which clock elements can use the track."
+      "text": "A label for filtering and badges. It does not limit which clocks can use the track."
     },
     "file_path": {
       "label": "File path",

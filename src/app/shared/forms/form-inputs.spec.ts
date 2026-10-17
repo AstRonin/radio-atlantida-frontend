@@ -1,14 +1,19 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { DestroyRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { formatHourOffset, parseHourOffset } from '../../core/time/duration';
+import { ClockRule, ClockRuleInputComponent, linkClockCount } from './clock-rule-input.component';
 import { DateInputComponent } from './date-input.component';
 import { fieldErrorMessage } from './field-errors';
-import { FillerModeSelectComponent } from './filler-mode-select.component';
 import { HoursInputComponent } from './hours-input.component';
+import { IntervalInputComponent, joinMinutes, splitMinutes } from './interval-input.component';
 import { NumberInputComponent } from './number-input.component';
+import { OffsetInputComponent } from './offset-input.component';
 import { PlaylistTypeSelectComponent } from './playlist-type-select.component';
+import { SecondsInputComponent } from './seconds-input.component';
 import { applyServerErrors } from './server-errors';
 import { TimeInputComponent } from './time-input.component';
 import { nonEmptyValidator, rangeValidator } from './validators';
@@ -274,18 +279,6 @@ describe('form inputs', () => {
     expect(fixture.nativeElement.querySelector('.error')).not.toBeNull();
   });
 
-  it('filler mode select offers only the fallback modes for a clock default', async () => {
-    const fixture = TestBed.createComponent(FillerModeSelectComponent);
-    fixture.componentRef.setInput('control', new FormControl(null));
-    fixture.componentRef.setInput('modes', 'default');
-    await fixture.whenStable();
-
-    const options = (
-      fixture.componentInstance as unknown as { options(): readonly string[] }
-    ).options();
-    expect(options).toEqual(['random', 'playlist', 'artist']);
-  });
-
   it('playlist type select reads the types from the API', async () => {
     const fixture = TestBed.createComponent(PlaylistTypeSelectComponent);
     fixture.componentRef.setInput(
@@ -315,5 +308,168 @@ describe('form inputs', () => {
       fixture.componentInstance as unknown as { types(): { items: readonly { name: string }[] } }
     ).types();
     expect(types.items.map((type) => type.name)).toEqual(['Music']);
+  });
+
+  describe('offset input (frontend F21 §5.1)', () => {
+    it('reads and writes a time in the hour with seconds', () => {
+      expect(parseHourOffset('29:40')).toBe(1_780_000);
+      expect(parseHourOffset('5:07')).toBe(307_000);
+      expect(parseHourOffset('59:59')).toBe(3_599_000);
+      expect(parseHourOffset('60:00')).toBeNull();
+      expect(parseHourOffset('5:7x')).toBeNull();
+      expect(parseHourOffset('5:7')).toBeNull();
+      expect(formatHourOffset(1_780_000)).toBe('29:40');
+      expect(formatHourOffset(0)).toBe('00:00');
+    });
+
+    async function offsetField(value: number | null) {
+      const control = new FormControl<number | null>(value);
+      const fixture = TestBed.createComponent(OffsetInputComponent);
+      fixture.componentRef.setInput('control', control);
+      fixture.componentRef.setInput('label', 'clocks.inserts.offset');
+      await fixture.whenStable();
+      const input = (fixture.nativeElement as HTMLElement).querySelector(
+        'input',
+      ) as HTMLInputElement;
+      return { control, input };
+    }
+
+    it('refuses text that is not a time in the hour', async () => {
+      const { control, input } = await offsetField(1_780_000);
+      expect(input.value).toBe('29:40');
+
+      input.value = '60:00';
+      input.dispatchEvent(new Event('input'));
+      expect(control.value).toBeNull();
+      expect(control.hasError('hourOffset')).toBe(true);
+
+      input.value = '30:00';
+      input.dispatchEvent(new Event('input'));
+      expect(control.value).toBe(1_800_000);
+      expect(control.valid).toBe(true);
+    });
+
+    it('steps one second with the arrows and one minute with Shift or Page keys', async () => {
+      const { control, input } = await offsetField(1_780_000);
+      const press = (key: string, shiftKey = false) =>
+        input.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, cancelable: true }));
+
+      press('ArrowUp');
+      expect(control.value).toBe(1_781_000);
+      press('ArrowUp', true);
+      expect(control.value).toBe(1_841_000);
+      press('PageDown');
+      expect(control.value).toBe(1_781_000);
+      expect(input.value).toBe('29:41');
+
+      control.setValue(0);
+      press('ArrowDown');
+      expect(control.value).toBe(0);
+      control.setValue(3_599_000);
+      press('PageUp');
+      expect(control.value).toBe(3_599_000);
+    });
+  });
+
+  describe('interval input (frontend F21 §5.6)', () => {
+    it('turns hours and minutes into minutes and back', () => {
+      expect(joinMinutes(72, null)).toBe(4_320);
+      expect(joinMinutes(1, 30)).toBe(90);
+      expect(joinMinutes(null, null)).toBeNull();
+      expect(splitMinutes(4_320)).toEqual({ hours: 72, minutes: 0 });
+      expect(splitMinutes(null)).toEqual({ hours: null, minutes: null });
+    });
+
+    it('edits the minutes of the control and follows a value set from outside', async () => {
+      const control = new FormControl<number | null>(90);
+      const fixture = TestBed.createComponent(IntervalInputComponent);
+      fixture.componentRef.setInput('control', control);
+      fixture.componentRef.setInput('label', 'playRules.fields.min_interval_minutes');
+      await fixture.whenStable();
+      const [hours, minutes] = [
+        ...(fixture.nativeElement as HTMLElement).querySelectorAll('input'),
+      ] as HTMLInputElement[];
+      expect([hours.value, minutes.value]).toEqual(['1', '30']);
+
+      hours.value = '72';
+      hours.dispatchEvent(new Event('input'));
+      minutes.value = '';
+      minutes.dispatchEvent(new Event('input'));
+      expect(control.value).toBe(4_320);
+      expect(control.dirty).toBe(true);
+
+      control.setValue(20);
+      await fixture.whenStable();
+      expect([hours.value, minutes.value]).toEqual(['0', '20']);
+
+      control.setValue(null);
+      await fixture.whenStable();
+      expect([hours.value, minutes.value]).toEqual(['', '']);
+    });
+  });
+
+  describe('clock rule input (frontend F21 §5.1)', () => {
+    async function ruleField(rule: ClockRule, inherited?: { rule: ClockRule; count?: number }) {
+      const ruleControl = new FormControl<ClockRule | null>(rule);
+      const count = new FormControl<number | null>(null);
+      TestBed.runInInjectionContext(() => {
+        linkClockCount(ruleControl, count, TestBed.inject(DestroyRef));
+      });
+      const fixture = TestBed.createComponent(ClockRuleInputComponent);
+      fixture.componentRef.setInput('rule', ruleControl);
+      fixture.componentRef.setInput('count', count);
+      if (inherited) {
+        fixture.componentRef.setInput('inherited', inherited);
+      }
+      await fixture.whenStable();
+      return { ruleControl, count, fixture, page: fixture.nativeElement as HTMLElement };
+    }
+
+    it('shows and requires the count only for spread', async () => {
+      const { ruleControl, count, fixture, page } = await ruleField('fill');
+      expect(page.querySelector('app-number-input')).toBeNull();
+      expect(count.disabled).toBe(true);
+
+      ruleControl.setValue('spread');
+      await fixture.whenStable();
+      expect(page.querySelector('app-number-input')).not.toBeNull();
+      expect(count.hasError('required')).toBe(true);
+      count.setValue(13);
+      expect(count.hasError('range')).toBe(true);
+      count.setValue(2);
+      expect(count.valid).toBe(true);
+
+      ruleControl.setValue('middle');
+      await fixture.whenStable();
+      expect(count.disabled).toBe(true);
+    });
+
+    it('names the own rule of the playlist when it overrides it', async () => {
+      const i18n = TestBed.inject(I18nService);
+      const translate = vi.spyOn(i18n, 'translate');
+      const { page } = await ruleField('start', { rule: 'spread', count: 2 });
+      expect(translate).toHaveBeenCalledWith('forms.clockRule.spreadCount', { count: 2 });
+      expect(page.textContent).toContain('forms.clockRule.inherited');
+    });
+  });
+
+  it('seconds input shows seconds and keeps milliseconds, checking the range in seconds', async () => {
+    const control = new FormControl<number | null>(60_000);
+    const fixture = TestBed.createComponent(SecondsInputComponent);
+    fixture.componentRef.setInput('control', control);
+    fixture.componentRef.setInput('label', 'clocks.inserts.tolerance');
+    fixture.componentRef.setInput('max', 600);
+    await fixture.whenStable();
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input') as HTMLInputElement;
+    expect(input.value).toBe('60');
+
+    input.value = '90';
+    input.dispatchEvent(new Event('input'));
+    expect(control.value).toBe(90_000);
+    expect(control.valid).toBe(true);
+
+    input.value = '601';
+    input.dispatchEvent(new Event('input'));
+    expect(control.hasError('range')).toBe(true);
   });
 });

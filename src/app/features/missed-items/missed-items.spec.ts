@@ -45,14 +45,15 @@ const hour = (start: string): TrackPlanHour => ({
   seed: 1,
   built_at: '2026-10-15T00:00:00Z',
   items: [],
+  inserts: [],
 });
 
 interface MissedView {
   form: FormGroup<{
     target_hour_start_utc: FormControl<string | null>;
     placement: FormControl<'start' | 'end' | 'fixed'>;
-    fixed_minute: FormControl<number | null>;
-    fixed_tolerance_ms: FormControl<number | null>;
+    offset_ms: FormControl<number | null>;
+    tolerance_ms: FormControl<number | null>;
   }>;
   resolutionFilter: FormControl<string>;
 }
@@ -201,7 +202,7 @@ describe('MissedItemsPageComponent', () => {
     expect(page.querySelector('form')).toBeNull();
   });
 
-  it('sends the fixed minute and keeps the form open when the operation fails', async () => {
+  it('sends the fixed time with seconds and keeps the form open when the operation fails', async () => {
     outcome = 'failed';
     const fixture = await open();
     const page = fixture.nativeElement as HTMLElement;
@@ -210,10 +211,14 @@ describe('MissedItemsPageComponent', () => {
     view.form.controls.target_hour_start_utc.setValue(TARGET);
     view.form.controls.placement.setValue('fixed');
     await settlePage();
-    expect(page.querySelectorAll('app-number-input')).toHaveLength(2);
-    // The fixed minute is required for a fixed placement.
+    expect(page.querySelector('app-offset-input')).not.toBeNull();
+    expect(page.querySelector('app-seconds-input')).not.toBeNull();
+    // The time is required for a fixed placement, in whole seconds.
     expect(button(page, 'missedItems.save')?.disabled).toBe(true);
-    view.form.controls.fixed_minute.setValue(30);
+    const offset = page.querySelector('app-offset-input input') as HTMLInputElement;
+    offset.value = '29:40';
+    offset.dispatchEvent(new Event('input'));
+    expect(view.form.controls.offset_ms.value).toBe(1_780_000);
     await settlePage();
     button(page, 'missedItems.save')?.click();
 
@@ -221,7 +226,7 @@ describe('MissedItemsPageComponent', () => {
     expect(request.request.body).toEqual({
       target_hour_start_utc: TARGET,
       placement: 'fixed',
-      fixed_minute: 30,
+      offset_ms: 1_780_000,
     });
     request.flush({ operation_id: 32 });
     await settlePage();

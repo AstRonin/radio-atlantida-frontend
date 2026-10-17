@@ -7,10 +7,8 @@ import playlistTypes from '../../../assets/help/en/playlist-types.json';
 import clocks from '../../../assets/help/en/clocks.json';
 import grid from '../../../assets/help/en/grid.json';
 import playRules from '../../../assets/help/en/play-rules.json';
-import separationRules from '../../../assets/help/en/separation-rules.json';
 import playedTracks from '../../../assets/help/en/played-tracks.json';
 import trackPlan from '../../../assets/help/en/track-plan.json';
-import fillerReminders from '../../../assets/help/en/filler-reminders.json';
 import missedItems from '../../../assets/help/en/missed-items.json';
 import logs from '../../../assets/help/en/logs.json';
 import settings from '../../../assets/help/en/settings.json';
@@ -28,10 +26,8 @@ const ENGLISH: Record<HelpPageId, unknown> = {
   'help.clocks': clocks,
   'help.grid': grid,
   'help.play-rules': playRules,
-  'help.separation-rules': separationRules,
   'help.played-tracks': playedTracks,
   'help.track-plan': trackPlan,
-  'help.filler-reminders': fillerReminders,
   'help.missed-items': missedItems,
   'help.logs': logs,
   'help.settings': settings,

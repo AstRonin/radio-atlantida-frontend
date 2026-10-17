@@ -9,29 +9,39 @@ import {
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { finalize, map, merge } from 'rxjs';
+import { finalize, map, merge, of, tap } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { followOperation } from '../../core/operations/operation-run';
 import { OperationStatus, OperationsService } from '../../core/operations/operations.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { PlanWarningsService, TrackPlanWarning } from '../../core/rotation/plan-warnings.service';
+import { SettingsService } from '../../core/settings/settings.service';
+import { formatHourOffset } from '../../core/time/duration';
 import { addDays, stationMidnightUtc, stationToday } from '../../core/time/local-date';
 import { StationTimeService } from '../../core/time/station-time.service';
 import { DateInputComponent } from '../../shared/forms/date-input.component';
 import { controlVersion } from '../../shared/forms/field-errors';
 import { dateRangeValidator } from '../../shared/forms/validators';
+import { ConfirmService } from '../../shared/ui/confirm.service';
+import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
-import { PlanHourView, TrackPlanHourComponent } from './track-plan-hour.component';
+import { HourInsertDialogComponent, HourInsertDialogData } from './hour-insert-dialog.component';
+import { PlanHourView, PlanInsertView, TrackPlanHourComponent } from './track-plan-hour.component';
 
 type TrackPlanHour = ApiSchema<'TrackPlanHour'>;
+type TrackPlanInsert = ApiSchema<'TrackPlanInsert'>;
 
 /** The API reads at most 7 days of the plan at once. */
 export const PLAN_RANGE_MAX_DAYS = 7;
 const HOUR_MS = 3_600_000;
+/** Used when the setting of a new insert's tolerance is not loaded: ±1 minute. */
+const DEFAULT_INSERT_TOLERANCE_MS = 60_000;
 
 interface PlanRange {
   from: string;
@@ -41,8 +51,10 @@ interface PlanRange {
 /**
  * The track plan (design §7): the tracks the engine chose for the built hours of a range of station
  * dates, with the warnings of each build. The panel shows the plan and never computes it. The view
- * follows the backend: it reloads when the plan job or a rebuild completes. A rebuild of the range
- * is a `clock_build` operation; hours that have started are kept by the backend.
+ * follows the backend: it reloads when the plan job, a rebuild, or a one-time insert completes. A
+ * rebuild of the range is a `clock_build` operation; hours that have started are kept by the
+ * backend. An hour that has not started takes one-time inserts (frontend F21 §5.4), each an
+ * `hour_insert` operation that rebuilds the hour around it.
  */
 @Component({
   selector: 'app-track-plan-page',
@@ -52,6 +64,7 @@ interface PlanRange {
     ReactiveFormsModule,
     TranslatePipe,
     DateInputComponent,
+    OperationStatusComponent,
     PageHeaderComponent,
     TrackPlanHourComponent,
   ],
@@ -109,8 +122,13 @@ interface PlanRange {
           </button>
         </p>
       }
+      <app-operation-status [state]="insertRun.state()" runningLabel="trackPlan.inserts.running" />
       @for (view of hours(); track view.hour.hour_start_utc) {
-        <app-track-plan-hour [view]="view" />
+        <app-track-plan-hour
+          [view]="view"
+          (addInsert)="openAddInsert(view.hour)"
+          (removeInsert)="removeInsert($event)"
+        />
       } @empty {
         @if (plan.hasValue()) {
           <p class="muted">{{ 'trackPlan.hours.empty' | translate }}</p>
@@ -137,6 +155,9 @@ export default class TrackPlanPageComponent {
   private readonly i18n = inject(I18nService);
   private readonly operations = inject(OperationsService);
   private readonly warnings = inject(PlanWarningsService);
+  private readonly dialog = inject(MatDialog);
+  private readonly confirm = inject(ConfirmService);
+  private readonly settings = inject(SettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly zone = inject(StationTimeService).zone;
@@ -175,20 +196,28 @@ export default class TrackPlanPageComponent {
   protected readonly planError = computed(() =>
     this.plan.status() === 'error' ? errorMessage(this.plan.error(), this.i18n) : null,
   );
-  protected readonly hours = computed(() =>
-    (this.plan.hasValue() ? this.plan.value() : []).map((hour) => this.viewOf(hour)),
-  );
+  protected readonly hours = computed(() => {
+    // Whether an hour has started is judged when the plan is read; the backend refuses the rest.
+    const now = Date.now();
+    return (this.plan.hasValue() ? this.plan.value() : []).map((hour) => this.viewOf(hour, now));
+  });
 
   protected readonly rebuilding = signal(false);
   protected readonly rebuildStatus = signal<OperationStatus | null>(null);
   protected readonly rebuildError = signal<string | null>(null);
+  /** The last one-time insert added or removed, followed until its hour is rebuilt. */
+  protected readonly insertRun = followOperation();
 
   constructor() {
     this.showToday();
     const realtime = inject(RealtimeService);
     // The plan job runs every few minutes and a rebuild may come from any page; both end with an
     // event, so the view stays current without polling.
-    merge(realtime.on('track_plan.completed'), realtime.on('clock_build.completed'))
+    merge(
+      realtime.on('track_plan.completed'),
+      realtime.on('clock_build.completed'),
+      realtime.on('hour_insert.completed'),
+    )
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.plan.reload());
   }
@@ -224,9 +253,68 @@ export default class TrackPlanPageComponent {
       });
   }
 
-  private viewOf(hour: TrackPlanHour): PlanHourView {
+  protected openAddInsert(hour: TrackPlanHour): void {
+    const setting: unknown = this.settings.get('rotation.default_fixed_tolerance_ms')?.value;
+    this.dialog
+      .open<HourInsertDialogComponent, HourInsertDialogData, number>(HourInsertDialogComponent, {
+        data: {
+          hourStartUtc: hour.hour_start_utc,
+          toleranceMs: typeof setting === 'number' ? setting : DEFAULT_INSERT_TOLERANCE_MS,
+        },
+        width: '40rem',
+        maxWidth: 'calc(100vw - 2rem)',
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((operationId) => {
+        if (operationId !== undefined) {
+          this.follow(operationId);
+        }
+      });
+  }
+
+  protected removeInsert(row: PlanInsertView): void {
+    let operationId: number | undefined;
+    this.confirm
+      .confirm({
+        title: 'trackPlan.inserts.removeTitle',
+        message:
+          row.insert.missed_id === undefined
+            ? 'trackPlan.inserts.removeMessage'
+            : 'trackPlan.inserts.removeRescheduledMessage',
+        params: { title: row.title, at: row.at },
+        confirmLabel: 'common.remove',
+        destructive: true,
+        action: () =>
+          this.api
+            .delete('/api/track-plan/inserts/{id}', { path: { id: row.insert.id } })
+            .pipe(tap((accepted) => (operationId = accepted.operation_id))),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((removed) => {
+        if (removed && operationId !== undefined) {
+          this.follow(operationId);
+        }
+      });
+  }
+
+  // A failed operation is already an error.alert popup; the line only says how it ended.
+  private follow(operationId: number): void {
+    this.insertRun
+      .run(of({ operation_id: operationId }))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ error: () => undefined });
+  }
+
+  private viewOf(hour: TrackPlanHour, now: number): PlanHourView {
     const titles = new Map(hour.items.map((item) => [item.track_id, item.title]));
     return {
+      editable: Date.parse(hour.hour_start_utc) > now,
+      inserts: hour.inserts.map((insert) => ({
+        insert,
+        at: this.insertAt(insert),
+        title: titles.get(insert.track_id) ?? `#${insert.track_id}`,
+      })),
       hour,
       endUtc: new Date(Date.parse(hour.hour_start_utc) + HOUR_MS).toISOString(),
       rows: hour.items.map((item) => ({
@@ -239,20 +327,39 @@ export default class TrackPlanPageComponent {
       })),
       warnings: this.warnings
         .forHour(hour.hour_start_utc, hour.built_at)
-        .map((warning) => this.describe(warning, titles)),
+        .map((warning) => this.describe(warning, hour, titles)),
     };
   }
 
-  private describe(warning: TrackPlanWarning, titles: ReadonlyMap<number, string>): string {
+  private insertAt(insert: TrackPlanInsert): string {
+    return insert.placement === 'fixed' && insert.offset_ms !== undefined
+      ? formatHourOffset(insert.offset_ms)
+      : this.i18n.translate(`trackPlan.inserts.placements.${insert.placement}`);
+  }
+
+  private describe(
+    warning: TrackPlanWarning,
+    hour: TrackPlanHour,
+    titles: ReadonlyMap<number, string>,
+  ): string {
     const key = `trackPlan.warnings.${warning.code}`;
     if (!this.i18n.has(key)) {
       return warning.message;
     }
     const track = warning.track_id;
     return this.i18n.translate(key, {
-      element: (warning.element_index ?? 0) + 1,
-      segment: (warning.segment_index ?? 0) + 1,
+      playlist: (warning.playlist_index ?? 0) + 1,
+      insert: this.warningInsert(warning, hour),
       track: track === undefined ? '' : (titles.get(track) ?? `#${track}`),
     });
+  }
+
+  // A one-time insert is named by its time; a template insert by its place in the clock.
+  private warningInsert(warning: TrackPlanWarning, hour: TrackPlanHour): string {
+    const insert = hour.inserts.find((item) => item.id === warning.hour_insert_id);
+    if (insert) {
+      return this.insertAt(insert);
+    }
+    return String((warning.insert_index ?? 0) + 1);
   }
 }

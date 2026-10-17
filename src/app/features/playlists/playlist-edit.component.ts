@@ -21,16 +21,24 @@ import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { followOperation } from '../../core/operations/operation-run';
+import {
+  ClockRule,
+  ClockRuleInputComponent,
+  linkClockCount,
+} from '../../shared/forms/clock-rule-input.component';
 import { controlVersion } from '../../shared/forms/field-errors';
 import { PlaylistTypeSelectComponent } from '../../shared/forms/playlist-type-select.component';
 import { applySubmitError } from '../../shared/forms/server-errors';
 import { TextInputComponent } from '../../shared/forms/text-input.component';
 import { PendingChanges, warnBeforeUnload } from '../../shared/forms/unsaved-changes';
 import { PlayRulePickerComponent } from '../../shared/pickers/play-rule-picker.component';
+import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { PlaylistTracksComponent } from './playlist-tracks.component';
 
 type Playlist = ApiSchema<'Playlist'>;
+type PlaylistSaved = ApiSchema<'PlaylistSaved'>;
 type Track = ApiSchema<'Track'>;
 
 export const PLAYLIST_NAME_MAX = 200;
@@ -43,8 +51,10 @@ interface Loaded {
 }
 
 /**
- * Creates or edits a playlist: name, type (required), play rules, and its tracks. The playlist,
- * its rules, and its tracks are separate requests (design §6.4); only the changed parts are sent.
+ * Creates or edits a playlist: name, type (required), placement rule in clocks, play rules, and its
+ * tracks. The playlist, its rules, and its tracks are separate requests (design §6.4); only the
+ * changed parts are sent. A changed placement rule rebuilds the hours of the clocks that use the
+ * playlist; the page then stays to follow that build (frontend F21 §5.2).
  */
 @Component({
   selector: 'app-playlist-edit',
@@ -54,6 +64,8 @@ interface Loaded {
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
+    ClockRuleInputComponent,
+    OperationStatusComponent,
     PageHeaderComponent,
     PlayRulePickerComponent,
     PlaylistTracksComponent,
@@ -90,6 +102,17 @@ interface Loaded {
           hintField="type_id"
         />
       </div>
+      <section class="page-section" aria-labelledby="clock-rule-heading">
+        <h2 id="clock-rule-heading" class="section-title">
+          {{ 'playlists.clockRule.title' | translate }}
+        </h2>
+        <p class="muted">{{ 'playlists.clockRule.note' | translate }}</p>
+        <app-clock-rule-input
+          [rule]="form.controls.clock_rule"
+          [count]="form.controls.clock_count"
+          hintPage="help.playlists"
+        />
+      </section>
       <app-play-rule-picker
         [control]="form.controls.rule_ids"
         label="playlists.fields.rule_ids"
@@ -107,7 +130,17 @@ interface Loaded {
         </button>
         <a matButton routerLink="/playlists">{{ 'common.back' | translate }}</a>
       </div>
+      <app-operation-status
+        [state]="rebuild.state()"
+        runningLabel="playlists.clockRule.rebuilding"
+      />
     </form>
+  `,
+  styles: `
+    .section-title {
+      margin: 0 0 0.5rem;
+      font: var(--mat-sys-title-medium);
+    }
   `,
 })
 export default class PlaylistEditComponent implements PendingChanges {
@@ -135,9 +168,13 @@ export default class PlaylistEditComponent implements PendingChanges {
       Validators.maxLength(PLAYLIST_NAME_MAX),
     ]),
     type_id: new FormControl<number | null>(null, Validators.required),
+    clock_rule: new FormControl<ClockRule | null>('fill', Validators.required),
+    clock_count: new FormControl<number | null>({ value: null, disabled: true }),
     rule_ids: new FormControl<number[] | null>([]),
     track_ids: new FormControl<number[] | null>([]),
   });
+
+  protected readonly rebuild = followOperation();
 
   private readonly version = controlVersion(signal(this.form));
   protected readonly invalid = computed(() => {
@@ -167,6 +204,7 @@ export default class PlaylistEditComponent implements PendingChanges {
         untracked(() => this.fill(loaded));
       }
     });
+    linkClockCount(this.form.controls.clock_rule, this.form.controls.clock_count, this.destroyRef);
     warnBeforeUnload(() => this.hasUnsavedChanges());
   }
 
@@ -180,14 +218,21 @@ export default class PlaylistEditComponent implements PendingChanges {
       return;
     }
     const value = this.form.getRawValue();
-    const body = { name: (value.name ?? '').trim(), type_id: value.type_id ?? 0 };
+    const rule = value.clock_rule ?? 'fill';
+    const body = {
+      name: (value.name ?? '').trim(),
+      type_id: value.type_id ?? 0,
+      clock_rule: rule,
+      ...(rule === 'spread' ? { clock_count: value.clock_count } : {}),
+    };
     const ruleIds = value.rule_ids ?? [];
     const trackIds = value.track_ids ?? [];
     const stored = this.stored();
 
-    const savePlaylist: Observable<Playlist> = !stored
+    const { name, type_id, clock_rule, clock_count } = this.form.controls;
+    const savePlaylist: Observable<PlaylistSaved> = !stored
       ? this.api.post('/api/playlists', { body })
-      : this.form.controls.name.dirty || this.form.controls.type_id.dirty
+      : name.dirty || type_id.dirty || clock_rule.dirty || clock_count.dirty
         ? this.api.put('/api/playlists/{id}', { path: { id: stored.id }, body })
         : of(stored);
 
@@ -209,20 +254,31 @@ export default class PlaylistEditComponent implements PendingChanges {
               });
           return rules.pipe(map(() => saved));
         }),
-        concatMap((saved) =>
+        concatMap((saved): Observable<PlaylistSaved> =>
           sameIds(this.storedTrackIds, trackIds)
             ? of(saved)
-            : this.api.put('/api/playlists/{id}/tracks', {
-                path: { id: saved.id },
-                body: { track_ids: trackIds },
-              }),
+            : this.api
+                .put('/api/playlists/{id}/tracks', {
+                  path: { id: saved.id },
+                  body: { track_ids: trackIds },
+                })
+                // The build the rule change started is named only by the first response.
+                .pipe(map((updated) => ({ ...updated, ...pickBuild(saved) }))),
         ),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (saved) => {
+          if (saved.build_operation_id === undefined) {
+            this.form.markAsPristine();
+            void this.router.navigateByUrl('/playlists');
+            return;
+          }
+          this.busy.set(false);
+          this.stored.set(saved);
+          this.storedTrackIds = [...trackIds];
           this.form.markAsPristine();
-          void this.router.navigateByUrl('/playlists');
+          this.followRebuild(saved.build_operation_id);
         },
         error: (error: unknown) => {
           this.busy.set(false);
@@ -238,9 +294,18 @@ export default class PlaylistEditComponent implements PendingChanges {
     this.form.reset({
       name: playlist.name,
       type_id: playlist.type.id,
+      clock_rule: playlist.clock_rule,
+      clock_count: playlist.clock_count ?? null,
       rule_ids: playlist.play_rule_ids,
       track_ids: [...this.storedTrackIds],
     });
+  }
+
+  private followRebuild(operationId: number): void {
+    this.rebuild
+      .run(of({ operation_id: operationId }))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ error: () => undefined });
   }
 
   // Every page of the playlist's tracks; the membership request needs the whole set.
@@ -259,4 +324,10 @@ export default class PlaylistEditComponent implements PendingChanges {
 function sameIds(a: readonly number[], b: readonly number[]): boolean {
   const set = new Set(a);
   return a.length === b.length && b.every((id) => set.has(id));
+}
+
+function pickBuild(saved: PlaylistSaved): Pick<PlaylistSaved, 'build_operation_id'> {
+  return saved.build_operation_id === undefined
+    ? {}
+    : { build_operation_id: saved.build_operation_id };
 }

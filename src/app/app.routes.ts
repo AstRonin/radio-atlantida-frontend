@@ -52,11 +52,6 @@ export const routes: Routes = [
     data: nav('nav.playRules'),
   },
   {
-    path: 'separation-rules',
-    loadChildren: () => import('./features/separation-rules/separation-rules.routes'),
-    data: nav('nav.separationRules'),
-  },
-  {
     path: 'clocks',
     loadChildren: () => import('./features/clocks/clocks.routes'),
     data: nav('nav.clocks'),
@@ -70,11 +65,6 @@ export const routes: Routes = [
     path: 'track-plan',
     loadChildren: () => import('./features/track-plan/track-plan.routes'),
     data: nav('nav.trackPlan'),
-  },
-  {
-    path: 'filler-reminders',
-    loadChildren: () => import('./features/filler-reminders/filler-reminders.routes'),
-    data: nav('nav.fillerReminders'),
   },
   {
     path: 'played-tracks',

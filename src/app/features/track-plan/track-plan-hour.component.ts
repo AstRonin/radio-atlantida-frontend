@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import type { ApiSchema } from '../../core/api/api-types';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -20,15 +21,33 @@ export interface PlanHourView {
   endUtc: string;
   /** Already translated. */
   warnings: readonly string[];
+  /** One-time inserts of the hour, with what the list shows of them. */
+  inserts: readonly PlanInsertView[];
+  /** The hour has not started, so inserts may be added or removed (the backend still decides). */
+  editable: boolean;
 }
 
+export interface PlanInsertView {
+  insert: ApiSchema<'TrackPlanInsert'>;
+  /** `mm:ss`, or the translated placement of a start or end insert. */
+  at: string;
+  /** The track's title, or `#id` when the hour's items do not hold it. */
+  title: string;
+}
+
+/** Plan item sources that come from an insert, marked in the list. */
+const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'reschedule']);
+
 /**
- * One built hour of the track plan: its clock, build time, items in time order, and the engine's
- * warnings. Presentational; times are shown in the station zone.
+ * One built hour of the track plan: its clock, build time, items in time order, the engine's
+ * warnings, and its one-time inserts. An hour that has not started offers "Add insert" and, for
+ * each one-time insert, "Remove" (frontend F21 §5.4). Presentational; times are shown in the
+ * station zone.
  */
 @Component({
   selector: 'app-track-plan-hour',
   imports: [
+    MatButtonModule,
     RouterLink,
     TranslatePipe,
     DurationPipe,
@@ -49,8 +68,10 @@ export interface PlanHourView {
         <span class="muted">
           {{ 'trackPlan.builtAt' | translate: { time: (hour.built_at | stationTime) } }}
         </span>
-        @if (hour.filler_request_id !== undefined) {
-          <a routerLink="/filler-reminders">{{ 'trackPlan.reminder' | translate }}</a>
+        @if (view().editable) {
+          <button matButton type="button" (click)="addInsert.emit()">
+            {{ 'trackPlan.inserts.add' | translate }}
+          </button>
         }
       </header>
 
@@ -58,6 +79,33 @@ export interface PlanHourView {
         <ul class="warnings" [attr.aria-label]="'trackPlan.warningsLabel' | translate">
           @for (warning of view().warnings; track $index) {
             <li>{{ warning }}</li>
+          }
+        </ul>
+      }
+
+      @if (view().inserts.length > 0) {
+        <ul class="inserts" [attr.aria-label]="'trackPlan.inserts.title' | translate">
+          @for (row of view().inserts; track row.insert.id) {
+            <li>
+              <span class="badge">{{ 'trackPlan.inserts.label' | translate }}</span>
+              <span class="time">{{ row.at }}</span>
+              <span>{{ row.title }}</span>
+              @if (row.insert.missed_id !== undefined) {
+                <span class="muted">{{ 'trackPlan.inserts.rescheduled' | translate }}</span>
+              }
+              @if (view().editable) {
+                <button
+                  matButton
+                  type="button"
+                  [attr.aria-label]="
+                    'trackPlan.inserts.removeLabel' | translate: { title: row.title }
+                  "
+                  (click)="removeInsert.emit(row)"
+                >
+                  {{ 'common.remove' | translate }}
+                </button>
+              }
+            </li>
           }
         </ul>
       }
@@ -82,7 +130,7 @@ export interface PlanHourView {
           <tbody>
             @for (row of view().rows; track row.item.id) {
               @let item = row.item;
-              <tr>
+              <tr [class.insert]="isInsert(item.source)">
                 <td class="time">{{ item.planned_start_utc | stationTime: 'time-seconds' }}</td>
                 <td>
                   <app-play-button [track]="row.preview" />
@@ -99,7 +147,12 @@ export interface PlanHourView {
                     </span>
                   }
                 </td>
-                <td>{{ 'trackPlan.sources.' + item.source | translate }}</td>
+                <td>
+                  @if (isInsert(item.source)) {
+                    <span class="insert-mark" aria-hidden="true">⏱</span>
+                  }
+                  {{ 'trackPlan.sources.' + item.source | translate }}
+                </td>
                 <td>
                   <span class="badge" [class.warn]="item.status === 'missed'">
                     {{ 'trackPlan.statuses.' + item.status | translate }}
@@ -141,6 +194,31 @@ export interface PlanHourView {
       color: var(--mat-sys-on-error-container);
     }
 
+    .inserts {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      margin: 0.5rem 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .inserts li {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .items tr.insert {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+    }
+
+    .insert-mark {
+      margin-inline-end: 0.25rem;
+    }
+
     .items {
       width: 100%;
       border-collapse: collapse;
@@ -161,6 +239,13 @@ export interface PlanHourView {
 })
 export class TrackPlanHourComponent {
   readonly view = input.required<PlanHourView>();
+
+  readonly addInsert = output();
+  readonly removeInsert = output<PlanInsertView>();
+
+  protected isInsert(source: string): boolean {
+    return INSERT_SOURCES.has(source);
+  }
 
   protected headingId(): string {
     return `plan-hour-${Date.parse(this.view().hour.hour_start_utc)}`;

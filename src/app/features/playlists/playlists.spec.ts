@@ -1,14 +1,16 @@
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ComponentRef } from '@angular/core';
+import { ComponentRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, provideRouter } from '@angular/router';
+import { Observable, map } from 'rxjs';
 import type { ApiSchema } from '../../core/api/api-types';
 import { apiProblemInterceptor } from '../../core/api/api.interceptors';
+import { OperationState, OperationsService } from '../../core/operations/operations.service';
 import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testing';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import PlaylistEditComponent, { MEMBER_PAGE_SIZE } from './playlist-edit.component';
@@ -21,6 +23,7 @@ const playlist = (overrides: Partial<Playlist> = {}): Playlist => ({
   id: 4,
   name: 'Morning music',
   type: { id: 1, code: 'music', name: 'Music' },
+  clock_rule: 'fill',
   track_count: 3,
   play_rule_ids: [],
   created_at: '2026-10-01T00:00:00Z',
@@ -47,6 +50,8 @@ interface EditView {
   form: FormGroup<{
     name: FormControl<string | null>;
     type_id: FormControl<number | null>;
+    clock_rule: FormControl<string | null>;
+    clock_count: FormControl<number | null>;
     rule_ids: FormControl<number[] | null>;
     track_ids: FormControl<number[] | null>;
   }>;
@@ -56,14 +61,28 @@ interface EditView {
 describe('playlists', () => {
   let http: HttpTestingController;
   let overlay: HTMLElement;
+  let runOperation: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    const build: OperationState = {
+      id: 60,
+      kind: 'clock_build',
+      status: 'running',
+      updatedAt: '2026-10-15T08:00:00Z',
+    };
+    runOperation = vi.fn((start: Observable<{ operation_id: number }>) =>
+      start.pipe(map(() => build)),
+    );
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([apiProblemInterceptor])),
         provideHttpClientTesting(),
         provideRouter([]),
         provideFakeAudio(new FakeAudio()),
+        {
+          provide: OperationsService,
+          useValue: { operations: signal([build]).asReadonly(), runOperation },
+        },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     });
@@ -99,11 +118,15 @@ describe('playlists', () => {
       await settlePage();
       http
         .expectOne((req) => req.url === '/api/playlists' && req.params.get('type_id') === '2')
-        .flush({ items: [playlist({ id: 6, name: 'Jingles' })] });
+        .flush({
+          items: [playlist({ id: 6, name: 'Jingles', clock_rule: 'spread', clock_count: 2 })],
+        });
       await settlePage();
 
       const page = fixture.nativeElement as HTMLElement;
       expect(page.textContent).toContain('Jingles');
+      // The placement rule is a badge; without loaded translations the key is shown.
+      expect(page.textContent).toContain('forms.clockRule.spreadCount');
       button(page, 'common.delete')?.click();
       await settlePage();
       button(overlay, 'common.delete')?.click();
@@ -182,11 +205,73 @@ describe('playlists', () => {
       view.save();
 
       const put = http.expectOne({ method: 'PUT', url: '/api/playlists/4' });
-      expect(put.request.body).toEqual({ name: 'Morning pop', type_id: 1 });
+      expect(put.request.body).toEqual({ name: 'Morning pop', type_id: 1, clock_rule: 'fill' });
       put.flush(playlist({ name: 'Morning pop', play_rule_ids: [9] }));
       await settlePage();
       http.expectNone('/api/playlists/4/play-rules');
       http.expectNone('/api/playlists/4/tracks');
+    });
+
+    it('saves the placement rule and stays to follow the rebuild of its clocks', async () => {
+      const { view, ref } = await open();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      const { clock_rule, clock_count } = view.form.controls;
+      expect(clock_count.disabled).toBe(true);
+
+      clock_rule.setValue('spread');
+      clock_rule.markAsDirty();
+      // The count is required for spread only.
+      expect(clock_count.enabled).toBe(true);
+      expect(view.form.invalid).toBe(true);
+      clock_count.setValue(2);
+      clock_count.markAsDirty();
+      await settlePage();
+      expect(
+        (ref.location.nativeElement as HTMLElement).querySelector('app-clock-rule-input'),
+      ).not.toBeNull();
+      view.save();
+
+      const put = http.expectOne({ method: 'PUT', url: '/api/playlists/4' });
+      expect(put.request.body).toEqual({
+        name: 'Morning music',
+        type_id: 1,
+        clock_rule: 'spread',
+        clock_count: 2,
+      });
+      put.flush({
+        ...playlist({ clock_rule: 'spread', clock_count: 2, play_rule_ids: [9] }),
+        build_operation_id: 60,
+      });
+      await settlePage();
+
+      expect(navigate).not.toHaveBeenCalled();
+      expect(runOperation).toHaveBeenCalledOnce();
+      expect(ref.location.nativeElement.textContent).toContain('playlists.clockRule.rebuilding');
+      expect(ref.instance.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('puts a refused count on its field', async () => {
+      const { view } = await open();
+      vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      view.form.controls.clock_rule.setValue('spread');
+      view.form.controls.clock_rule.markAsDirty();
+      view.form.controls.clock_count.setValue(3);
+      await settlePage();
+      view.save();
+
+      http.expectOne({ method: 'PUT', url: '/api/playlists/4' }).flush(
+        {
+          status: 422,
+          code: 'validation_failed',
+          title: 'Unprocessable Entity',
+          errors: [
+            { field: 'clock_count', code: 'clock_count_required', message: 'count required' },
+          ],
+        },
+        { status: 422, statusText: 'Unprocessable Entity' },
+      );
+      await settlePage();
+      expect(view.form.controls.clock_count.hasError('server')).toBe(true);
     });
 
     it('asks before leaving with unsaved changes', async () => {
