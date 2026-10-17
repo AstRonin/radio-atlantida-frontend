@@ -196,6 +196,32 @@ describe('playlists', () => {
       expect(navigate).toHaveBeenCalledWith('/playlists');
     });
 
+    it('narrows the library search with the track filters', async () => {
+      const { ref } = await open();
+      const root = ref.location.nativeElement as HTMLElement;
+      const filters = root.querySelector('app-playlist-tracks app-track-filters');
+      expect(filters?.querySelector('input[type="search"]')).not.toBeNull();
+
+      filters?.querySelector<HTMLButtonElement>('.filters-toggle')?.click();
+      await settlePage();
+      for (const request of http.match((req) => req.url !== '/api/tracks')) {
+        request.flush({ items: [] });
+      }
+      await settlePage();
+      filters?.querySelector<HTMLElement>('.check input')?.click();
+      await settlePage();
+
+      const search = http.expectOne(
+        (req) =>
+          req.url === '/api/tracks' &&
+          !req.params.has('playlist_id') &&
+          req.params.get('in_playlist') === 'false',
+      );
+      search.flush({ items: [track(8)] });
+      await settlePage();
+      expect(root.querySelector('app-playlist-tracks')?.textContent).toContain('Song 8');
+    });
+
     it('sends only the parts that changed', async () => {
       const { view } = await open();
       vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);

@@ -14,7 +14,9 @@
       ☰
     </button>
   }
-  <span class="station-name">{{ stationName() ?? ('shell.stationName' | translate) }}</span>
+  <a class="station-name" routerLink="/">{{
+    stationName() ?? ('shell.stationName' | translate)
+  }}</a>
   <span class="spacer"></span>
   <app-broadcast-status />
   <app-live-indicator />

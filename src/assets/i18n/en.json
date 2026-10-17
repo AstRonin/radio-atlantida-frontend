@@ -404,7 +404,22 @@
       "loadingTrack": "Track {id}…",
       "moveUp": "Move \"{title}\" up",
       "moveDown": "Move \"{title}\" down",
-      "remove": "Remove \"{title}\""
+      "remove": "Remove \"{title}\"",
+      "filters": "Filters",
+      "filtersActive": "Filters ({count})",
+      "filterType": "Type",
+      "filterPlaylist": "In playlist",
+      "filterArtist": "Artist",
+      "anyType": "Any type",
+      "anyPlaylist": "Any playlist",
+      "filterReviewed": "Reviewed",
+      "anyReviewed": "Any",
+      "reviewed": {
+        "true": "Reviewed",
+        "false": "Not reviewed"
+      },
+      "withoutPlaylist": "In no playlist",
+      "clearFilters": "Clear filters"
     },
     "clock": "Clock"
   },
@@ -1266,7 +1281,7 @@
     },
     "form": {
       "title": "Import the folder",
-      "intro": "Choose a folder of the media folder. Every new audio file in it, subfolders included, becomes a library track of this type; files already in the library are left as they are. The files are not moved. The type applies to the whole batch, so keep songs, jingles, and news in separate folders. Playlists are optional: leave them empty and add the tracks to playlists later. The artist is the one you choose here; without one it comes from the file tags, else from the file name: 'Morning - DJ Ann.mp3' becomes the track 'Morning' by 'DJ Ann'. A name with more than one hyphen gives no artist. New artists are added to the artist list.",
+      "intro": "Choose a folder of the media folder. Every new audio file in it, subfolders included, becomes a library track of this type; files already in the library are left as they are. The files are not moved. The type applies to the whole batch, so keep songs, jingles, and news in separate folders. Playlists are optional: leave them empty and add the tracks to playlists later. The artist is the one you choose here; without one it comes from the file tags, else from the file name: 'DJ Ann - Morning.mp3' becomes the track 'Morning' by 'DJ Ann'. A name with more than one hyphen gives no artist. New artists are added to the artist list.",
       "folder": "Folder",
       "type_id": "Type",
       "playlist_ids": "Playlists",

@@ -27,6 +27,9 @@ import { controlErrorMessage } from './field-errors';
       <mat-form-field>
         <mat-label>{{ label() | translate }}</mat-label>
         <mat-select [formControl]="control()">
+          @if (noneLabel(); as none) {
+            <mat-option [value]="null">{{ none | translate }}</mat-option>
+          }
           @for (type of types().items; track type.id) {
             <mat-option [value]="type.id">{{ type.name }}</mat-option>
           }
@@ -57,6 +60,8 @@ import { controlErrorMessage } from './field-errors';
 export class PlaylistTypeSelectComponent {
   readonly control = input.required<FormControl<number | null>>();
   readonly label = input('forms.playlistType');
+  /** Translation key of an option for no type (value null), for an optional choice. */
+  readonly noneLabel = input<string | null>(null);
   readonly hintPage = input<HelpPageId | null>(null);
   readonly hintField = input<string | null>(null);
 

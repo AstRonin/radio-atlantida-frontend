@@ -91,12 +91,10 @@ import { CLOCK_LIMITS, InsertForm } from './clock-form';
   `,
   styles: `
     .row {
-      padding: 0.5rem 0;
+      padding: 0.75rem 1rem;
+      border-radius: var(--mat-sys-corner-medium);
+      background: var(--mat-sys-surface-container-low);
       list-style: none;
-    }
-
-    .row + .row {
-      border-top: 1px solid var(--mat-sys-outline-variant);
     }
 
     .fields {

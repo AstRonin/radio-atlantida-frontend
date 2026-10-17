@@ -13,6 +13,7 @@ import {
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { Observable, finalize, forkJoin, of, tap } from 'rxjs';
@@ -70,6 +71,7 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
   selector: 'app-clock-edit',
   imports: [
     MatButtonModule,
+    MatCardModule,
     MatProgressBarModule,
     ReactiveFormsModule,
     RouterLink,
@@ -97,7 +99,7 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
     }
 
     <form [formGroup]="form" (ngSubmit)="save()">
-      <section class="page-section">
+      <mat-card appearance="outlined" class="block">
         <div class="form-grid">
           <app-text-input
             [control]="form.controls.name"
@@ -107,9 +109,14 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
             hintField="name"
           />
         </div>
-      </section>
+      </mat-card>
 
-      <section class="page-section" aria-labelledby="playlists-heading">
+      <mat-card
+        appearance="outlined"
+        class="block"
+        role="region"
+        aria-labelledby="playlists-heading"
+      >
         <h2 id="playlists-heading" class="section-title">
           {{ 'clocks.playlists.title' | translate }}
         </h2>
@@ -142,9 +149,9 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
             hintField="playlists"
           />
         </div>
-      </section>
+      </mat-card>
 
-      <section class="page-section" aria-labelledby="inserts-heading">
+      <mat-card appearance="outlined" class="block" role="region" aria-labelledby="inserts-heading">
         <h2 id="inserts-heading" class="section-title">
           {{ 'clocks.inserts.title' | translate }}
         </h2>
@@ -168,7 +175,7 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
         >
           {{ 'clocks.inserts.add' | translate }}
         </button>
-      </section>
+      </mat-card>
 
       @if (error(); as message) {
         <p class="form-error" role="alert">{{ message }}</p>
@@ -182,7 +189,12 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
     </form>
 
     @if (result(); as saved) {
-      <section class="page-section result" aria-labelledby="sample-heading">
+      <mat-card
+        appearance="outlined"
+        class="block result"
+        role="region"
+        aria-labelledby="sample-heading"
+      >
         <h2 id="sample-heading" class="section-title">{{ 'clocks.sample.title' | translate }}</h2>
         @if (warnings().length > 0) {
           <p>{{ 'clocks.sample.warnings' | translate }}</p>
@@ -200,27 +212,30 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
         } @else {
           <p class="muted">{{ 'clocks.sample.unavailable' | translate }}</p>
         }
-      </section>
+      </mat-card>
     }
   `,
   styles: `
+    .block {
+      margin-bottom: 1rem;
+      padding: 1rem 1.25rem;
+    }
+
     .section-title {
       margin: 0 0 0.5rem;
       font: var(--mat-sys-title-medium);
     }
 
     .rows {
-      margin: 0 0 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin: 0 0 1rem;
       padding: 0;
     }
 
     .add {
       max-width: 24rem;
-    }
-
-    .result {
-      padding-top: 1rem;
-      border-top: 1px solid var(--mat-sys-outline-variant);
     }
 
     .warnings {

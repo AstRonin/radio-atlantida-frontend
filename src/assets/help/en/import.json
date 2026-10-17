@@ -20,7 +20,7 @@
     },
     {
       "term": "File names",
-      "text": "Name files \"Title - Artist.mp3\". With exactly one hyphen, the part before it is the title and the part after it the artist: \"Morning - DJ Ann.mp3\" becomes the track \"Morning\" by \"DJ Ann\". A name without a hyphen, such as \"Morning.mp3\", gives only the title. A name with more than one hyphen, such as \"Jay-Z - Song.mp3\", gives no artist, and the whole name is the title. The folder and the extension are never part of the title."
+      "text": "Name files \"Artist - Title.mp3\". With exactly one hyphen, the part before it is the artist and the part after it the title: \"DJ Ann - Morning.mp3\" becomes the track \"Morning\" by \"DJ Ann\". A name without a hyphen, such as \"Morning.mp3\", gives only the title. A name with more than one hyphen, such as \"Jay-Z - Song.mp3\", gives no artist, and the whole name is the title. The folder and the extension are never part of the title."
     },
     {
       "term": "Analysis",
@@ -46,7 +46,7 @@
   "mistakes": [
     "Mixing songs and jingles in one folder: every new file gets the same type and playlists. Keep them in separate folders and import each folder on its own.",
     "Choosing an artist for a folder with songs of several artists: the chosen artist is set on every new track. Leave it empty so the artist comes from the tags or the file names.",
-    "Naming a file \"Artist - Title.mp3\": the part before the hyphen is read as the title. Name it \"Title - Artist.mp3\".",
+    "Naming a file \"Title - Artist.mp3\": the part before the hyphen is read as the artist, so the title and the artist swap. Name it \"Artist - Title.mp3\".",
     "Importing while files are still being copied: a half-copied file may be unreadable or too short. Wait until the copy has finished.",
     "Moving or renaming a file of a track on disk: the track then points to a missing file, and the import sees the moved file as a duplicate. Edit the track's file path in the library instead.",
     "Starting an import while an analysis or a fix runs. Only one of them runs at a time; wait until the other finishes."
@@ -73,7 +73,7 @@
     },
     "artist_id": {
       "label": "Artist",
-      "text": "Set on every new track of the batch. Leave empty to take the artist from the file tags, else from the file name (\"Title - Artist.mp3\"). Only existing artists are offered; add a new one on the Artists page first."
+      "text": "Set on every new track of the batch. Leave empty to take the artist from the file tags, else from the file name (\"Artist - Title.mp3\"). Only existing artists are offered; add a new one on the Artists page first."
     }
   }
 }

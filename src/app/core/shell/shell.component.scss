@@ -25,6 +25,12 @@
 
 .station-name {
   font: var(--mat-sys-title-large);
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .spacer {

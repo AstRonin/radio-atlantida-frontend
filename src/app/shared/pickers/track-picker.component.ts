@@ -38,23 +38,30 @@ import { DurationPipe } from '../../core/time/duration.pipe';
 import { controlErrorMessage, controlVersion } from '../forms/field-errors';
 import { FieldHintComponent } from '../ui/field-hint.component';
 import { PlayButtonComponent } from '../ui/play-button.component';
+import {
+  TrackFilterQuery,
+  TrackFiltersComponent,
+  trackFilterForm,
+  trackFilterQuery,
+} from './track-filters.component';
 
 type Track = ApiSchema<'Track'>;
 
 export const TRACK_SEARCH_DEBOUNCE_MS = 300;
 export const TRACK_PAGE_SIZE = 25;
 
-interface PageRequest {
+interface PageRequest extends TrackFilterQuery {
   q: string;
-  typeId: number | null;
   cursor?: string;
 }
 
 /**
- * Searchable track picker (docs/frontend-init-plan.md F4): rows show title, artist, and duration,
- * each with a play button for the preview (design §6.6). The value is a list of track IDs: one at
- * most in single mode, and in the order of choice when `ordered`. The search matches title or
- * artist name on the backend, limited to tracks of one type when `typeId` is set.
+ * Searchable track picker (docs/frontend-init-plan.md F4): rows show title, artist, type, and
+ * duration, each with a play button for the preview (design §6.6). The value is a list of track
+ * IDs: one at most in single mode, and in the order of choice when `ordered`. The search matches
+ * title or artist name on the backend, limited to tracks of one type when `typeId` is set. With
+ * thousands of tracks a search alone is not enough, so the operator can also narrow the results
+ * with `app-track-filters`.
  */
 @Component({
   selector: 'app-track-picker',
@@ -68,6 +75,7 @@ interface PageRequest {
     DurationPipe,
     FieldHintComponent,
     PlayButtonComponent,
+    TrackFiltersComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -88,6 +96,7 @@ interface PageRequest {
                 <app-play-button [track]="track" />
                 <span class="title">{{ track.title }}</span>
                 <span class="artist">{{ track.artist?.name }}</span>
+                <span class="badge">{{ track.type.name }}</span>
                 <span class="duration">{{ track.duration_ms | duration }}</span>
               } @else {
                 <span class="title">{{
@@ -133,10 +142,12 @@ interface PageRequest {
         </ol>
       }
 
-      <mat-form-field class="search">
-        <mat-label>{{ 'pickers.tracks.search' | translate }}</mat-label>
-        <input matInput type="search" [value]="search()" (input)="onSearch($event)" />
-      </mat-form-field>
+      <app-track-filters [form]="filters" [typeFixed]="typeId() !== null">
+        <mat-form-field class="search">
+          <mat-label>{{ 'pickers.tracks.search' | translate }}</mat-label>
+          <input matInput type="search" [value]="search()" (input)="onSearch($event)" />
+        </mat-form-field>
+      </app-track-filters>
 
       @if (loading()) {
         <mat-progress-bar mode="indeterminate" [attr.aria-label]="'pickers.loading' | translate" />
@@ -156,6 +167,7 @@ interface PageRequest {
               <span class="title">{{ track.title }}</span>
             </mat-checkbox>
             <span class="artist">{{ track.artist?.name }}</span>
+            <span class="badge">{{ track.type.name }}</span>
             <span class="duration">{{ track.duration_ms | duration }}</span>
             <app-play-button [track]="track" />
           </li>
@@ -201,7 +213,6 @@ interface PageRequest {
 
     .search {
       width: 100%;
-      margin-top: 0.5rem;
     }
 
     .rows {
@@ -219,14 +230,14 @@ interface PageRequest {
 
     .row {
       display: grid;
-      grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto auto auto;
+      grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto auto auto auto;
       gap: 0.5rem;
       align-items: center;
       min-height: 2.5rem;
     }
 
     .results .row {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto auto;
     }
 
     .row + .row {
@@ -290,7 +301,9 @@ export class TrackPickerComponent {
   private readonly known = signal<ReadonlyMap<number, Track>>(new Map());
   private readonly requested = new Set<number>();
   private readonly pages = new Subject<PageRequest>();
-  private query: Omit<PageRequest, 'cursor'> = { q: '', typeId: null };
+  private query: Omit<PageRequest, 'cursor'> = { q: '' };
+
+  protected readonly filters = trackFilterForm();
 
   protected readonly chosenIds = computed(() => {
     this.version();
@@ -309,8 +322,8 @@ export class TrackPickerComponent {
           this.loadError.set(null);
           return this.catalog
             .tracks({
+              ...request,
               q: request.q || undefined,
-              type_id: request.typeId ?? undefined,
               cursor: request.cursor,
               limit: TRACK_PAGE_SIZE,
             })
@@ -339,10 +352,15 @@ export class TrackPickerComponent {
       startWith(''),
       distinctUntilChanged(),
     );
-    combineLatest([search, toObservable(this.typeId).pipe(distinctUntilChanged())])
+    combineLatest([
+      search,
+      toObservable(this.typeId).pipe(distinctUntilChanged()),
+      trackFilterQuery(this.filters),
+    ])
       .pipe(takeUntilDestroyed())
-      .subscribe(([q, typeId]) => {
-        this.query = { q, typeId };
+      .subscribe(([q, typeId, filters]) => {
+        // A type fixed by the input wins over the type filter.
+        this.query = { q, ...filters, type_id: typeId ?? filters.type_id };
         this.pages.next(this.query);
       });
 
