@@ -122,7 +122,7 @@ describe('track titles and the reviewed mark (F19)', () => {
       fixture.nativeElement as HTMLElement;
     const renameButton = (root: HTMLElement) =>
       root.querySelector<HTMLButtonElement>(
-        'td.mat-column-actions button[aria-label="library.rename.button"]',
+        'td.mat-column-title button[aria-label="library.rename.button"]',
       );
 
     it('shows the reviewed mark with its station time and sorts by it', async () => {

@@ -8,7 +8,7 @@
     },
     {
       "term": "Reschedule",
-      "text": "Puts the item into a later hour once, at its start, its end, or a fixed minute. The clock template does not change."
+      "text": "Puts the item into a later hour once, at its start, its end, or a fixed time with seconds. The hour is rebuilt around it like any one-time insert; the clock template does not change."
     },
     {
       "term": "Dismiss",
@@ -23,7 +23,7 @@
   ],
   "mistakes": [
     "Choosing an hour that is on air or about to start. Such hours are frozen.",
-    "Placing a long program at a fixed minute where it does not fit before the next fixed element."
+    "Placing a long program at a fixed time where the inserts of the clock leave no room for it."
   ],
   "example": {
     "title": "Rescheduling the news",
@@ -40,15 +40,15 @@
     },
     "placement": {
       "label": "Placement",
-      "text": "Start of the hour, end of the hour, or a fixed minute."
+      "text": "Start of the hour, end of the hour, or a fixed time."
     },
-    "fixed_minute": {
-      "label": "Fixed minute",
-      "text": "Minute of the hour, 0 to 59, for a fixed placement."
+    "offset_ms": {
+      "label": "Time in the hour",
+      "text": "When the item starts, as mm:ss from 00:00 to 59:59, for a fixed placement."
     },
-    "fixed_tolerance_ms": {
-      "label": "Fixed tolerance",
-      "text": "How far the start may move from the minute, in milliseconds. Default one minute."
+    "tolerance_ms": {
+      "label": "Start tolerance",
+      "text": "How many seconds the start may move from the time, 0 to 600. Empty: the default from the settings, one minute."
     }
   }
 }

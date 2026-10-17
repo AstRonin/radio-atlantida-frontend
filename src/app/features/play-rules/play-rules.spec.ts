@@ -7,7 +7,13 @@ import { apiProblemInterceptor } from '../../core/api/api.interceptors';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testing';
 import PlayRuleEditComponent from './play-rule-edit.component';
-import { PlayRule, playRuleBody, playRuleForm, playRuleFormValue } from './play-rule-form';
+import {
+  PlayRule,
+  intervalMaxMinutes,
+  playRuleBody,
+  playRuleForm,
+  playRuleFormValue,
+} from './play-rule-form';
 
 const rule = (overrides: Partial<PlayRule> = {}): PlayRule => ({
   id: 7,
@@ -77,10 +83,30 @@ describe('play rules', () => {
       expect(form.controls.min_interval_minutes.valid).toBe(true);
       expect(form.controls.max_per_hour.valid).toBe(true);
 
+      form.patchValue({ artist_min_interval_minutes: 0 });
+      expect(form.controls.artist_min_interval_minutes.hasError('range')).toBe(true);
+
       form.controls.name.setValue('x'.repeat(201));
       expect(form.controls.name.hasError('maxlength')).toBe(true);
       form.controls.name.setValue('');
       expect(form.controls.name.hasError('required')).toBe(true);
+    });
+
+    it('caps both intervals at the play log retention', () => {
+      expect(intervalMaxMinutes(10)).toBe(14_400);
+      expect(intervalMaxMinutes(undefined)).toBe(525_600);
+      const form = playRuleForm(intervalMaxMinutes(10));
+      form.patchValue({ name: 'Rotation', min_interval_minutes: 14_400 });
+      expect(form.controls.min_interval_minutes.valid).toBe(true);
+      form.patchValue({ min_interval_minutes: 14_401, artist_min_interval_minutes: 14_401 });
+      expect(form.controls.min_interval_minutes.hasError('range')).toBe(true);
+      expect(form.controls.artist_min_interval_minutes.hasError('range')).toBe(true);
+    });
+
+    it('takes an artist interval alone as a limit', () => {
+      const form = playRuleForm();
+      form.patchValue({ name: 'Artists', artist_min_interval_minutes: 120 });
+      expect(form.valid).toBe(true);
     });
   });
 
@@ -94,6 +120,7 @@ describe('play rules', () => {
         window_to: null,
         weekdays: undefined,
         min_interval_minutes: null,
+        artist_min_interval_minutes: null,
         max_per_hour: 1,
         notes: '',
       });
@@ -112,6 +139,7 @@ describe('play rules', () => {
         window_to: '08:00',
         weekdays: [1, 5],
         min_interval_minutes: null,
+        artist_min_interval_minutes: null,
         max_per_hour: null,
         notes: 'A',
       });
@@ -202,6 +230,57 @@ describe('play rules', () => {
       const text = (fixture.nativeElement as HTMLElement).textContent;
       expect(text).toContain('another play rule has this name');
       expect(text).toContain('Validation failed');
+    });
+
+    it('enters the intervals as hours and minutes and shows a retention refusal on its field', async () => {
+      const fixture = TestBed.createComponent(PlayRuleEditComponent);
+      vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      await settle();
+      flushPickers();
+
+      const component = fixture.componentInstance as unknown as {
+        form: ReturnType<typeof playRuleForm>;
+        save(): void;
+      };
+      const page = fixture.nativeElement as HTMLElement;
+      const [track, artist] = [...page.querySelectorAll('app-interval-input')];
+      const type = (field: Element, index: number, value: string) => {
+        const input = field.querySelectorAll('input')[index];
+        input.value = value;
+        input.dispatchEvent(new Event('input'));
+      };
+      type(track, 0, '72');
+      type(artist, 0, '1');
+      type(artist, 1, '30');
+      expect(component.form.controls.min_interval_minutes.value).toBe(4_320);
+      expect(component.form.controls.artist_min_interval_minutes.value).toBe(90);
+      component.form.patchValue({ name: 'Music rotation' });
+      component.save();
+
+      const create = http.expectOne({ method: 'POST', url: '/api/play-rules' });
+      expect(create.request.body).toMatchObject({
+        min_interval_minutes: 4_320,
+        artist_min_interval_minutes: 90,
+      });
+      create.flush(
+        {
+          status: 422,
+          code: 'validation_failed',
+          title: 'Validation failed',
+          errors: [
+            {
+              field: 'artist_min_interval_minutes',
+              code: 'interval_beyond_retention',
+              message: 'longer than the play log',
+            },
+          ],
+        },
+        { status: 422, statusText: 'Unprocessable Entity' },
+      );
+      await settle();
+      expect(component.form.controls.artist_min_interval_minutes.hasError('server')).toBe(true);
+      expect(component.form.controls.min_interval_minutes.hasError('server')).toBe(false);
+      expect(artist.textContent).toContain('longer than the play log');
     });
   });
 });

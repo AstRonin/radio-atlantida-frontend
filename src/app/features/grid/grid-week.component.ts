@@ -83,10 +83,7 @@ export interface GridCell {
               </th>
               @for (day of days(); track day.date) {
                 @let entry = cells().get(day.date + '|' + hour);
-                <td
-                  [class.selected]="isSelected(day.weekday, hour)"
-                  [class.incomplete]="entry?.clock?.status === 'incomplete'"
-                >
+                <td [class.selected]="isSelected(day.weekday, hour)">
                   @if (entry) {
                     <a class="clock" [routerLink]="['/clocks', entry.clock.id]">
                       {{ entry.clock.name }}
@@ -147,10 +144,6 @@ export interface GridCell {
 
     td.selected {
       background: var(--mat-sys-primary-container);
-    }
-
-    td.incomplete .clock {
-      color: var(--mat-sys-error);
     }
 
     .clock {

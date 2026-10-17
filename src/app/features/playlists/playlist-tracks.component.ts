@@ -17,6 +17,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
   Subject,
   catchError,
+  combineLatest,
   debounceTime,
   distinctUntilChanged,
   map,
@@ -33,6 +34,12 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DurationPipe } from '../../core/time/duration.pipe';
 import { controlErrorMessage, controlVersion } from '../../shared/forms/field-errors';
 import { FieldHintComponent } from '../../shared/ui/field-hint.component';
+import {
+  TrackFilterQuery,
+  TrackFiltersComponent,
+  trackFilterForm,
+  trackFilterQuery,
+} from '../../shared/pickers/track-filters.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 
 type Track = ApiSchema<'Track'>;
@@ -42,7 +49,7 @@ export const MEMBER_SEARCH_PAGE_SIZE = 25;
 /** Rows of the member list drawn at once; the filter finds the others. */
 export const MEMBERS_SHOWN = 200;
 
-interface SearchRequest {
+interface SearchRequest extends TrackFilterQuery {
   q: string;
   cursor?: string;
 }
@@ -50,7 +57,8 @@ interface SearchRequest {
 /**
  * The tracks of a playlist (design §4): a set, so no order is shown or stored. The value of the
  * control is the list of track IDs; `members` are the tracks of the stored playlist, so their rows
- * show without one request per track. Tracks are added from a search over the library.
+ * show without one request per track. Tracks are added from a search over the library, narrowed
+ * by `app-track-filters`.
  */
 @Component({
   selector: 'app-playlist-tracks',
@@ -63,6 +71,7 @@ interface SearchRequest {
     DurationPipe,
     FieldHintComponent,
     PlayButtonComponent,
+    TrackFiltersComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -85,12 +94,14 @@ interface SearchRequest {
               <app-play-button [track]="track" />
               <span class="title">{{ track.title }}</span>
               <span class="muted ellipsis">{{ track.artist?.name }}</span>
+              <span class="badge">{{ track.type.name }}</span>
               <span class="muted numeric">{{ track.duration_ms | duration }}</span>
             } @else {
               <span></span>
               <span class="title">{{
                 'pickers.tracks.loadingTrack' | translate: { id: row.id }
               }}</span>
+              <span></span>
               <span></span>
               <span></span>
             }
@@ -119,10 +130,12 @@ interface SearchRequest {
 
     <fieldset class="box">
       <legend>{{ 'playlists.tracks.addLabel' | translate }}</legend>
-      <mat-form-field class="wide">
-        <mat-label>{{ 'pickers.tracks.search' | translate }}</mat-label>
-        <input matInput type="search" [value]="search()" (input)="onSearch($event)" />
-      </mat-form-field>
+      <app-track-filters [form]="filters">
+        <mat-form-field class="wide">
+          <mat-label>{{ 'pickers.tracks.search' | translate }}</mat-label>
+          <input matInput type="search" [value]="search()" (input)="onSearch($event)" />
+        </mat-form-field>
+      </app-track-filters>
       @if (searching()) {
         <mat-progress-bar mode="indeterminate" [attr.aria-label]="'common.loading' | translate" />
       }
@@ -135,6 +148,7 @@ interface SearchRequest {
             <app-play-button [track]="track" />
             <span class="title">{{ track.title }}</span>
             <span class="muted ellipsis">{{ track.artist?.name }}</span>
+            <span class="badge">{{ track.type.name }}</span>
             <span class="muted numeric">{{ track.duration_ms | duration }}</span>
             @if (isChosen(track.id)) {
               <span class="badge">{{ 'playlists.tracks.inPlaylist' | translate }}</span>
@@ -192,7 +206,7 @@ interface SearchRequest {
 
     .row {
       display: grid;
-      grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto;
+      grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto auto;
       gap: 0.5rem;
       align-items: center;
       min-height: 2.5rem;
@@ -238,7 +252,9 @@ export class PlaylistTracksComponent {
   private readonly version = controlVersion(this.control);
   private readonly known = signal<ReadonlyMap<number, Track>>(new Map());
   private readonly searches = new Subject<SearchRequest>();
-  private query = '';
+  private query: Omit<SearchRequest, 'cursor'> = { q: '' };
+
+  protected readonly filters = trackFilterForm();
 
   protected readonly chosenIds = computed(() => {
     this.version();
@@ -278,6 +294,7 @@ export class PlaylistTracksComponent {
           this.searchError.set(null);
           return this.catalog
             .tracks({
+              ...request,
               q: request.q || undefined,
               cursor: request.cursor,
               limit: MEMBER_SEARCH_PAGE_SIZE,
@@ -299,18 +316,18 @@ export class PlaylistTracksComponent {
         this.nextCursor.set(page.next_cursor ?? null);
       });
 
-    toObservable(this.search)
-      .pipe(
-        map((text) => text.trim()),
-        skip(1),
-        debounceTime(MEMBER_SEARCH_DEBOUNCE_MS),
-        startWith(''),
-        distinctUntilChanged(),
-        takeUntilDestroyed(),
-      )
-      .subscribe((q) => {
-        this.query = q;
-        this.searches.next({ q });
+    const search = toObservable(this.search).pipe(
+      map((text) => text.trim()),
+      skip(1),
+      debounceTime(MEMBER_SEARCH_DEBOUNCE_MS),
+      startWith(''),
+      distinctUntilChanged(),
+    );
+    combineLatest([search, trackFilterQuery(this.filters)])
+      .pipe(takeUntilDestroyed())
+      .subscribe(([q, filters]) => {
+        this.query = { q, ...filters };
+        this.searches.next(this.query);
       });
   }
 
@@ -325,7 +342,7 @@ export class PlaylistTracksComponent {
   protected loadMore(): void {
     const cursor = this.nextCursor();
     if (cursor) {
-      this.searches.next({ q: this.query, cursor });
+      this.searches.next({ ...this.query, cursor });
     }
   }
 

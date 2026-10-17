@@ -9,6 +9,7 @@ import { ApiClient } from '../../core/api/api-client.service';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { formatInterval } from '../../shared/forms/interval-input.component';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import type { PlayRule } from './play-rule-form';
@@ -81,11 +82,11 @@ const MONDAY_UTC = Date.UTC(2024, 0, 1);
         </ng-container>
         <ng-container matColumnDef="interval">
           <th mat-header-cell *matHeaderCellDef>
-            {{ 'playRules.fields.min_interval_minutes' | translate }}
+            {{ 'playRules.list.intervals' | translate }}
           </th>
           <td mat-cell *matCellDef="let rule">
-            @if (rule.min_interval_minutes) {
-              {{ 'playRules.list.minutes' | translate: { minutes: rule.min_interval_minutes } }}
+            @if (intervals(rule); as text) {
+              {{ text }}
             } @else {
               <span class="muted">–</span>
             }
@@ -167,6 +168,26 @@ export default class PlayRulesPageComponent {
   protected dayNames(days: readonly number[]): string {
     const format = this.dayFormat();
     return days.map((day) => format.format(MONDAY_UTC + (day - 1) * 86_400_000)).join(', ');
+  }
+
+  /** "Track 72 h · Artist 2 h"; empty when the rule sets neither interval. */
+  protected intervals(rule: PlayRule): string {
+    const parts: string[] = [];
+    if (rule.min_interval_minutes) {
+      parts.push(
+        this.i18n.translate('playRules.list.trackInterval', {
+          interval: formatInterval(this.i18n, rule.min_interval_minutes),
+        }),
+      );
+    }
+    if (rule.artist_min_interval_minutes) {
+      parts.push(
+        this.i18n.translate('playRules.list.artistInterval', {
+          interval: formatInterval(this.i18n, rule.artist_min_interval_minutes),
+        }),
+      );
+    }
+    return parts.join(' · ');
   }
 
   protected remove(rule: PlayRule): void {

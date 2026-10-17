@@ -1,58 +1,60 @@
 {
   "title": "Clocks",
-  "summary": "A clock is a 60-minute template of an hour on air. It is a list of elements, and each element takes one track from one or more playlists. The grid decides which clock plays in which hour.",
+  "summary": "A clock is a 60-minute template of an hour on air. It is a set of playlists and timed inserts; the system lays out the hour from them by itself. The grid decides which clock plays in which hour.",
   "entities": [
     {
-      "term": "Element",
-      "text": "One slot of the hour. It names its playlists, a nominal duration, a tolerance, and where it is placed."
+      "term": "Playlists of a clock",
+      "text": "The playlists the hour is built from, of any type, for example \"Music\" and \"Jingles\". You do not list single tracks: the system chooses them."
     },
     {
-      "term": "Placement",
-      "text": "Start (before everything else), end (after everything else), in flow (in order among the others), or a fixed minute such as :30."
+      "term": "Placement rule",
+      "text": "Each playlist says how it is placed: Fill (fills the time left), Spread N (N tracks spread over the hour), Start, End, Start and end, or Middle (a track starting at about 30:00, from 25:00 to 35:00). The rule is set on the playlist page."
     },
     {
-      "term": "Fixed element",
-      "text": "Starts at its minute within ±1 minute. Fixed elements split the hour into segments, and each segment is filled separately. A new fixed element at the same time replaces the old one."
+      "term": "Own rule in this clock",
+      "text": "A clock may override the rule of a playlist for itself, for example \"Jingles\" spread 4 times in a morning clock instead of 2. The playlist and other clocks keep their rule."
     },
     {
-      "term": "Nominal duration and tolerance",
-      "text": "The length the element aims for and how far a track may differ from it. Audio is never stretched: the system picks a track that fits."
+      "term": "Fill playlist and share",
+      "text": "A clock needs at least one fill playlist. With several, give each a share: \"New releases\" 30 and \"Gold\" 70 means about three music tracks in ten come from \"New releases\". Give every fill playlist a share, or none; without shares every fill playlist has the same chance, however many tracks it has."
     },
     {
-      "term": "Several playlists",
-      "text": "An element may use playlists of different types, for example music and jingle. The track is chosen from all of them together."
+      "term": "Timed insert",
+      "text": "A track, or a track drawn from a playlist, at a time of the hour with seconds, for example 29:40. It plays in every hour of the clock. Inserts close together play back to back without music between them."
     },
     {
-      "term": "Filler mode",
-      "text": "What fills a segment that ends up short: a pool of chosen tracks, a playlist, an artist, a random track, or ask at air time."
+      "term": "Start tolerance",
+      "text": "How far an insert may start before or after its time, ±1 minute by default. An insert at 30:00 may begin anywhere from 29:00 to 31:00, so the music before it can end naturally."
     },
     {
-      "term": "Default filler mode",
-      "text": "Used when the clock's filler pool is empty or a filler reminder expires: random, a playlist, or an artist. If the clock has none, the global fallback from the settings applies."
+      "term": "Sample hour",
+      "text": "Saving builds one hour with the real library and play history and shows it: every track with its start, length, and where it came from. Planned hours may choose other tracks; the sample shows a typical layout."
     }
   ],
-  "usage": "Build the hour from elements, then save. Saving runs a dry check and shows how full each segment is, which tracks are available, and any warnings. If a segment is short, a dialog asks how to fill it before the clock is complete.",
+  "usage": "Add the playlists the hour is made of, check their rules, add timed inserts for news or station IDs, and save. Tracks of any length are used: before an insert or the end of the hour the system picks the track that fits the time left, or cuts the last one with a short fade-out. Warnings never block the save.",
   "steps": [
     "Click Add clock and enter a name.",
-    "Add elements: choose their playlists, nominal duration, tolerance, and placement.",
-    "Put news or station IDs at fixed minutes, for example :00 and :30.",
-    "Save and read the dry-check result and warnings.",
-    "If the filler dialog opens, choose a filler mode for each short segment, or save the clock incomplete.",
+    "Add a fill playlist, for example \"Music\", and the other playlists, for example \"Jingles\".",
+    "Turn on \"Own rule in this clock\" for a playlist that should behave differently here.",
+    "With several fill playlists, give each a share, or leave all shares empty.",
+    "Add timed inserts, for example a jingle at 29:40 and the news playlist at 30:00.",
+    "Save, then read the sample hour and the warnings.",
     "Assign the clock to hours on the Grid page."
   ],
   "mistakes": [
-    "Placing two fixed elements so close that their ±1 minute windows overlap. The newer one replaces the older one.",
-    "Putting more material before a fixed element than fits before its minute. The clock is not saved, and the element is marked.",
-    "Using a tolerance of 0. Very few tracks then fit, and segments end up short.",
-    "Closing the filler dialog with \"save incomplete\" and forgetting it. Reminders are created for every affected hour until you choose a filler."
+    "No fill playlist: every playlist has a rule such as Spread or Start, so nothing fills the hour. Add a playlist with the rule Fill.",
+    "A share on some fill playlists only. Give every fill playlist a share, or none.",
+    "Inserts too close together: an insert cannot start inside its window because the one before it runs past it. Move it later or widen its tolerance.",
+    "A fill playlist without a minimum interval in its play rules. Its tracks may repeat within the hour; attach a rule such as \"Music rotation\".",
+    "A rule playlist whose tracks are all blocked by play rules in some hours. That rule track is skipped, and the music covers its time."
   ],
   "example": {
-    "title": "A news hour",
-    "text": "Element 1: news, fixed at :00, 5 minutes. Element 2: jingle, fixed at :30, 30 seconds. Elements 3 to 14: music from \"Pop hits\" and \"New releases\", in flow, 3:30 each with 30 seconds tolerance. Saving shows that the segment from :05 to :30 is short by 40 seconds, so the dialog asks for a filler; choose the playlist \"Short songs\"."
+    "title": "A music hour with news at half past",
+    "text": "Playlists: \"Music\" (Fill), \"Jingles\" (its own rule: Spread 2). Inserts: 29:40 the jingle \"News intro\", 30:00 the playlist \"News\", 30:00 tolerance ±1 minute. Saving shows an hour of music with two jingles apart from each other; the music before 29:40 ends inside the window or fades out, and the news follows the jingle without a gap."
   },
   "operations": {
-    "create": "Saving runs the dry check first. Problems are shown at once, not at air time.",
-    "edit": "Only planned hours that have not started are rebuilt. Hours on air keep their plan.",
+    "create": "Saving builds the sample hour first. Problems are shown at once, not at air time.",
+    "edit": "Only planned hours that have not started are rebuilt, around their one-time inserts. Hours on air keep their plan.",
     "delete": "A clock used in the grid or with play history cannot be deleted. Remove it from the grid first."
   },
   "fields": {
@@ -60,45 +62,41 @@
       "label": "Name",
       "text": "A name you will recognize in the grid, for example \"Weekday morning\"."
     },
-    "placement": {
-      "label": "Placement",
-      "text": "Start, end, in flow, or at a fixed minute of the hour."
+    "playlists": {
+      "label": "Add a playlist",
+      "text": "Adds a playlist of any type to the clock. Each playlist can be in a clock once."
     },
-    "fixed_minute": {
-      "label": "Fixed minute",
-      "text": "Minute of the hour, 0 to 59. The element may start up to one minute before or after it."
+    "override": {
+      "label": "Own rule in this clock",
+      "text": "Off: the playlist's own placement rule applies. On: choose the rule this clock uses for it."
     },
-    "fixed_tolerance_ms": {
-      "label": "Fixed tolerance",
-      "text": "How far the start of a fixed element may move, in milliseconds. Default 60000 (one minute)."
+    "clock_rule": {
+      "label": "Placement in clocks",
+      "text": "Fill, Spread, Start, End, Start and end, or Middle. See the terms above."
     },
-    "nominal_duration_ms": {
-      "label": "Nominal duration",
-      "text": "The length this element aims for, in milliseconds."
+    "clock_count": {
+      "label": "Tracks per hour",
+      "text": "For Spread only: how many tracks of the playlist play in the hour, 1 to 12."
     },
-    "duration_tolerance_ms": {
-      "label": "Tolerance",
-      "text": "How much shorter or longer the chosen track may be, in milliseconds. Larger values make it easier to find a track."
+    "fill_weight": {
+      "label": "Share",
+      "text": "For fill playlists only: a relative share from 1 to 100. The page shows each share in percent of all shares."
     },
-    "playlist_ids": {
-      "label": "Playlists",
-      "text": "One or more playlists of any type. The track is chosen from all of them together."
+    "offset_ms": {
+      "label": "Time",
+      "text": "When the insert starts, as mm:ss from 00:00 to 59:59. The arrow keys move it by a second; with Shift, or Page Up and Page Down, by a minute."
     },
-    "filler_mode": {
-      "label": "Filler mode",
-      "text": "How a short segment ending with this element is filled: pool, playlist, artist, random, or ask at air time."
+    "tolerance_ms": {
+      "label": "Start tolerance",
+      "text": "How many seconds the insert may start before or after its time, 0 to 600. A new insert proposes the default from the settings."
     },
-    "filler_source_id": {
-      "label": "Filler source",
-      "text": "The playlist or artist for the playlist and artist filler modes."
+    "track_id": {
+      "label": "Track",
+      "text": "The track the insert plays every hour. Use the play button to listen to it."
     },
-    "default_filler_mode": {
-      "label": "Default filler mode",
-      "text": "Used when the pool is empty or a reminder expires. Empty means the global fallback from the settings."
-    },
-    "pool_track_ids": {
-      "label": "Filler pool",
-      "text": "Tracks chosen for this clock, used one after another when the clock needs filler."
+    "playlist_id": {
+      "label": "Playlist",
+      "text": "A track of this playlist is chosen for every hour, following its play rules."
     }
   }
 }

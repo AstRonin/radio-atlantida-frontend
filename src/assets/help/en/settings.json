@@ -1,6 +1,6 @@
 {
   "title": "Settings",
-  "summary": "The settings control the station: timezone, the stream server, Liquidsoap, rotation, filler, outage detection, retention, and import. Everything the backend needs is set here, except the database and secrets.",
+  "summary": "The settings control the station: timezone, the stream server, Liquidsoap, rotation, outage detection, retention, and import. Everything the backend needs is set here, except the database and secrets.",
   "entities": [
     {
       "term": "Default",
@@ -24,7 +24,7 @@
     "Set the station timezone and name first.",
     "Enter the stream server details and check the stream.",
     "Choose the emergency playlist.",
-    "Review the rotation and filler defaults."
+    "Review the rotation defaults."
   ],
   "mistakes": [
     "Changing the stream server during an important program: the stream is interrupted briefly.",
@@ -163,29 +163,13 @@
       "label": "Lookahead",
       "text": "How many tracks Liquidsoap holds in advance, 2 to 3."
     },
-    "rotation.default_duration_tolerance_ms": {
-      "label": "Default tolerance",
-      "text": "The tolerance of a new clock element, in milliseconds."
-    },
     "rotation.default_fixed_tolerance_ms": {
-      "label": "Default fixed tolerance",
-      "text": "How far a fixed element may move from its minute, in milliseconds. Default one minute."
+      "label": "Default insert tolerance",
+      "text": "The start tolerance a new timed insert or one-time insert proposes, in milliseconds. Default one minute."
     },
-    "rotation.min_filler_gap_ms": {
-      "label": "Smallest filler gap",
-      "text": "Shorter gaps get no filler. Default 10 seconds."
-    },
-    "rotation.max_relaxed_tolerance_ms": {
-      "label": "Emergency tolerance limit",
-      "text": "How far the tolerance may be relaxed when no track fits, in milliseconds."
-    },
-    "filler.fallback": {
-      "label": "Global fallback filler",
-      "text": "The filler mode used when a clock has no default filler mode of its own. Usually random."
-    },
-    "filler.reminder_deadline_minutes": {
-      "label": "Reminder deadline",
-      "text": "How many minutes before air an open filler reminder closes. Default 120."
+    "rotation.min_gap_ms": {
+      "label": "Smallest gap for music",
+      "text": "A gap between inserts shorter than this gets no music: the next insert starts earlier within its tolerance. Default 10 seconds."
     },
     "outage.heartbeat_timeout_seconds": {
       "label": "Heartbeat timeout",
@@ -201,7 +185,7 @@
     },
     "retention.play_log_days": {
       "label": "Play log days",
-      "text": "How long aired history is kept. Missed items stay until resolved."
+      "text": "How long aired history is kept. Missed items stay until resolved. It must cover the longest interval of the play rules; a lower value is refused."
     },
     "retention.log_days": {
       "label": "Log days",

@@ -13,14 +13,17 @@ streams it, and PostgreSQL stores the data.
   track order does not matter, and a track can be in several playlists. Every playlist has a type
   (`music`, `jingle`, `news`, `segment`, plus types the manager adds). The panel has a play button to
   preview any track in the browser; previews never go to air.
-- **Clocks and grid.** A clock is a 60-minute template of elements. Each element takes a track from
-  one or more playlists and is placed at the start, the end, a fixed minute (±1 min), or in flow.
-  The grid assigns clocks to hours up to 30 days ahead; the backend builds a rolling 24–48 h track
-  plan from it, fitting tracks by duration tolerance (audio is never stretched).
-- **Filler.** A clock saved short opens a blocking dialog to choose a filler mode (pool, playlist,
-  artist, random, ask). Otherwise it is saved incomplete and reminders are created.
-- **Rotation and play rules.** Separation rules (for example, a track at most once per 3 days) and
-  named play rules (time window, minimum interval, plays per hour) limit which track may play.
+- **Clocks and grid.** A clock is a 60-minute template: a set of playlists and timed inserts. Every
+  playlist has a placement rule (`fill`, `spread` N, `start`, `end`, `start_end`, `middle`) that a
+  clock may override; fill playlists may have shares. An insert is a track or a playlist at `mm:ss`
+  with a start tolerance (±1 min by default). The grid assigns clocks to hours up to 30 days ahead;
+  the backend lays out each hour and builds a rolling 24–48 h track plan (audio is never
+  stretched; the last track before an insert or 60:00 is the best fit, else cut with a fade).
+- **No filler.** The fill playlists fill the hour; when every fill track is blocked, the emergency
+  steps apply and a warning is sent. One-time inserts (today's news) are added to a planned hour.
+- **Play rules.** Named play rules (time window, track interval, artist interval, plays per hour)
+  limit which track may play; separation is such a rule ("Music rotation"). Intervals are at most
+  the play log retention.
 - **Live voice** from the browser is mixed over the music.
 - **Outages and missed items.** Stream interruptions are detected; items that did not air are marked
   missed and shown as "Not aired". The manager reschedules or dismisses them.
@@ -39,7 +42,8 @@ streams it, and PostgreSQL stores the data.
    F13: `docs/f13-grafana-link-plan.md`, F14: `docs/f14-broadcast-status-plan.md`, F15:
    `docs/f15-air-window-plan.md`, F16: `docs/f16-import-in-place-plan.md`, F17:
    `docs/f17-bulk-delete-plan.md`, F18: `docs/f18-library-pagination-sort-plan.md`, F19:
-   `docs/f19-track-titles-review-weekdays-plan.md`, F20: `docs/f20-track-cue-editor-plan.md`).
+   `docs/f19-track-titles-review-weekdays-plan.md`, F20: `docs/f20-track-cue-editor-plan.md`, F21:
+   `docs/f21-playlist-rules-clock-plan.md`).
    Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
@@ -87,7 +91,14 @@ then "Mark as reviewed", the plan rebuild followed; previews honour the cue and 
 `GainNode` (`PREVIEW_FADER_FACTORY`, faked in `fake-audio.testing.ts`); the library shows the on-air
 length, In plan, on air / queued, and the playlist count, filters `in_plan` and `in_playlist=false`,
 and reloads on playout and plan events; plan lengths are `out − in` (`plannedLength` pipe),
-`docs/f20-track-cue-editor-plan.md`) done. A page follows an operation it started (progress,
+`docs/f20-track-cue-editor-plan.md`), and F21 (playlist placement rules, clock inserts, separation
+in play rules: `app-clock-rule-input` on the playlist page and a rule badge in the list; the clock
+editor of playlists with overrides and shares, timed inserts (`app-offset-input`, `mm:ss`;
+`app-seconds-input` for tolerances), and the backend's sample hour and warnings; one-time inserts
+in the track plan (`POST`/`DELETE /api/track-plan/inserts`, `hour_insert` operations);
+`offset_ms` on missed-item reschedules; the artist interval and `app-interval-input` (hours and
+minutes) on play rules; filler, filler reminders, and the Separation rules page removed,
+`docs/f21-playlist-rules-clock-plan.md`) done. A page follows an operation it started (progress,
 summary) with `followOperation()` (`core/operations`) and `app-operation-status` (`shared/ui`). The live
 session is held by `LiveVoiceService` (`core/live`), not by the page, so it survives navigation;
 browser media APIs are injected through tokens and faked in tests (`fake-live.testing.ts`). The
@@ -110,10 +121,11 @@ initialization plan ends with F5; later phases have their own plans.
   `StationTimeService`, never `DatePipe` or `toLocaleString` without the station zone.
 - **Shared UI (F4).** Pages use these instead of their own: `app-page-header` (title and help
   button; page IDs are `HelpPageId` in `core/help`), `app-field-hint`, the inputs in `shared/forms`
-  (number, time, date, weekdays, filler mode, playlist type) with `shared/forms/validators.ts`, the
-  pickers in `shared/pickers`, `app-play-button` for track preview, `ConfirmService` for deletes (it
-  shows `used_by` refusals), and `FillerDialogService` for the blocking filler dialog. Shared lists
-  are read through `CatalogService` (`core/catalog`), so `shared/` never calls HTTP itself.
+  (number, time, date, weekdays, hours, duration, offset `mm:ss`, seconds, interval, clock rule,
+  playlist type) with `shared/forms/validators.ts`, the pickers in `shared/pickers`,
+  `app-play-button` for track preview, and `ConfirmService` for deletes (it shows `used_by`
+  refusals). Shared lists are read through `CatalogService` (`core/catalog`), so `shared/` never
+  calls HTTP itself.
 - **Pages (F5).** Lists load with `rxResource` and `reload()` after a change; show load errors
   with `errorMessage()` (`core/api`) and save errors with `applySubmitError()` (`shared/forms`).
   Edit pages implement `PendingChanges`, call `warnBeforeUnload()`, and their routes use
@@ -123,8 +135,8 @@ initialization plan ends with F5; later phases have their own plans.
 - **Times.** The API sends ISO 8601 UTC (`...Z`). Display them in the station timezone from settings
   (IANA name, default `Asia/Yerevan`), never in the browser's zone. Station local dates
   (`YYYY-MM-DD`, the grid) use `core/time/local-date.ts` (`stationToday`, `addDays`, `weekdayOf`).
-- **Show, never recompute** clock and station rules: send the template, show the backend's dry check,
-  warnings, and filler choices.
+- **Show, never recompute** clock and station rules: send the template, show the backend's sample
+  hour and warnings.
 - **Forms validate twice:** reactive-form validators mirroring the DTO rules, then the backend's
   per-field errors on the same controls. Save is disabled while the form is invalid.
 - **Help is static** JSON in `src/assets/help/<lang>/`, shipped with the release.
@@ -183,8 +195,8 @@ src/app/core/                app-wide services: api, config (runtime config.json
                              operations, alerts (errors, open
                              outage, open missed items), settings, time, logs (log file names,
                              levels, components, popup links),
-                             player, help, catalog (lists for pickers), rotation (plan warnings,
-                             pending filler reminders), live (voice session, header mark),
+                             player, help, catalog (lists for pickers), rotation (plan warnings),
+                             live (voice session, header mark),
                              broadcast (stream state and timer in the header), i18n,
                              shell, testing
 src/app/shared/              ui, forms, pickers, air-window (presentational only)

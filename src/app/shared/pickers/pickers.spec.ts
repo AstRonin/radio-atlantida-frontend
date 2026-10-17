@@ -12,6 +12,7 @@ import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testin
 import { PlayerService } from '../../core/player/player.service';
 import { PlayRulePickerComponent } from './play-rule-picker.component';
 import { PlaylistPickerComponent } from './playlist-picker.component';
+import type { TrackFilterForm } from './track-filters.component';
 import {
   TRACK_PAGE_SIZE,
   TRACK_SEARCH_DEBOUNCE_MS,
@@ -40,6 +41,7 @@ const track = (id: number, title: string, artist?: string): ApiSchema<'Track'> =
 const playlist = (id: number, name: string, type: string): ApiSchema<'Playlist'> => ({
   id,
   name,
+  clock_rule: 'fill',
   play_rule_ids: [],
   track_count: 12,
   created_at: '2026-10-01T00:00:00Z',
@@ -191,6 +193,90 @@ describe('pickers', () => {
       expect(TestBed.inject(PlayerService).track()?.id).toBe(1);
       expect(audio.src).toBe('/api/tracks/1/audio');
       expect(control.value).toEqual([]);
+    });
+
+    describe('filters', () => {
+      const filters = () =>
+        (fixture.componentInstance as unknown as { filters: TrackFilterForm }).filters;
+      const toggle = () =>
+        element().querySelector<HTMLButtonElement>('.filters-toggle') as HTMLButtonElement;
+
+      async function showFilters(withType = true) {
+        toggle().click();
+        await fixture.whenStable();
+        if (withType) {
+          http.expectOne('/api/playlist-types').flush({ items: [] });
+        }
+        http.expectOne('/api/playlists').flush({ items: [playlist(7, 'Morning', 'music')] });
+        http.expectOne('/api/artists').flush({ items: [] });
+        await fixture.whenStable();
+      }
+
+      it('reads the filter lists only when the filters are shown', async () => {
+        await create();
+        trackSearch().flush({ items: [] });
+        expect(element().querySelector('.filters')).toBeNull();
+        expect(toggle().getAttribute('aria-expanded')).toBe('false');
+
+        await showFilters();
+
+        expect(toggle().getAttribute('aria-expanded')).toBe('true');
+        expect(element().querySelector('.filters app-playlist-type-select')).not.toBeNull();
+        expect(element().querySelector('.filters app-playlist-select')).not.toBeNull();
+        expect(element().querySelector('.filters app-artist-select')).not.toBeNull();
+      });
+
+      it('narrows the search by type, playlist, and artist', async () => {
+        await create();
+        trackSearch().flush({ items: [] });
+        await showFilters();
+
+        filters().controls.playlist_id.setValue(7);
+        http
+          .expectOne((req) => req.url === '/api/tracks' && req.params.get('playlist_id') === '7')
+          .flush({ items: [track(1, 'A')] });
+
+        filters().controls.artist_id.setValue(3);
+        filters().controls.type_id.setValue(2);
+        await fixture.whenStable();
+        const requests = http.match((req) => req.url === '/api/tracks');
+        const last = requests[requests.length - 1];
+        expect(last.request.params.get('playlist_id')).toBe('7');
+        expect(last.request.params.get('artist_id')).toBe('3');
+        expect(last.request.params.get('type_id')).toBe('2');
+        last.flush({ items: [] });
+
+        filters().controls.reviewed.setValue('false');
+        filters().controls.without_playlist.setValue(true);
+        await fixture.whenStable();
+        const more = http.match((req) => req.url === '/api/tracks');
+        const latest = more[more.length - 1];
+        expect(latest.request.params.get('reviewed')).toBe('false');
+        expect(latest.request.params.get('in_playlist')).toBe('false');
+        latest.flush({ items: [] });
+        await fixture.whenStable();
+        expect(toggle().textContent).toContain('pickers.tracks.filtersActive');
+
+        element().querySelector<HTMLButtonElement>('.clear-filters')?.click();
+        const cleared = http.expectOne((req) => req.url === '/api/tracks');
+        expect(cleared.request.params.keys()).toEqual(['limit']);
+        cleared.flush({ items: [] });
+      });
+
+      it('keeps a type fixed by the input and hides the type filter', async () => {
+        await create([], { typeId: 5 });
+        http
+          .expectOne((req) => req.url === '/api/tracks' && req.params.get('type_id') === '5')
+          .flush({ items: [] });
+        await showFilters(false);
+
+        expect(element().querySelector('.filters app-playlist-type-select')).toBeNull();
+        filters().controls.playlist_id.setValue(7);
+        const request = http.expectOne((req) => req.url === '/api/tracks');
+        expect(request.request.params.get('type_id')).toBe('5');
+        expect(request.request.params.get('playlist_id')).toBe('7');
+        request.flush({ items: [] });
+      });
     });
 
     it('shows a failed search as a message', async () => {

@@ -1,14 +1,6 @@
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { AbstractControl, FormControl, ValidatorFn, Validators } from '@angular/forms';
 import type { ApiSchema } from '../../core/api/api-types';
 import type { Setting } from '../../core/settings/settings.service';
-import type { ElementFillerMode } from '../../shared/forms/filler-mode-select.component';
 import { rangeValidator } from '../../shared/forms/validators';
 
 export type SettingGroup = Setting['group'];
@@ -20,7 +12,6 @@ export const GROUP_ORDER: readonly SettingGroup[] = [
   'stream',
   'liquidsoap',
   'rotation',
-  'filler',
   'outage',
   'retention',
   'playout',
@@ -30,16 +21,13 @@ export const GROUP_ORDER: readonly SettingGroup[] = [
 
 /**
  * How a setting is edited. Most follow from the metadata the backend sends (type, enum, limits);
- * three keys need a dedicated input: a timezone from the IANA list, a playlist, and the global
- * fallback filler (a mode with its source).
+ * two keys need a dedicated input: a timezone from the IANA list and a playlist.
  */
-export type SettingKind =
-  'number' | 'select' | 'text' | 'boolean' | 'timezone' | 'playlist' | 'fallback';
+export type SettingKind = 'number' | 'select' | 'text' | 'boolean' | 'timezone' | 'playlist';
 
 const SPECIAL_KINDS: Readonly<Record<string, SettingKind>> = {
   'station.timezone': 'timezone',
   'playout.emergency_playlist_id': 'playlist',
-  'filler.fallback': 'fallback',
 };
 
 export function settingKind(setting: Setting): SettingKind {
@@ -61,35 +49,9 @@ export function settingKind(setting: Setting): SettingKind {
   }
 }
 
-export type FallbackGroup = FormGroup<{
-  mode: FormControl<ElementFillerMode | null>;
-  source_id: FormControl<number | null>;
-}>;
-
-/** A playlist or artist fallback needs its source; a random one has none (`filler.fallback`). */
-export const fallbackSourceValidator: ValidatorFn = (
-  group: AbstractControl,
-): ValidationErrors | null => {
-  const mode: unknown = group.get('mode')?.value;
-  const source: unknown = group.get('source_id')?.value;
-  return (mode === 'playlist' || mode === 'artist') && (source === null || source === undefined)
-    ? { fallbackSource: true }
-    : null;
-};
-
 /** The control of one setting, with validators that mirror the backend's definition. */
 export function settingControl(setting: Setting): AbstractControl {
   const kind = settingKind(setting);
-  if (kind === 'fallback') {
-    const value = fallbackValue(setting.value);
-    return new FormGroup(
-      {
-        mode: new FormControl<ElementFillerMode | null>(value.mode, Validators.required),
-        source_id: new FormControl<number | null>(value.source_id),
-      },
-      { validators: fallbackSourceValidator },
-    );
-  }
   const required = setting.nullable ? [] : [Validators.required];
   switch (kind) {
     case 'number':
@@ -127,10 +89,6 @@ export function settingControl(setting: Setting): AbstractControl {
 
 /** The value to send for a control, in the JSON form of the setting. */
 export function controlValue(setting: Setting, control: AbstractControl): unknown {
-  if (settingKind(setting) === 'fallback') {
-    const { mode, source_id } = (control as FallbackGroup).getRawValue();
-    return mode === 'random' || source_id === null ? { mode } : { mode, source_id };
-  }
   const value: unknown = control.value;
   if (settingKind(setting) === 'text') {
     return value ?? '';
@@ -145,7 +103,7 @@ export function isChanged(setting: Setting, control: AbstractControl): boolean {
 
 /** The value a control is reset to after a save or a discard. */
 export function resetValue(setting: Setting): unknown {
-  return settingKind(setting) === 'fallback' ? fallbackValue(setting.value) : setting.value;
+  return setting.value;
 }
 
 // Key order and absent versus null fields do not make two objects different.
@@ -159,21 +117,6 @@ function canonical(value: unknown): string {
         )
       : item,
   );
-}
-
-function fallbackValue(value: unknown): {
-  mode: ElementFillerMode | null;
-  source_id: number | null;
-} {
-  if (value === null || typeof value !== 'object') {
-    return { mode: null, source_id: null };
-  }
-  const record = value as Record<string, unknown>;
-  const mode = record['mode'];
-  return {
-    mode: typeof mode === 'string' ? (mode as ElementFillerMode) : null,
-    source_id: numberOrNull(record['source_id']),
-  };
 }
 
 function numberOrNull(value: unknown): number | null {

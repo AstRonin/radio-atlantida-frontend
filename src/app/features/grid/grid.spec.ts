@@ -15,7 +15,7 @@ import GridPageComponent from './grid-page.component';
 
 type GridSlot = ApiSchema<'GridSlot'>;
 
-const weekday = { id: 2, name: 'Weekday morning', status: 'complete' as const };
+const weekday = { id: 2, name: 'Weekday morning' };
 
 const slot = (overrides: Partial<GridSlot> = {}): GridSlot => ({
   id: 9,

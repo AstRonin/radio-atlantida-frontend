@@ -12,8 +12,7 @@ import { NumberInputComponent } from '../../shared/forms/number-input.component'
 import { TextInputComponent } from '../../shared/forms/text-input.component';
 import { PlaylistSelectComponent } from '../../shared/pickers/playlist-select.component';
 import { FieldHintComponent } from '../../shared/ui/field-hint.component';
-import { FallbackFillerInputComponent } from './fallback-filler-input.component';
-import { FallbackGroup, settingKind } from './settings-form';
+import { settingKind } from './settings-form';
 
 /**
  * One setting: its input, chosen from the backend's definition, and under it the default value,
@@ -27,7 +26,6 @@ import { FallbackGroup, settingKind } from './settings-form';
     MatSelectModule,
     ReactiveFormsModule,
     TranslatePipe,
-    FallbackFillerInputComponent,
     FieldHintComponent,
     NumberInputComponent,
     PlaylistSelectComponent,
@@ -85,9 +83,6 @@ import { FallbackGroup, settingKind } from './settings-form';
           hintPage="help.settings"
           [hintField]="setting().key"
         />
-      }
-      @case ('fallback') {
-        <app-fallback-filler-input [group]="fallbackGroup()" [label]="label()" />
       }
       @default {
         <app-text-input
@@ -170,7 +165,6 @@ export class SettingFieldComponent {
   protected readonly numberControl = computed(() => this.control() as FormControl<number | null>);
   protected readonly textControl = computed(() => this.control() as FormControl<string | null>);
   protected readonly valueControl = computed(() => this.control() as FormControl<unknown>);
-  protected readonly fallbackGroup = computed(() => this.control() as FallbackGroup);
   protected readonly error = controlErrorMessage(this.control);
 
   protected readonly defaultText = computed(() => this.valueText(this.setting().default));
@@ -191,10 +185,7 @@ export class SettingFieldComponent {
       return this.i18n.translate('settings.empty');
     }
     if (typeof value === 'object') {
-      const mode = (value as Record<string, unknown>)['mode'];
-      return typeof mode === 'string'
-        ? this.i18n.translate(`filler.modes.${mode}`)
-        : JSON.stringify(value);
+      return JSON.stringify(value);
     }
     if (typeof value === 'number') {
       const number = new Intl.NumberFormat(this.i18n.locale(), { useGrouping: false }).format(

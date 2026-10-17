@@ -20,7 +20,9 @@ import { ApiClient } from '../../core/api/api-client.service';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { SettingsService } from '../../core/settings/settings.service';
 import { controlVersion } from '../../shared/forms/field-errors';
+import { IntervalInputComponent } from '../../shared/forms/interval-input.component';
 import { NumberInputComponent } from '../../shared/forms/number-input.component';
 import { applySubmitError } from '../../shared/forms/server-errors';
 import { TextInputComponent } from '../../shared/forms/text-input.component';
@@ -33,6 +35,7 @@ import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import {
   PLAY_RULE_LIMITS,
   PlayRule,
+  intervalMaxMinutes,
   playRuleBody,
   playRuleForm,
   playRuleFormValue,
@@ -51,6 +54,7 @@ import {
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
+    IntervalInputComponent,
     NumberInputComponent,
     PageHeaderComponent,
     PlaylistPickerComponent,
@@ -111,14 +115,17 @@ import {
         />
         <p class="muted">{{ 'playRules.edit.weekdaysNote' | translate }}</p>
         <div class="form-grid">
-          <app-number-input
+          <app-interval-input
             [control]="form.controls.min_interval_minutes"
             label="playRules.fields.min_interval_minutes"
-            [min]="1"
-            [max]="limits.minIntervalMax"
-            suffix="forms.units.minutes"
             hintPage="help.play-rules"
             hintField="min_interval_minutes"
+          />
+          <app-interval-input
+            [control]="form.controls.artist_min_interval_minutes"
+            label="playRules.fields.artist_min_interval_minutes"
+            hintPage="help.play-rules"
+            hintField="artist_min_interval_minutes"
           />
           <app-number-input
             [control]="form.controls.max_per_hour"
@@ -189,7 +196,10 @@ export default class PlayRuleEditComponent implements PendingChanges {
   readonly id = input<string>();
 
   protected readonly limits = PLAY_RULE_LIMITS;
-  protected readonly form = playRuleForm();
+  // The intervals are capped by the play log retention, as the backend caps them.
+  protected readonly form = playRuleForm(
+    intervalMaxMinutes(inject(SettingsService).get('retention.play_log_days')?.value),
+  );
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 

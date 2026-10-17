@@ -357,7 +357,14 @@ interface PageRequest {
             {{ 'library.fields.title' | translate }}
           </th>
           <td mat-cell *matCellDef="let track">
-            <a [routerLink]="['/library', track.id]">{{ track.title }}</a>
+            <button
+              type="button"
+              class="title-button"
+              [attr.aria-label]="'library.rename.button' | translate: { title: track.title }"
+              (click)="rename(track)"
+            >
+              {{ track.title }}
+            </button>
             @if (track.playout_state; as state) {
               @let stateLabel = 'library.usage.' + state | translate;
               <span
@@ -532,14 +539,6 @@ interface PageRequest {
             <span class="cdk-visually-hidden">{{ 'common.actions' | translate }}</span>
           </th>
           <td mat-cell *matCellDef="let track" class="cell-actions">
-            <button
-              matIconButton
-              type="button"
-              [attr.aria-label]="'library.rename.button' | translate: { title: track.title }"
-              (click)="rename(track)"
-            >
-              <span aria-hidden="true">✎</span>
-            </button>
             <a matButton [routerLink]="['/library', track.id]">{{ 'common.edit' | translate }}</a>
             <button matButton type="button" (click)="remove(track)">
               {{ 'common.delete' | translate }}
@@ -591,6 +590,23 @@ interface PageRequest {
       flex-wrap: wrap;
       gap: 0.5rem;
       margin: 0 0 0.75rem;
+    }
+
+    /* The title opens the rename dialog, so it is a button that reads as a link. */
+    .title-button {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--mat-sys-primary);
+      font: inherit;
+      text-align: start;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .title-button:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
     }
 
     .reviewed {

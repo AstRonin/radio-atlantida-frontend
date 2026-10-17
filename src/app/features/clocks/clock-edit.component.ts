@@ -9,70 +9,77 @@ import {
   input,
   signal,
   untracked,
-  viewChild,
 } from '@angular/core';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
-import { Observable, finalize, map, of, switchMap, tap } from 'rxjs';
+import { Observable, finalize, forkJoin, of, tap } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
+import { CatalogService } from '../../core/catalog/catalog.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
-import { OperationStatus, OperationsService } from '../../core/operations/operations.service';
-import { formatDurationMs } from '../../core/time/duration';
+import { followOperation } from '../../core/operations/operation-run';
+import { SettingsService } from '../../core/settings/settings.service';
+import { formatHourOffset } from '../../core/time/duration';
 import { hourLabel, weekdayName } from '../../core/time/local-date';
-import { DurationPipe } from '../../core/time/duration.pipe';
 import { controlVersion } from '../../shared/forms/field-errors';
-import { FillerModeSelectComponent } from '../../shared/forms/filler-mode-select.component';
 import { applySubmitError } from '../../shared/forms/server-errors';
 import { TextInputComponent } from '../../shared/forms/text-input.component';
 import { PendingChanges, warnBeforeUnload } from '../../shared/forms/unsaved-changes';
-import { ArtistSelectComponent } from '../../shared/pickers/artist-select.component';
 import { PlaylistSelectComponent } from '../../shared/pickers/playlist-select.component';
-import { FillerDialogService } from '../../shared/ui/filler-dialog.service';
-import { shortSegments } from '../../shared/ui/filler-dialog.component';
+import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
-import { ClockElementComponent } from './clock-element.component';
-import { ClockFillerPoolComponent } from './clock-filler-pool.component';
 import {
   CLOCK_LIMITS,
   Clock,
-  ClockElement,
   ClockSaveResult,
+  DEFAULT_INSERT_TOLERANCE_MS,
+  Playlist,
   clockBody,
   clockForm,
-  elementForm,
   fillClockForm,
+  fillShares,
+  insertForm,
+  playlistRowForm,
 } from './clock-form';
-import { ClockLayoutComponent } from './clock-layout.component';
+import { ClockInsertRowComponent } from './clock-insert-row.component';
+import { ClockPlaylistRowComponent } from './clock-playlist-row.component';
+import { ClockSampleComponent } from './clock-sample.component';
 
-type ClockCheck = ApiSchema<'ClockCheck'>;
 type ClockWarning = ApiSchema<'ClockWarning'>;
 
+interface Loaded {
+  clock: Clock | null;
+  playlists: Playlist[];
+}
+
+/** The setting that holds the start tolerance of a new insert. */
+const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
+
 /**
- * Creates or edits a clock (design §6.0, §7.2). Saving sends the template; the backend runs the
- * dry check and answers with the layout, warnings, and replaced fixed elements, which the page shows
- * as they are. A short clock opens the blocking filler dialog. The editor stays open after a save so
- * the result can be read.
+ * Creates or edits a clock (design §6.0, §7.2; frontend F21 §5.3): its playlists with their
+ * placement rules, overrides, and shares, and its timed inserts. Saving sends the template; the
+ * backend answers with the clock, a sample hour, and warnings, which the page shows as they are.
+ * The editor stays open after a save so the result can be read.
  */
 @Component({
   selector: 'app-clock-edit',
   imports: [
     MatButtonModule,
+    MatCardModule,
     MatProgressBarModule,
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
-    DurationPipe,
-    ArtistSelectComponent,
-    ClockElementComponent,
-    ClockFillerPoolComponent,
-    ClockLayoutComponent,
-    FillerModeSelectComponent,
+    ClockInsertRowComponent,
+    ClockPlaylistRowComponent,
+    ClockSampleComponent,
+    OperationStatusComponent,
     PageHeaderComponent,
     PlaylistSelectComponent,
     TextInputComponent,
@@ -92,7 +99,7 @@ type ClockWarning = ApiSchema<'ClockWarning'>;
     }
 
     <form [formGroup]="form" (ngSubmit)="save()">
-      <section class="page-section">
+      <mat-card appearance="outlined" class="block">
         <div class="form-grid">
           <app-text-input
             [control]="form.controls.name"
@@ -101,57 +108,74 @@ type ClockWarning = ApiSchema<'ClockWarning'>;
             hintPage="help.clocks"
             hintField="name"
           />
-          <app-filler-mode-select
-            modes="default"
-            label="clocks.fields.default_filler_mode"
-            [control]="form.controls.default_filler_mode"
-            hintPage="help.clocks"
-            hintField="default_filler_mode"
-          />
-          @switch (defaultMode()) {
-            @case ('playlist') {
-              <app-playlist-select
-                label="clocks.fields.filler_playlist"
-                [control]="form.controls.default_filler_source_id"
-                hintPage="help.clocks"
-                hintField="filler_source_id"
-              />
-            }
-            @case ('artist') {
-              <app-artist-select
-                label="clocks.fields.filler_artist"
-                [control]="form.controls.default_filler_source_id"
-                hintPage="help.clocks"
-                hintField="filler_source_id"
-              />
-            }
-          }
         </div>
-      </section>
+      </mat-card>
 
-      <section class="page-section" aria-labelledby="elements-heading">
-        <h2 id="elements-heading" class="section-title">
-          {{ 'clocks.edit.elements' | translate }}
+      <mat-card
+        appearance="outlined"
+        class="block"
+        role="region"
+        aria-labelledby="playlists-heading"
+      >
+        <h2 id="playlists-heading" class="section-title">
+          {{ 'clocks.playlists.title' | translate }}
         </h2>
-        <p class="muted">{{ 'clocks.edit.elementsNote' | translate }}</p>
-        @for (group of form.controls.elements.controls; track group; let i = $index) {
-          <app-clock-element
-            [group]="group"
-            [index]="i"
-            [count]="elementCount()"
-            [warnings]="elementWarnings()[i] ?? []"
-            (moveUp)="move(i, -1)"
-            (moveDown)="move(i, 1)"
-            (remove)="removeElement(i)"
+        <p class="muted">{{ 'clocks.playlists.note' | translate }}</p>
+        @if (form.controls.playlists.length > 0) {
+          <ul class="rows">
+            @for (row of form.controls.playlists.controls; track row; let i = $index) {
+              <app-clock-playlist-row
+                [group]="row"
+                [playlist]="playlistById().get(row.controls.playlist_id.value)"
+                [index]="i"
+                [count]="playlistCount()"
+                [share]="shares()[i] ?? null"
+                [warnings]="playlistWarnings()[i] ?? []"
+                (moveUp)="movePlaylist(i, -1)"
+                (moveDown)="movePlaylist(i, 1)"
+                (remove)="removePlaylist(i)"
+              />
+            }
+          </ul>
+        }
+        @if (playlistsError(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+        <div class="add">
+          <app-playlist-select
+            label="clocks.playlists.add"
+            [control]="addPlaylist"
+            hintPage="help.clocks"
+            hintField="playlists"
           />
+        </div>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="block" role="region" aria-labelledby="inserts-heading">
+        <h2 id="inserts-heading" class="section-title">
+          {{ 'clocks.inserts.title' | translate }}
+        </h2>
+        <p class="muted">{{ 'clocks.inserts.note' | translate }}</p>
+        @if (form.controls.inserts.length > 0) {
+          <ul class="rows">
+            @for (group of form.controls.inserts.controls; track group; let i = $index) {
+              <app-clock-insert-row
+                [group]="group"
+                [warnings]="insertWarnings()[i] ?? []"
+                (remove)="removeInsert(i)"
+              />
+            }
+          </ul>
         }
-        @if (elementsMissing()) {
-          <p class="form-error" role="alert">{{ 'clocks.edit.noElements' | translate }}</p>
-        }
-        <button matButton="tonal" type="button" (click)="addElement()">
-          {{ 'clocks.edit.addElement' | translate }}
+        <button
+          matButton="tonal"
+          type="button"
+          [disabled]="insertCount() >= limits.insertsMax"
+          (click)="addInsert()"
+        >
+          {{ 'clocks.inserts.add' | translate }}
         </button>
-      </section>
+      </mat-card>
 
       @if (error(); as message) {
         <p class="form-error" role="alert">{{ message }}</p>
@@ -164,74 +188,54 @@ type ClockWarning = ApiSchema<'ClockWarning'>;
       </div>
     </form>
 
-    @if (stored(); as clock) {
-      <section class="page-section result" aria-labelledby="check-heading">
-        <h2 id="check-heading" class="section-title">{{ 'clocks.check.title' | translate }}</h2>
-        <p role="status">
-          @if (clock.status === 'complete') {
-            <span class="badge">{{ 'clocks.status.complete' | translate }}</span>
-          } @else {
-            <span class="badge warn">{{ 'clocks.status.incomplete' | translate }}</span>
-            {{ 'clocks.check.incompleteNote' | translate }}
-          }
-        </p>
-        <p>
-          @if (clock.layout.shortfall_ms > 0) {
-            {{
-              'clocks.check.shortfall'
-                | translate: { duration: (clock.layout.shortfall_ms | duration) }
-            }}
-          } @else {
-            {{ 'clocks.check.full' | translate }}
-          }
-        </p>
-        @if (replaced().length > 0) {
-          <div role="status">
-            <p>{{ 'clocks.check.replaced' | translate }}</p>
-            <ul>
-              @for (element of replaced(); track element.id) {
-                <li>{{ describeReplaced(element) }}</li>
-              }
-            </ul>
-          </div>
-        }
-        @if (generalWarnings().length > 0) {
-          <p>{{ 'clocks.check.warnings' | translate }}</p>
-          <ul class="warnings">
-            @for (message of generalWarnings(); track $index) {
+    @if (result(); as saved) {
+      <mat-card
+        appearance="outlined"
+        class="block result"
+        role="region"
+        aria-labelledby="sample-heading"
+      >
+        <h2 id="sample-heading" class="section-title">{{ 'clocks.sample.title' | translate }}</h2>
+        @if (warnings().length > 0) {
+          <p>{{ 'clocks.sample.warnings' | translate }}</p>
+          <ul class="warnings" role="status">
+            @for (message of warnings(); track $index) {
               <li>{{ message }}</li>
             }
           </ul>
+        } @else {
+          <p role="status">{{ 'clocks.sample.noWarnings' | translate }}</p>
         }
-        @if (buildStatus(); as status) {
-          <p class="muted" role="status">{{ 'clocks.build.' + status | translate }}</p>
+        <app-operation-status [state]="rebuild.state()" runningLabel="clocks.build.running" />
+        @if (saved.sample; as sample) {
+          <app-clock-sample [sample]="sample" [playlists]="playlistById()" [stale]="dirty()" />
+        } @else {
+          <p class="muted">{{ 'clocks.sample.unavailable' | translate }}</p>
         }
-
-        <h3 class="subtitle">{{ 'clocks.layout.title' | translate }}</h3>
-        <app-clock-layout [clock]="clock" [stale]="dirty()" />
-      </section>
-
-      <section class="page-section" aria-labelledby="pool-heading">
-        <h2 id="pool-heading" class="section-title">{{ 'clocks.pool.title' | translate }}</h2>
-        <p class="muted">{{ 'clocks.pool.note' | translate }}</p>
-        <app-clock-filler-pool [clockId]="clock.id" />
-      </section>
+      </mat-card>
     }
   `,
   styles: `
+    .block {
+      margin-bottom: 1rem;
+      padding: 1rem 1.25rem;
+    }
+
     .section-title {
       margin: 0 0 0.5rem;
       font: var(--mat-sys-title-medium);
     }
 
-    .subtitle {
-      margin: 1rem 0 0.25rem;
-      font: var(--mat-sys-title-small);
+    .rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin: 0 0 1rem;
+      padding: 0;
     }
 
-    .result {
-      padding-top: 1rem;
-      border-top: 1px solid var(--mat-sys-outline-variant);
+    .add {
+      max-width: 24rem;
     }
 
     .warnings {
@@ -241,26 +245,26 @@ type ClockWarning = ApiSchema<'ClockWarning'>;
 })
 export default class ClockEditComponent implements PendingChanges {
   private readonly api = inject(ApiClient);
+  private readonly catalog = inject(CatalogService);
   private readonly i18n = inject(I18nService);
   private readonly location = inject(Location);
-  private readonly operations = inject(OperationsService);
-  private readonly fillerDialog = inject(FillerDialogService);
+  private readonly settings = inject(SettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Route parameter; absent on `clocks/new`. */
   readonly id = input<string>();
 
   protected readonly limits = CLOCK_LIMITS;
-  protected readonly form = clockForm(this.destroyRef);
+  protected readonly form = clockForm();
+  /** The select that adds a playlist; it is cleared again after each choice. */
+  protected readonly addPlaylist = new FormControl<number | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   /** The clock as last read or saved; null for a new one. */
   protected readonly stored = signal<Clock | null>(null);
-  /** The dry check of the last save; null after a load. */
-  private readonly check = signal<ClockCheck | null>(null);
-  protected readonly buildStatus = signal<OperationStatus | null>(null);
-
-  private readonly pool = viewChild(ClockFillerPoolComponent);
+  /** The answer of the last save; null after a load. */
+  protected readonly result = signal<ClockSaveResult | null>(null);
+  protected readonly rebuild = followOperation();
 
   protected readonly clockId = computed(() => {
     const id = this.id();
@@ -276,78 +280,136 @@ export default class ClockEditComponent implements PendingChanges {
     this.version();
     return this.form.dirty;
   });
-  protected readonly elementCount = computed(() => {
+  protected readonly playlistCount = computed(() => {
     this.version();
-    return this.form.controls.elements.length;
+    return this.form.controls.playlists.length;
   });
-  protected readonly elementsMissing = computed(() => {
+  protected readonly insertCount = computed(() => {
     this.version();
-    const elements = this.form.controls.elements;
-    return elements.length === 0 && (this.form.touched || this.form.dirty);
+    return this.form.controls.inserts.length;
   });
-  protected readonly defaultMode = computed(() => {
+  protected readonly shares = computed(() => {
     this.version();
-    return this.form.controls.default_filler_mode.value;
+    return fillShares(this.form.controls.playlists.controls);
   });
-
-  protected readonly replaced = computed(() => this.check()?.replaced_elements ?? []);
-  protected readonly elementWarnings = computed(() => {
-    const byElement: string[][] = [];
-    for (const warning of this.check()?.warnings ?? []) {
-      if (warning.element_index !== undefined) {
-        (byElement[warning.element_index] ??= []).push(this.describeWarning(warning));
-      }
+  protected readonly playlistsError = computed(() => {
+    this.version();
+    const rows = this.form.controls.playlists;
+    if (!rows.touched && !rows.dirty && !this.form.touched) {
+      return null;
     }
-    return byElement;
+    if (rows.hasError('server')) {
+      const server = rows.getError('server') as { code: string; message: string };
+      const key = `forms.serverErrors.${server.code}`;
+      return this.i18n.has(key) ? this.i18n.translate(key) : server.message;
+    }
+    if (rows.hasError('required')) {
+      return this.i18n.translate('clocks.playlists.required');
+    }
+    if (rows.hasError('fillPlaylistRequired')) {
+      return this.i18n.translate('clocks.playlists.fillRequired');
+    }
+    if (rows.hasError('fillWeightsPartial')) {
+      return this.i18n.translate('clocks.playlists.weightsPartial');
+    }
+    return null;
   });
-  protected readonly generalWarnings = computed(() =>
-    (this.check()?.warnings ?? []).map((warning) => this.describeWarning(warning)),
-  );
 
   protected readonly loaded = rxResource({
-    params: () => {
-      const id = this.id();
-      return id === undefined ? undefined : Number(id);
-    },
-    stream: ({ params: id }) => this.api.get('/api/clocks/{id}', { path: { id } }),
+    params: () => ({ id: this.id() }),
+    stream: ({ params }): Observable<Loaded> =>
+      forkJoin({
+        clock:
+          params.id === undefined
+            ? of(null)
+            : this.api.get('/api/clocks/{id}', { path: { id: Number(params.id) } }),
+        playlists: this.catalog.playlists(),
+      }),
   });
   protected readonly loadError = computed(() =>
     this.loaded.status() === 'error' ? errorMessage(this.loaded.error(), this.i18n) : null,
   );
+  protected readonly playlistById = computed(
+    (): ReadonlyMap<number, Playlist> =>
+      new Map(
+        (this.loaded.hasValue() ? this.loaded.value().playlists : []).map((playlist) => [
+          playlist.id,
+          playlist,
+        ]),
+      ),
+  );
+
+  private readonly warningTexts = computed(() =>
+    (this.result()?.warnings ?? []).map((warning) => ({
+      warning,
+      text: this.describeWarning(warning),
+    })),
+  );
+  protected readonly warnings = computed(() => this.warningTexts().map((item) => item.text));
+  protected readonly playlistWarnings = computed(() => this.byIndex('playlist_index'));
+  protected readonly insertWarnings = computed(() => this.byIndex('insert_index'));
 
   constructor() {
     effect(() => {
       if (this.loaded.hasValue()) {
-        const clock = this.loaded.value();
-        untracked(() => this.fill(clock));
+        const { clock } = this.loaded.value();
+        if (clock) {
+          untracked(() => this.fill(clock));
+        }
       }
     });
+    this.addPlaylist.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((id) => id !== null && this.onAddPlaylist(id));
     warnBeforeUnload(() => this.hasUnsavedChanges());
   }
 
   hasUnsavedChanges(): boolean {
-    return this.form.dirty || (this.pool()?.hasUnsavedChanges() ?? false);
+    return this.form.dirty;
   }
 
-  protected addElement(): void {
-    this.form.controls.elements.push(elementForm(this.destroyRef));
-    this.form.markAsDirty();
-  }
-
-  protected removeElement(index: number): void {
-    this.form.controls.elements.removeAt(index);
-    this.form.markAsDirty();
-  }
-
-  protected move(index: number, by: -1 | 1): void {
-    const elements = this.form.controls.elements;
-    const target = index + by;
-    if (target < 0 || target >= elements.length) {
+  private onAddPlaylist(id: number): void {
+    this.addPlaylist.setValue(null, { emitEvent: false });
+    const rows = this.form.controls.playlists;
+    const playlist = this.playlistById().get(id);
+    if (!playlist || rows.controls.some((row) => row.controls.playlist_id.value === id)) {
       return;
     }
-    const group = elements.at(index);
-    elements.removeAt(index, { emitEvent: false });
-    elements.insert(target, group);
+    if (rows.length >= CLOCK_LIMITS.playlistsMax) {
+      return;
+    }
+    rows.push(playlistRowForm(this.destroyRef, playlist));
+    rows.markAsTouched();
+    this.form.markAsDirty();
+  }
+
+  protected removePlaylist(index: number): void {
+    this.form.controls.playlists.removeAt(index);
+    this.form.controls.playlists.markAsTouched();
+    this.form.markAsDirty();
+  }
+
+  protected movePlaylist(index: number, by: -1 | 1): void {
+    const rows = this.form.controls.playlists;
+    const target = index + by;
+    if (target < 0 || target >= rows.length) {
+      return;
+    }
+    const row = rows.at(index);
+    rows.removeAt(index, { emitEvent: false });
+    rows.insert(target, row);
+    this.form.markAsDirty();
+  }
+
+  protected addInsert(): void {
+    const setting: unknown = this.settings.get(DEFAULT_TOLERANCE_SETTING)?.value;
+    const tolerance = typeof setting === 'number' ? setting : DEFAULT_INSERT_TOLERANCE_MS;
+    this.form.controls.inserts.push(insertForm(this.destroyRef, undefined, tolerance));
+    this.form.markAsDirty();
+  }
+
+  protected removeInsert(index: number): void {
+    this.form.controls.inserts.removeAt(index);
     this.form.markAsDirty();
   }
 
@@ -372,11 +434,12 @@ export default class ClockEditComponent implements PendingChanges {
             // The URL then names the clock, so a reload opens it instead of a new form.
             this.location.replaceState(`/clocks/${result.clock.id}`);
           }
-          this.applyResult(result);
+          this.result.set(result);
+          this.fill(result.clock);
+          if (result.build_operation_id !== undefined) {
+            this.followRebuild(result.build_operation_id);
+          }
         }),
-        switchMap((result) =>
-          result.check.requires_filler_choice ? this.askFiller(result) : of(null),
-        ),
         finalize(() => this.busy.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -385,56 +448,28 @@ export default class ClockEditComponent implements PendingChanges {
       });
   }
 
-  /**
-   * The blocking filler dialog (design §6.0). Its actions return the clock as saved; the replaced
-   * elements of the first save are kept, since the follow-up request replaces nothing.
-   */
-  private askFiller(first: ClockSaveResult): Observable<unknown> {
-    const path = { id: first.clock.id };
-    const keep = (result: ClockSaveResult) =>
-      this.applyResult({
-        ...result,
-        check: { ...result.check, replaced_elements: first.check.replaced_elements },
-      });
-    return this.fillerDialog
-      .open({
-        clockName: first.clock.name,
-        segments: shortSegments(first),
-        save: (body) =>
-          this.api.post('/api/clocks/{id}/save-with-filler', { path, body }).pipe(tap(keep)),
-        saveIncomplete: () =>
-          this.api.post('/api/clocks/{id}/save-incomplete', { path }).pipe(tap(keep)),
-      })
-      .pipe(map(() => null));
-  }
-
-  private applyResult(result: ClockSaveResult): void {
-    this.check.set(result.check);
-    this.fill(result.clock);
-    if (result.build_operation_id !== undefined) {
-      this.watchBuild(result.build_operation_id);
-    }
-  }
-
   // A failed build is already an error.alert popup; the page only says when the hours are ready.
-  private watchBuild(id: number): void {
-    this.buildStatus.set('running');
-    this.operations
-      .waitFor(id)
+  private followRebuild(operationId: number): void {
+    this.rebuild
+      .run(of({ operation_id: operationId }))
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((state) => this.buildStatus.set(state.status));
+      .subscribe({ error: () => undefined });
   }
 
   private fill(clock: Clock): void {
     this.stored.set(clock);
-    fillClockForm(this.form, clock, this.destroyRef);
+    fillClockForm(this.form, clock, this.playlistById(), this.destroyRef);
   }
 
-  protected describeReplaced(element: ClockElement): string {
-    return this.i18n.translate('clocks.check.replacedElement', {
-      minute: element.fixed_minute ?? 0,
-      duration: formatDurationMs(element.nominal_duration_ms),
-    });
+  private byIndex(key: 'playlist_index' | 'insert_index'): string[][] {
+    const rows: string[][] = [];
+    for (const { warning, text } of this.warningTexts()) {
+      const index = warning[key];
+      if (index !== undefined) {
+        (rows[index] ??= []).push(text);
+      }
+    }
+    return rows;
   }
 
   private describeWarning(warning: ClockWarning): string {
@@ -442,9 +477,19 @@ export default class ClockEditComponent implements PendingChanges {
     if (!this.i18n.has(key)) {
       return warning.message;
     }
+    // Indexes name the rows of the saved clock, which the form shows in the same order.
+    const clock = this.result()?.clock;
+    const playlistId =
+      warning.playlist_index === undefined
+        ? undefined
+        : clock?.playlists[warning.playlist_index]?.playlist_id;
+    const insert =
+      warning.insert_index === undefined ? undefined : clock?.inserts[warning.insert_index];
     return this.i18n.translate(key, {
-      element: (warning.element_index ?? 0) + 1,
-      segment: (warning.segment_index ?? 0) + 1,
+      playlist:
+        (playlistId !== undefined ? this.playlistById().get(playlistId)?.name : undefined) ??
+        String((warning.playlist_index ?? 0) + 1),
+      insert: insert ? formatHourOffset(insert.offset_ms) : String((warning.insert_index ?? 0) + 1),
       hours: (warning.hours ?? []).map((hour) => this.weekdayHour(hour)).join(', '),
     });
   }

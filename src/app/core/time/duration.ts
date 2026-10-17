@@ -61,3 +61,26 @@ export function parseCueTime(text: string): number | null {
   const ms = fraction ? Number(fraction.padEnd(3, '0')) : 0;
   return (Number(hours ?? 0) * 3600 + Number(minutes ?? 0) * 60 + Number(seconds)) * 1000 + ms;
 }
+
+/** The last second of the hour at which an insert may be set: 59:59. */
+export const HOUR_OFFSET_MAX_MS = 3_599_000;
+
+/** A point in the hour, `mm:ss` (`29:40`); 60:00 is the end of the hour. */
+export function formatHourOffset(ms: number): string {
+  const total = Number.isFinite(ms) && ms > 0 ? Math.round(ms / 1000) : 0;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Reads a point in the hour, `m:ss` or `mm:ss`, 0:00 to 59:59, as whole seconds in milliseconds.
+ * Null for anything else (`60:00`, `5:7x`), so a form shows it as invalid instead of guessing.
+ */
+export function parseHourOffset(text: string): number | null {
+  const match = /^\s*(\d{1,2}):(\d{2})\s*$/.exec(text);
+  if (!match) {
+    return null;
+  }
+  const minutes = Number(match[1]);
+  const seconds = Number(match[2]);
+  return minutes < 60 && seconds < 60 ? (minutes * 60 + seconds) * 1000 : null;
+}

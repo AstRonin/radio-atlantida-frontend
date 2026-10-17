@@ -21,7 +21,6 @@ import { TranslatePipe } from '../i18n/translate.pipe';
 import { OperationsMenuComponent } from '../operations/operations-menu.component';
 import { PlayerBarComponent } from '../player/player-bar.component';
 import { ConnectionStatusComponent } from '../realtime/connection-status.component';
-import { FillerRemindersService } from '../rotation/filler-reminders.service';
 import { SettingsService } from '../settings/settings.service';
 import { NARROW_QUERY } from './layout';
 import { navigationItems } from './navigation';
@@ -63,7 +62,6 @@ export class ShellComponent {
   protected readonly stationName = inject(SettingsService).stationName;
   protected readonly openOutage = inject(OutageService).openOutage;
   protected readonly help = inject(HelpService);
-  protected readonly pendingReminders = inject(FillerRemindersService).pending;
   protected readonly openMissedItems = inject(MissedItemsService).open;
   protected readonly grafanaUrl = inject(RuntimeConfigService).grafanaUrl;
 }

@@ -18,7 +18,7 @@ import { Artist, ArtistDialogComponent, ArtistDialogData } from './artist-dialog
 export const ARTIST_SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * Artists, for artist separation (design §4). An artist with tracks or play history cannot be
+ * Artists, for the artist interval of play rules (design §4, §7.3). An artist with tracks or play history cannot be
  * deleted; the backend says why.
  */
 @Component({

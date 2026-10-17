@@ -14,13 +14,15 @@ import { errorMessage } from '../../core/api/problem-message';
 import { CatalogService, catalogList } from '../../core/catalog/catalog.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { clockRuleLabel } from '../../shared/forms/clock-rule-input.component';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 
 type Playlist = ApiSchema<'Playlist'>;
 
 /**
- * Playlists with their type and track count, filtered by type (`GET /api/playlists?type_id=`).
+ * Playlists with their type, placement rule in clocks, and track count, filtered by type
+ * (`GET /api/playlists?type_id=`).
  * A playlist used by a clock cannot be deleted; the refusal names the clocks.
  */
 @Component({
@@ -80,6 +82,12 @@ type Playlist = ApiSchema<'Playlist'>;
             <span class="badge">{{ playlist.type.name }}</span>
           </td>
         </ng-container>
+        <ng-container matColumnDef="clockRule">
+          <th mat-header-cell *matHeaderCellDef>{{ 'playlists.clockRule.column' | translate }}</th>
+          <td mat-cell *matCellDef="let playlist">
+            <span class="badge">{{ ruleLabel(playlist) }}</span>
+          </td>
+        </ng-container>
         <ng-container matColumnDef="tracks">
           <th mat-header-cell *matHeaderCellDef>{{ 'playlists.trackCount' | translate }}</th>
           <td mat-cell *matCellDef="let playlist">{{ playlist.track_count }}</td>
@@ -120,7 +128,7 @@ export default class PlaylistsPageComponent {
   private readonly confirm = inject(ConfirmService);
   private readonly i18n = inject(I18nService);
 
-  protected readonly columns = ['name', 'type', 'tracks', 'rules', 'actions'];
+  protected readonly columns = ['name', 'type', 'clockRule', 'tracks', 'rules', 'actions'];
   protected readonly types = catalogList(inject(CatalogService).playlistTypes());
   protected readonly typeFilter = new FormControl<number | null>(null);
   private readonly typeId = toSignal(this.typeFilter.valueChanges, { initialValue: null });
@@ -136,6 +144,10 @@ export default class PlaylistsPageComponent {
   protected readonly loadError = computed(() =>
     this.playlists.status() === 'error' ? errorMessage(this.playlists.error(), this.i18n) : null,
   );
+
+  protected ruleLabel(playlist: Playlist): string {
+    return clockRuleLabel(this.i18n, playlist.clock_rule, playlist.clock_count);
+  }
 
   protected remove(playlist: Playlist): void {
     this.confirm

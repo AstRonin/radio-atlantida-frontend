@@ -23,7 +23,7 @@ import { FieldHintComponent } from '../ui/field-hint.component';
 const SHOWN = 50;
 
 /**
- * Searchable select of one artist, for example the source of `artist` filler. The artist list is
+ * Searchable select of one artist, for example the artist of an import. The artist list is
  * read once and filtered as the operator types. The value is the artist ID; typing a name that is
  * not chosen from the list clears it.
  */

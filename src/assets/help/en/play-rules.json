@@ -1,14 +1,18 @@
 {
   "title": "Play rules",
-  "summary": "A play rule limits when a track may play. You create named rules here and apply them to tracks (mostly jingles) or to whole playlists.",
+  "summary": "A play rule limits when a track may play and how often it may repeat. You create named rules here and apply them to tracks or to whole playlists. Separation is a play rule too.",
   "entities": [
     {
       "term": "Time window",
       "text": "From and to, in station time, with optional weekdays. A window may cross midnight, for example 22:00 to 02:00."
     },
     {
-      "term": "Minimum interval",
-      "text": "The track does not start again until this many minutes after its last start."
+      "term": "Track interval",
+      "text": "The track does not start again until this long after its last start, for example 72 hours."
+    },
+    {
+      "term": "Artist interval",
+      "text": "No track of the same artist starts until this long after the artist's last start, whichever playlist the other track came from, for example 2 hours."
     },
     {
       "term": "Plays per hour",
@@ -17,23 +21,29 @@
     {
       "term": "Targets",
       "text": "The tracks and playlists the rule applies to. A playlist rule is checked for each of its tracks separately."
+    },
+    {
+      "term": "A play rule limits, a placement rule demands",
+      "text": "A play rule never puts a track on air. How often a playlist appears in the hour, for example two jingles, is the playlist's placement rule; the play rule decides which track is allowed in that slot."
     }
   ],
-  "usage": "A rule can combine a time window, a minimum interval, and a per-hour limit; at least one must be set, and all set parts must pass. A track follows its own rules and the rules of its playlists. A rule only limits: how often a jingle slot appears in the hour is set by the clock.",
+  "usage": "A rule can combine a time window, a track interval, an artist interval, and a per-hour limit; at least one must be set, and all set parts must pass. Intervals are entered as hours and minutes and cannot be longer than the play log is kept (Settings, Retention). A track follows its own rules and the rules of its playlists. Only aired and planned items count; missed items do not.",
   "steps": [
     "Click Add rule and enter a name that says what it does.",
-    "Set a time window, a minimum interval, a per-hour limit, or a combination.",
+    "Set a time window, a track or artist interval, a per-hour limit, or a combination.",
     "Save, then choose the tracks and playlists the rule applies to.",
-    "Check the clock dry check for hours in which no track passes."
+    "Save the clocks that use these playlists and read their warnings for hours in which no track passes."
   ],
   "mistakes": [
     "Setting only one end of the time window. Set both times or neither.",
-    "Expecting a rule to make a track play more often. Rules only block; clocks create the slots.",
-    "Restricting every jingle of a playlist to the same window. Outside it, the jingle slots stay empty and you get warnings."
+    "Expecting a rule to make a track play more often. Rules only block; placement rules create the slots.",
+    "Restricting every jingle of a playlist to the same window. Outside it, the jingle slots are skipped and you get warnings.",
+    "An interval longer than the play log retention. It is refused, because the history it needs is deleted; keep the play log longer or shorten the interval.",
+    "A fill playlist with no track interval. Its tracks may repeat within the hour, and the clock save warns about it."
   ],
   "example": {
-    "title": "Morning and midday jingles",
-    "text": "Rule \"Morning\": 06:00 to 08:00, applied to jingle A. Rule \"Midday\": 10:00 to 12:00, and rule \"Once per hour\": 1 play per hour, both applied to jingle B. At 07:15 only jingle A may play. At 11:00 jingle B plays once, then other jingles fill the remaining slots of that hour."
+    "title": "Music rotation and jingles",
+    "text": "\"Music rotation\": track interval 72 h, artist interval 2 h, applied to the music playlists; a song plays at most once in three days, and two songs of one artist are at least two hours apart. \"Jingles\": track interval 20 min, at most 2 per hour, applied to the jingle playlist; with the placement rule Spread 2, the jingles may repeat within a day but never twice in 20 minutes."
   },
   "operations": {
     "create": "At least one limit is required.",
@@ -43,7 +53,7 @@
   "fields": {
     "name": {
       "label": "Name",
-      "text": "Say what the rule does, for example \"Morning 06:00 to 10:00\"."
+      "text": "Say what the rule does, for example \"Music rotation\" or \"Morning 06:00 to 10:00\"."
     },
     "window_from": {
       "label": "From",
@@ -58,8 +68,12 @@
       "text": "Days on which the window applies. None chosen means every day. For a window across midnight, the day it starts."
     },
     "min_interval_minutes": {
-      "label": "Minimum interval",
-      "text": "Minutes between two starts of the same track. At most 7 days."
+      "label": "Track interval",
+      "text": "Hours and minutes between two starts of the same track, for example 72 h. At most the play log retention."
+    },
+    "artist_min_interval_minutes": {
+      "label": "Artist interval",
+      "text": "Hours and minutes between two starts of tracks of the same artist, for example 2 h. At most the play log retention."
     },
     "max_per_hour": {
       "label": "Plays per hour",

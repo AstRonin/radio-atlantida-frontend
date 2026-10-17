@@ -8,10 +8,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { controlErrorMessage } from '../forms/field-errors';
 import { FieldHintComponent } from '../ui/field-hint.component';
 
-/**
- * Select of one clock, for example the clock of a grid assignment. An incomplete clock is marked,
- * since its short hours create filler reminders. The value is the clock ID.
- */
+/** Select of one clock, for example the clock of a grid assignment. The value is the clock ID. */
 @Component({
   selector: 'app-clock-select',
   imports: [
@@ -30,9 +27,6 @@ import { FieldHintComponent } from '../ui/field-hint.component';
           @for (clock of clocks().items; track clock.id) {
             <mat-option [value]="clock.id">
               {{ clock.name }}
-              @if (clock.status === 'incomplete') {
-                <span class="meta">· {{ 'pickers.clockIncomplete' | translate }}</span>
-              }
             </mat-option>
           }
         </mat-select>
@@ -51,11 +45,6 @@ import { FieldHintComponent } from '../ui/field-hint.component';
   styles: `
     .field {
       width: 100%;
-    }
-
-    .meta {
-      color: var(--mat-sys-error);
-      font: var(--mat-sys-body-small);
     }
 
     .load-error {

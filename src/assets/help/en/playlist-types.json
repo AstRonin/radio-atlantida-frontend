@@ -19,7 +19,7 @@
       "text": "How many playlists and tracks have the type. A type in use cannot be deleted."
     }
   ],
-  "usage": "Add a type when you need a new kind of content label. Rename a type to change how it is shown. A type is only a label: it does not limit what a clock element can combine.",
+  "usage": "Add a type when you need a new kind of content label. Rename a type to change how it is shown. A type is only a label: it does not limit which playlists a clock can combine.",
   "steps": [
     "Click Add type.",
     "Enter a code (lower case letters, digits, dashes, or underscores) and a display name.",

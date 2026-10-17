@@ -156,7 +156,7 @@ describe('bulk track delete', () => {
       expect(element.textContent).toContain('library.bulkDelete.moreRefused');
     });
 
-    it('shows #id for a missing track and links the clocks of a filler pool', async () => {
+    it('shows #id for a missing track and links the clocks that use it', async () => {
       const element = await render({
         requested: 2,
         deleted: [],
