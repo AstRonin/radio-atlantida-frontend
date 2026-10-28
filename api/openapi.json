@@ -1031,6 +1031,7 @@
             "retention.completed": "#/components/schemas/OperationCompletedEvent",
             "retention.failed": "#/components/schemas/OperationFailedEvent",
             "retention.progress": "#/components/schemas/OperationProgressEvent",
+            "track.analysed": "#/components/schemas/TrackAnalysedEvent",
             "track_plan.completed": "#/components/schemas/OperationCompletedEvent",
             "track_plan.failed": "#/components/schemas/OperationFailedEvent",
             "track_plan.progress": "#/components/schemas/OperationProgressEvent",
@@ -1053,6 +1054,9 @@
           },
           {
             "$ref": "#/components/schemas/OperationProgressEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TrackAnalysedEvent"
           },
           {
             "$ref": "#/components/schemas/TrackPlanWarningEvent"
@@ -3719,6 +3723,21 @@
         ],
         "type": "object"
       },
+      "ReplaceTrackFileBody": {
+        "additionalProperties": false,
+        "properties": {
+          "file_path": {
+            "description": "The new file, relative to the media root, with forward slashes, for example music/new.mp3. No absolute paths, backslashes, or .. elements.",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_path"
+        ],
+        "type": "object"
+      },
       "RescheduleBody": {
         "additionalProperties": false,
         "properties": {
@@ -4285,6 +4304,89 @@
           "cue_in_ms",
           "fade_in_ms",
           "fade_out_ms"
+        ],
+        "type": "object"
+      },
+      "TrackAnalysedData": {
+        "additionalProperties": false,
+        "properties": {
+          "done": {
+            "description": "Tracks the operation has processed so far, this one included, whatever their outcome. Rises by one with each event of the operation.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "operation_id": {
+            "description": "The import or analyse operation that processed the track.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "outcome": {
+            "description": "What happened to the track: analysed (decoded and stored), rechecked (unchanged file, issues checked again), file missing, unreadable (not readable as audio, or its loudness not measurable), failed (a step failed; see the log), track deleted (removed while the operation ran). Only analysed and rechecked store the analysis.",
+            "enum": [
+              "analysed",
+              "rechecked",
+              "file missing",
+              "unreadable",
+              "failed",
+              "track deleted"
+            ],
+            "type": "string"
+          },
+          "quality_issues": {
+            "description": "Codes of the problems found; empty when there are none, and always empty unless the outcome is analysed or rechecked.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "total": {
+            "description": "Tracks the operation has registered so far: for an import, the tracks it registered, final once the import phase has ended (the last event then carries it); for an analyse operation, the tracks it started with. Never below done.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id",
+          "outcome",
+          "quality_issues",
+          "operation_id",
+          "done",
+          "total"
+        ],
+        "type": "object"
+      },
+      "TrackAnalysedEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TrackAnalysedData"
+          },
+          "time": {
+            "description": "UTC time the outcome was known.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always track.analysed.",
+            "enum": [
+              "track.analysed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
         ],
         "type": "object"
       },
@@ -5031,6 +5133,58 @@
           "id",
           "code",
           "name"
+        ],
+        "type": "object"
+      },
+      "UpdateTrackBody": {
+        "additionalProperties": false,
+        "properties": {
+          "artist_id": {
+            "format": "int64",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "playlist_ids": {
+            "description": "Every playlist of the track; playlists not listed lose it.",
+            "items": {
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "quality_notes": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "quality_ok": {
+            "description": "Manual override of the quality check.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type_id": {
+            "description": "Playlist type of the track (GET /api/playlist-types).",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "type_id",
+          "playlist_ids"
         ],
         "type": "object"
       },
@@ -9412,7 +9566,7 @@
         ]
       },
       "put": {
-        "description": "Replaces the metadata and the playlists of a track. Optional fields left out are cleared, then metadata is read from the file where it exists. The title is trimmed and runs of white space become one space; control characters (line breaks, tabs) are refused (invalid_characters). A new title, artist, or file path clears the reviewed mark; playlists, type, notes, and the quality override do not. The title and artist go on air with requests pushed to Liquidsoap after the save; items already queued keep the old ones.",
+        "description": "Replaces the metadata and the playlists of a track. Optional fields left out are cleared, then metadata is read from the file where it exists. The title is trimmed and runs of white space become one space; control characters (line breaks, tabs) are refused (invalid_characters). A new title or artist clears the reviewed mark; playlists, type, notes, and the quality override do not. The file path and the length cannot be sent here (unknown_field): the file changes only by replace-file. The title and artist go on air with requests pushed to Liquidsoap after the save; items already queued keep the old ones.",
         "operationId": "update-track",
         "parameters": [
           {
@@ -9430,7 +9584,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TrackBody"
+                "$ref": "#/components/schemas/UpdateTrackBody"
               }
             }
           },
@@ -9718,6 +9872,100 @@
           }
         },
         "summary": "Set the play rules of a track",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/{id}/replace-file": {
+      "post": {
+        "description": "Points the track at another file under the media root and analyses it (checksum, format, loudness, quality issues) in one step; the response is the updated track. The old file is not removed. The reviewed mark is cleared, and the cue is reset when it no longer fits the new length. The same path with the same content changes nothing. Refused while a clock insert, a one-time insert, or a plan item that has not aired uses the track (track_in_use, with used_by), while the track is queued in Liquidsoap or on air (track_in_use), and while another media operation runs (media_operation_running). A path that another track has is a field error (taken); a missing file is track_file_not_found.",
+        "operationId": "replace-track-file",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceTrackFileBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Replace the file of a track",
         "tags": [
           "Tracks"
         ]

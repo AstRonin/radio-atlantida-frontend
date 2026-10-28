@@ -469,7 +469,7 @@
     "artist_in_use": "The artist is in use and cannot be deleted.",
     "artist_has_history": "The artist has play history and cannot be deleted.",
     "track_not_found": "The track was not found.",
-    "track_in_use": "The track is in use and cannot be deleted.",
+    "track_in_use": "The track is in use and cannot be changed right now.",
     "track_has_history": "The track has play history and cannot be deleted.",
     "track_file_not_found": "The audio file of the track was not found.",
     "title_empty": "Nothing would be left of the title.",
@@ -662,6 +662,21 @@
       "qualityOverride": "Quality OK (your choice, until the next analysis)",
       "titleHint": "Listeners see this title and the artist. A change applies to tracks queued after saving. Changing the title, artist, or file clears the reviewed mark.",
       "reviewSaveFirst": "Save the changes first."
+    },
+    "replaceFile": {
+      "button": "Replace file",
+      "title": "Replace the file",
+      "current": "Current file: {path}",
+      "currentFile": "current file",
+      "files": "Files of the folder",
+      "selectHint": "Only new files can be chosen. Files already in the library, originals of optimised copies and files that are not audio are shown disabled.",
+      "noFolders": "The media folder has no subfolders. Choose the whole media folder to see its files.",
+      "emptyFolder": "The folder holds no files.",
+      "note": "The file is analysed when you save, which can take a while. Saving clears the reviewed mark. The start and stop points are reset when the new file is shorter than the stop point.",
+      "busy": "Analysing…",
+      "success": "The file is replaced and analysed. Check the quality and listen to the track before it goes to air.",
+      "reviewCleared": "The reviewed mark was cleared. Mark the track reviewed again once you have checked it.",
+      "cueReset": "The start and stop points were reset because the new file is shorter than the stop point. Set them again if needed."
     },
     "analysis": {
       "source_bitrate": "Source bitrate",
@@ -1288,6 +1303,7 @@
       "artist_id": "Artist",
       "start": "Import",
       "running": "Importing…",
+      "analysing": "Analysing…",
       "reviewNew": "Review the new tracks",
       "showIssues": "Show tracks with quality issues"
     },

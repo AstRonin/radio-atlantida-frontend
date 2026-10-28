@@ -8,7 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -55,6 +55,26 @@ interface SearchRequest extends TrackFilterQuery {
 }
 
 /**
+ * Whether a member matches the text and the filters. The members are all in this playlist, so
+ * the playlist filter asks for a track also in another one. A track not loaded yet matches only
+ * when nothing is filtered.
+ */
+function matchesMember(track: Track | null, text: string, query: TrackFilterQuery): boolean {
+  if (!track) {
+    return !text && Object.values(query).every((value) => value === undefined);
+  }
+  return (
+    (!text ||
+      track.title.toLocaleLowerCase().includes(text) ||
+      (track.artist?.name.toLocaleLowerCase().includes(text) ?? false)) &&
+    (query.type_id === undefined || track.type.id === query.type_id) &&
+    (query.artist_id === undefined || track.artist?.id === query.artist_id) &&
+    (query.playlist_id === undefined || track.playlist_ids.includes(query.playlist_id)) &&
+    (query.reviewed === undefined || (query.reviewed === 'true') === Boolean(track.reviewed_at))
+  );
+}
+
+/**
  * The tracks of a playlist (design §4): a set, so no order is shown or stored. The value of the
  * control is the list of track IDs; `members` are the tracks of the stored playlist, so their rows
  * show without one request per track. Tracks are added from a search over the library, narrowed
@@ -82,10 +102,12 @@ interface SearchRequest extends TrackFilterQuery {
       </legend>
       <p class="muted">{{ 'playlists.tracks.poolNote' | translate }}</p>
 
-      <mat-form-field class="wide">
-        <mat-label>{{ 'playlists.tracks.filter' | translate }}</mat-label>
-        <input matInput type="search" [value]="filter()" (input)="onFilter($event)" />
-      </mat-form-field>
+      <app-track-filters [form]="memberFilters" [withoutPlaylistFilter]="false">
+        <mat-form-field class="wide">
+          <mat-label>{{ 'playlists.tracks.filter' | translate }}</mat-label>
+          <input matInput type="search" [value]="filter()" (input)="onFilter($event)" />
+        </mat-form-field>
+      </app-track-filters>
 
       <ul class="rows" [attr.aria-label]="'playlists.tracks.members' | translate">
         @for (row of shownMembers(); track row.id) {
@@ -255,6 +277,11 @@ export class PlaylistTracksComponent {
   private query: Omit<SearchRequest, 'cursor'> = { q: '' };
 
   protected readonly filters = trackFilterForm();
+  /** The filters of the members; the library search above has its own. */
+  protected readonly memberFilters = trackFilterForm();
+  private readonly memberQuery = toSignal(trackFilterQuery(this.memberFilters), {
+    requireSync: true,
+  });
 
   protected readonly chosenIds = computed(() => {
     this.version();
@@ -265,15 +292,10 @@ export class PlaylistTracksComponent {
   private readonly memberRows = computed(() => {
     const known = this.known();
     const text = this.filter().trim().toLocaleLowerCase();
+    const query = this.memberQuery();
     return this.chosenIds()
       .map((id) => ({ id, track: known.get(id) ?? null }))
-      .filter(
-        ({ track }) =>
-          !text ||
-          (track !== null &&
-            (track.title.toLocaleLowerCase().includes(text) ||
-              (track.artist?.name.toLocaleLowerCase().includes(text) ?? false))),
-      )
+      .filter(({ track }) => matchesMember(track, text, query))
       .sort((a, b) => (a.track?.title ?? '').localeCompare(b.track?.title ?? ''));
   });
   protected readonly shownMembers = computed(() => this.memberRows().slice(0, MEMBERS_SHOWN));

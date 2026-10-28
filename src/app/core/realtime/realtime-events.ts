@@ -38,6 +38,7 @@ const EVENT_TYPES: Readonly<Record<RealtimeEventType, true>> = {
   'playout.now_playing': true,
   'playout.track_ended': true,
   'track_plan.warning': true,
+  'track.analysed': true,
   'retention.completed': true,
   'retention.failed': true,
   'retention.progress': true,

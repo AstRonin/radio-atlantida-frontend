@@ -29,10 +29,12 @@ import {
   distinctUntilChanged,
   filter,
   map,
+  asyncScheduler,
   merge,
   of,
   startWith,
   switchMap,
+  throttleTime,
 } from 'rxjs';
 import { errorMessage } from '../../core/api/problem-message';
 import { ApiClient } from '../../core/api/api-client.service';
@@ -78,6 +80,8 @@ import { BULK_REVIEW_MAX, trackReview } from './track-review';
 export const LIBRARY_SEARCH_DEBOUNCE_MS = 300;
 /** A start or a rebuild comes with several events; the page is read once after them. */
 export const LIBRARY_USAGE_RELOAD_MS = 1000;
+/** An import analyses its tracks one event each: the list is read at most once per interval. */
+export const LIBRARY_ANALYSIS_RELOAD_MS = 1000;
 
 type Quality = NonNullable<TrackQuery['quality']>;
 const QUALITIES: readonly Quality[] = ['ok', 'issues', 'unanalysed'];
@@ -792,6 +796,16 @@ export default class LibraryPageComponent implements OnInit {
       realtime.on('transcode.completed'),
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reload());
+
+    // Each analysed track arrives as its own event while an import runs: the list is read at most
+    // once per interval, first at once, and once more after the last event of a burst.
+    realtime
+      .on('track.analysed')
+      .pipe(
+        throttleTime(LIBRARY_ANALYSIS_RELOAD_MS, asyncScheduler, { leading: true, trailing: true }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe(() => this.reload());
 
     // The usage marks follow the air without polling: the same events as the air window (F15).

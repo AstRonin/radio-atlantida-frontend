@@ -1,18 +1,31 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
 import type { HelpPageId } from '../../core/help/help-content';
 import { HelpService } from '../../core/help/help.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 /**
  * The header of every admin page: its title, the page actions (projected), and the help button
- * that opens the page help (design §6.1).
+ * that opens the page help (design §6.1). A form page passes `backTo` to show an arrow that
+ * leaves the form for its list.
  */
 @Component({
   selector: 'app-page-header',
-  imports: [MatButtonModule, TranslatePipe],
+  imports: [MatButtonModule, RouterLink, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    @if (backTo(); as link) {
+      <a
+        matIconButton
+        class="back"
+        [routerLink]="link"
+        [attr.aria-label]="'common.back' | translate"
+        [title]="'common.back' | translate"
+      >
+        <span aria-hidden="true">←</span>
+      </a>
+    }
     <h1 class="title">{{ titleKey() | translate }}</h1>
     <div class="actions">
       <ng-content />
@@ -41,6 +54,11 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
       font: var(--mat-sys-headline-small);
     }
 
+    .back {
+      margin-right: -0.5rem;
+      font-size: 1.25rem;
+    }
+
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -53,6 +71,8 @@ export class PageHeaderComponent {
   /** Translation key of the page title. */
   readonly titleKey = input.required<string>();
   readonly helpPage = input.required<HelpPageId>();
+  /** The list a form page returns to; when set, the header shows a back arrow to it. */
+  readonly backTo = input<string | null>(null);
 
   protected readonly help = inject(HelpService);
 }

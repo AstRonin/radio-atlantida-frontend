@@ -9,6 +9,7 @@ import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import LibraryPageComponent, {
+  LIBRARY_ANALYSIS_RELOAD_MS,
   LIBRARY_SEARCH_DEBOUNCE_MS,
   LIBRARY_USAGE_RELOAD_MS,
 } from './library-page.component';
@@ -237,6 +238,33 @@ describe('library usage marks (F20)', () => {
     vi.useRealTimers();
     await settlePage();
     tracksRequest().flush({ items: [track(1, { playout_state: 'on_air' })], total: 1 });
+    await settlePage();
+  });
+
+  it('reads the page at once and then once per interval while an import analyses its tracks', async () => {
+    TestBed.inject(RealtimeService).connect();
+    server.latest.open();
+    await open([track(1)]);
+
+    const reads = () => http.match((req) => req.url === '/api/tracks');
+    vi.useFakeTimers();
+    for (const id of [1, 2, 3, 4]) {
+      server.latest.send({
+        type: 'track.analysed',
+        time: '2026-10-16T10:00:00Z',
+        data: { track_id: id, quality_issues: [] },
+      });
+    }
+    // The first event reads the page at once; the other three wait for the interval.
+    const atOnce = reads();
+    expect(atOnce).toHaveLength(1);
+    atOnce.forEach((read) => read.flush({ items: [track(1)], total: 1 }));
+
+    vi.advanceTimersByTime(LIBRARY_ANALYSIS_RELOAD_MS + 10);
+    const afterInterval = reads();
+    expect(afterInterval).toHaveLength(1);
+    vi.useRealTimers();
+    afterInterval.forEach((read) => read.flush({ items: [track(1)], total: 1 }));
     await settlePage();
   });
 });

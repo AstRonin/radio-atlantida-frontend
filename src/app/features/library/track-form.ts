@@ -9,6 +9,7 @@ import {
 
 export type Track = ApiSchema<'Track'>;
 export type TrackBody = ApiSchema<'TrackBody'>;
+export type UpdateTrackBody = ApiSchema<'UpdateTrackBody'>;
 
 /** Limits of `TrackBody`. */
 export const TRACK_LIMITS = {
@@ -75,11 +76,19 @@ export function trackFormValue(track: Track): TrackForm['value'] {
 }
 
 /**
- * The request body. The update replaces every field, so the file facts this page does not edit
- * (format, bitrate, sample rate; the analysis sets them) are sent back as stored, with the quality
- * flag from the form. On create they are left out, and the backend reads them from the file.
+ * Edit mode: a stored track's file path and length are not edited here. Their controls are
+ * disabled, so they are left out of the validity, and the page shows them read-only. The file
+ * changes only through Replace file (`POST /api/tracks/{id}/replace-file`); the update body has
+ * neither field.
  */
-export function trackBody(form: TrackForm, stored: Track | null): TrackBody {
+export function resetStoredForm(form: TrackForm, track: Track): void {
+  form.reset(trackFormValue(track));
+  form.controls.file_path.disable();
+  form.controls.duration_ms.disable();
+}
+
+/** The body of `POST /api/tracks`: the backend reads the file's facts from the path. */
+export function createTrackBody(form: TrackForm): TrackBody {
   const value = form.getRawValue();
   return {
     title: cleanTitle(value.title),
@@ -89,11 +98,21 @@ export function trackBody(form: TrackForm, stored: Track | null): TrackBody {
     duration_ms: value.duration_ms,
     quality_notes: (value.quality_notes ?? '').trim(),
     playlist_ids: value.playlist_ids ?? [],
-    ...(stored && {
-      format: stored.format ?? null,
-      bitrate: stored.bitrate ?? null,
-      sample_rate: stored.sample_rate ?? null,
-      quality_ok: value.quality_ok,
-    }),
+  };
+}
+
+/**
+ * The body of `PUT /api/tracks/{id}`: metadata and playlists only. The file path, the length and
+ * the file facts are refused there (unknown_field); the analysis and Replace file set them.
+ */
+export function updateTrackBody(form: TrackForm): UpdateTrackBody {
+  const value = form.getRawValue();
+  return {
+    title: cleanTitle(value.title),
+    artist_id: value.artist_id,
+    type_id: value.type_id ?? 0,
+    quality_ok: value.quality_ok,
+    quality_notes: (value.quality_notes ?? '').trim(),
+    playlist_ids: value.playlist_ids ?? [],
   };
 }

@@ -15,9 +15,9 @@ import {
   TITLE_VALIDATORS,
   TRACK_LIMITS,
   Track,
-  trackBody,
+  resetStoredForm,
   trackForm,
-  trackFormValue,
+  updateTrackBody,
 } from './track-form';
 
 export interface TrackRenameDialogData {
@@ -105,11 +105,11 @@ export class TrackRenameDialogComponent {
       : this.api.get('/api/tracks/{id}', { path: { id } }).pipe(
           concatMap((stored) => {
             const form = trackForm();
-            form.reset(trackFormValue(stored));
+            resetStoredForm(form, stored);
             form.controls.title.setValue(this.form.controls.title.value);
             return this.api.put('/api/tracks/{id}', {
               path: { id },
-              body: trackBody(form, stored),
+              body: updateTrackBody(form),
             });
           }),
           tap(() => (this.changed = true)),

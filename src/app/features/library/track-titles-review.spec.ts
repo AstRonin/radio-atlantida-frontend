@@ -249,17 +249,13 @@ describe('track titles and the reviewed mark (F19)', () => {
 
         http.expectOne({ method: 'GET', url: '/api/tracks/4' }).flush(stored);
         const put = http.expectOne({ method: 'PUT', url: '/api/tracks/4' });
+        // Metadata only: the file path, the length, and the analysis are refused by the update.
         expect(put.request.body).toEqual({
           title: 'Night Drive',
           artist_id: 50,
           type_id: 1,
-          file_path: 'music/4.mp3',
-          duration_ms: 225_000,
           quality_notes: 'quiet intro',
           playlist_ids: [7, 8],
-          format: 'mp3',
-          bitrate: 320_000,
-          sample_rate: 44_100,
           quality_ok: true,
         });
         put.flush({ ...stored, title: 'Night Drive', reviewed_at: undefined });

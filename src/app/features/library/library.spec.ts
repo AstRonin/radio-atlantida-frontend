@@ -20,7 +20,7 @@ import {
   readListState,
 } from './library-list-state';
 import TrackEditComponent from './track-edit.component';
-import { Track, trackBody, trackForm, trackFormValue } from './track-form';
+import { Track, createTrackBody, resetStoredForm, trackForm, updateTrackBody } from './track-form';
 
 const track = (id: number, overrides: Partial<Track> = {}): Track => ({
   id,
@@ -82,34 +82,36 @@ describe('library', () => {
   });
 
   describe('request body', () => {
-    it('sends back the values this page does not edit, so the update keeps them', () => {
+    it('sends metadata and playlists on update, without the file path, length, or analysis', () => {
       const stored = track(3, { quality_ok: false, quality_issues: ['loudness'] });
       const form = trackForm();
-      form.reset(trackFormValue(stored));
+      resetStoredForm(form, stored);
       form.controls.title.setValue(' New title ');
 
-      expect(trackBody(form, stored)).toEqual({
+      expect(form.controls.file_path.disabled).toBe(true);
+      expect(form.controls.duration_ms.disabled).toBe(true);
+      expect(updateTrackBody(form)).toEqual({
         title: 'New title',
         artist_id: 50,
         type_id: 1,
-        file_path: 'music/3.mp3',
-        duration_ms: 225_000,
+        quality_ok: false,
         quality_notes: '',
         playlist_ids: [],
-        format: 'mp3',
-        bitrate: 320_000,
-        sample_rate: 44_100,
-        quality_ok: false,
       });
     });
 
-    it('leaves the file values out on create, so the backend reads them from the file', () => {
+    it('sends the file path and no length on create, so the backend reads the file', () => {
       const form = trackForm();
       form.patchValue({ title: 'Jingle', type_id: 2, file_path: 'jingles/id.mp3' });
-      const body = trackBody(form, null);
-      expect(body).not.toHaveProperty('format');
-      expect(body).not.toHaveProperty('quality_ok');
-      expect(body).toMatchObject({ artist_id: null, duration_ms: null, playlist_ids: [] });
+      expect(createTrackBody(form)).toEqual({
+        title: 'Jingle',
+        artist_id: null,
+        type_id: 2,
+        file_path: 'jingles/id.mp3',
+        duration_ms: null,
+        quality_notes: '',
+        playlist_ids: [],
+      });
     });
   });
 
@@ -599,6 +601,40 @@ describe('library', () => {
         rules.flush({ rule_ids: [4] });
         await settlePage();
 
+        expect(navigate).toHaveBeenCalledWith('/library');
+      });
+
+      it('saves an edit without the file path, the length, or the analysis fields', async () => {
+        const fixture = TestBed.createComponent(TrackEditComponent);
+        fixture.componentRef.setInput('id', '3');
+        const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+        await settlePage();
+        http.expectOne('/api/tracks/3').flush(track(3));
+        await settlePage();
+        http
+          .match((req) => !req.url.startsWith('assets/'))
+          .forEach((request) => request.flush({ items: [] }));
+        await settlePage();
+
+        const component = fixture.componentInstance as unknown as {
+          form: ReturnType<typeof trackForm>;
+          save(): void;
+        };
+        component.form.controls.title.setValue('Renamed');
+        component.form.markAsDirty();
+        component.save();
+
+        const put = http.expectOne({ method: 'PUT', url: '/api/tracks/3' });
+        expect(Object.keys(put.request.body as object).sort()).toEqual([
+          'artist_id',
+          'playlist_ids',
+          'quality_notes',
+          'quality_ok',
+          'title',
+          'type_id',
+        ]);
+        put.flush(track(3, { title: 'Renamed' }));
+        await settlePage();
         expect(navigate).toHaveBeenCalledWith('/library');
       });
 

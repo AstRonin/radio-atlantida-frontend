@@ -12,7 +12,7 @@ import { RealtimeService } from '../../core/realtime/realtime.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import LibraryPageComponent from './library-page.component';
 import TrackEditComponent from './track-edit.component';
-import { Track, trackBody, trackForm, trackFormValue } from './track-form';
+import { Track, createTrackBody, resetStoredForm, trackForm, updateTrackBody } from './track-form';
 
 const track = (id: number, overrides: Partial<Track> = {}): Track => ({
   id,
@@ -287,21 +287,19 @@ describe('library media actions', () => {
         .flush(track(3, { file_path: 'music/3.optimal.wav', fixes: ['optimize'] }));
       await settlePage();
 
-      const view = fixture.componentInstance as unknown as {
-        form: ReturnType<typeof trackForm>;
-      };
-      expect(view.form.controls.file_path.value).toBe('music/3.optimal.wav');
+      // The path is read-only on an edit page; the new file shows there.
+      expect(page.querySelector('.file-fact .value')?.textContent).toContain('music/3.optimal.wav');
       expect(page.textContent).toContain('1 fixed');
     });
   });
 
-  it('sends the quality override from the form', () => {
+  it('sends the quality override from the form on update only', () => {
     const stored = track(3);
     const form = trackForm();
-    form.reset(trackFormValue(stored));
-    expect(trackBody(form, stored).quality_ok).toBe(false);
+    resetStoredForm(form, stored);
+    expect(updateTrackBody(form).quality_ok).toBe(false);
     form.controls.quality_ok.setValue(true);
-    expect(trackBody(form, stored).quality_ok).toBe(true);
-    expect(trackBody(form, null)).not.toHaveProperty('quality_ok');
+    expect(updateTrackBody(form).quality_ok).toBe(true);
+    expect(createTrackBody(trackForm())).not.toHaveProperty('quality_ok');
   });
 });

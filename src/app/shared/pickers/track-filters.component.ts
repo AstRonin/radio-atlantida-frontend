@@ -127,9 +127,11 @@ export function trackFilterQuery(form: TrackFilterForm): Observable<TrackFilterQ
             }
           </mat-select>
         </mat-form-field>
-        <mat-checkbox class="check" [formControl]="form().controls.without_playlist">
-          {{ 'pickers.tracks.withoutPlaylist' | translate }}
-        </mat-checkbox>
+        @if (withoutPlaylistFilter()) {
+          <mat-checkbox class="check" [formControl]="form().controls.without_playlist">
+            {{ 'pickers.tracks.withoutPlaylist' | translate }}
+          </mat-checkbox>
+        }
         @if (active() > 0) {
           <button matButton type="button" class="clear-filters" (click)="clear()">
             {{ 'pickers.tracks.clearFilters' | translate }}
@@ -178,6 +180,8 @@ export class TrackFiltersComponent {
   readonly form = input.required<TrackFilterForm>();
   /** The search is limited to one type by its host, so the type filter is hidden. */
   readonly typeFixed = input(false);
+  /** Hidden where every track already belongs to one playlist, so the checkbox means nothing. */
+  readonly withoutPlaylistFilter = input(true);
 
   protected readonly id = `track-filters-${TrackFiltersComponent.nextId++}`;
   protected readonly shown = signal(false);

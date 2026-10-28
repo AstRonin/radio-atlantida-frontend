@@ -15,6 +15,7 @@ import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Router, RouterLink } from '@angular/router';
@@ -39,11 +40,24 @@ import { FieldHintComponent } from '../../shared/ui/field-hint.component';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
-import { TRACK_LIMITS, Track, trackBody, trackForm, trackFormValue } from './track-form';
+import {
+  TRACK_LIMITS,
+  Track,
+  createTrackBody,
+  resetStoredForm,
+  trackForm,
+  updateTrackBody,
+} from './track-form';
 import { TrackAnalysisComponent } from './track-analysis.component';
 import { TrackCueComponent } from './track-cue.component';
 import { trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
+import {
+  ReplaceFileDialogComponent,
+  ReplaceFileDialogData,
+  ReplaceOutcome,
+  replaceOutcome,
+} from './replace-file-dialog.component';
 
 /**
  * Creates or edits a track: its metadata, its file path under the media root, its playlists, and
@@ -82,6 +96,7 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
     <app-page-header
       [titleKey]="trackId() === null ? 'library.edit.createTitle' : 'library.edit.editTitle'"
       helpPage="help.library"
+      backTo="/library"
     >
       @if (stored(); as track) {
         <app-play-button [track]="track" />
@@ -128,33 +143,35 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
           hintField="type_id"
         />
       </div>
-      <app-text-input
-        [control]="form.controls.file_path"
-        label="library.fields.file_path"
-        hint="library.edit.filePathHint"
-        [maxLength]="limits.pathMax"
-        [spellcheck]="false"
-        hintPage="help.library"
-        hintField="file_path"
-      />
-      <div class="form-grid">
-        <app-number-input
-          [control]="form.controls.duration_ms"
-          label="library.fields.duration_ms"
-          [min]="1"
-          [max]="limits.durationMaxMs"
-          suffix="forms.units.ms"
+      @if (creating()) {
+        <app-text-input
+          [control]="form.controls.file_path"
+          label="library.fields.file_path"
+          hint="library.edit.filePathHint"
+          [maxLength]="limits.pathMax"
+          [spellcheck]="false"
           hintPage="help.library"
-          hintField="duration_ms"
+          hintField="file_path"
         />
-        <p class="muted duration">
-          @if (duration(); as text) {
-            {{ 'library.edit.durationIs' | translate: { duration: text } }}
-          } @else {
-            {{ 'library.edit.durationEmpty' | translate }}
-          }
-        </p>
-      </div>
+        <div class="form-grid">
+          <app-number-input
+            [control]="form.controls.duration_ms"
+            label="library.fields.duration_ms"
+            [min]="1"
+            [max]="limits.durationMaxMs"
+            suffix="forms.units.ms"
+            hintPage="help.library"
+            hintField="duration_ms"
+          />
+          <p class="muted duration">
+            @if (duration(); as text) {
+              {{ 'library.edit.durationIs' | translate: { duration: text } }}
+            } @else {
+              {{ 'library.edit.durationEmpty' | translate }}
+            }
+          </p>
+        </div>
+      }
       <app-playlist-picker
         [control]="form.controls.playlist_ids"
         label="library.fields.playlist_ids"
@@ -171,6 +188,39 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
       @if (stored(); as track) {
         <section class="page-section" aria-labelledby="file-heading">
           <h2 id="file-heading" class="section-title">{{ 'library.edit.file' | translate }}</h2>
+          <p class="file-fact">
+            <span class="label">{{ 'library.fields.file_path' | translate }}</span>
+            <span class="value">{{ track.file_path }}</span>
+            <app-field-hint page="help.library" field="file_path" />
+          </p>
+          <p class="file-fact">
+            <span class="label">{{ 'library.fields.duration_ms' | translate }}</span>
+            <span class="value">{{ lengthText(track.duration_ms) }}</span>
+            <app-field-hint page="help.library" field="duration_ms" />
+          </p>
+          <div class="replace">
+            <button
+              matButton="outlined"
+              type="button"
+              [disabled]="dirty() || media.run.running()"
+              (click)="replaceFile(track)"
+            >
+              {{ 'library.replaceFile.button' | translate }}
+            </button>
+            <app-field-hint page="help.library" field="replace_file" />
+            @if (dirty()) {
+              <span class="muted">{{ 'library.edit.reviewSaveFirst' | translate }}</span>
+            }
+          </div>
+          @if (replaced(); as result) {
+            <p class="muted" role="status">{{ 'library.replaceFile.success' | translate }}</p>
+            @if (result.reviewCleared) {
+              <p class="muted">{{ 'library.replaceFile.reviewCleared' | translate }}</p>
+            }
+            @if (result.cueReset) {
+              <p class="muted">{{ 'library.replaceFile.cueReset' | translate }}</p>
+            }
+          }
           <app-track-analysis [track]="track" />
           <div class="quality-ok">
             <mat-checkbox [formControl]="form.controls.quality_ok">{{
@@ -266,6 +316,30 @@ import { TrackMediaActionsComponent } from './track-media-actions.component';
     .reviewed {
       gap: 0.5rem;
     }
+
+    .file-fact {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 0 0.5rem;
+    }
+
+    .file-fact .label {
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .file-fact .value {
+      overflow-wrap: anywhere;
+    }
+
+    .replace {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.75rem 0;
+    }
   `,
 })
 export default class TrackEditComponent implements PendingChanges {
@@ -274,6 +348,7 @@ export default class TrackEditComponent implements PendingChanges {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   /** Route parameter; absent on `library/new`. */
   readonly id = input<string>();
@@ -284,8 +359,12 @@ export default class TrackEditComponent implements PendingChanges {
   protected readonly error = signal<string | null>(null);
   protected readonly reviewing = signal(false);
   protected readonly reviewError = signal<string | null>(null);
+  /** What the last Replace file changed; null until one succeeds on this page. */
+  protected readonly replaced = signal<ReplaceOutcome | null>(null);
   private readonly cue = viewChild(TrackCueComponent);
 
+  /** A new track types its file path and length; a stored track changes its file by Replace file. */
+  protected readonly creating = computed(() => this.id() === undefined);
   /** The track as last read or saved; null for a new one. */
   protected readonly stored = signal<Track | null>(null);
   /** A stored track opened for editing; a track created here goes back to the library. */
@@ -334,7 +413,7 @@ export default class TrackEditComponent implements PendingChanges {
         const track = this.track.value();
         untracked(() => {
           this.stored.set(track);
-          this.form.reset(trackFormValue(track));
+          resetStoredForm(this.form, track);
         });
       }
     });
@@ -381,17 +460,47 @@ export default class TrackEditComponent implements PendingChanges {
       });
   }
 
+  protected lengthText(ms: number | null | undefined): string {
+    return ms === null || ms === undefined
+      ? this.i18n.translate('library.noDuration')
+      : `${ms} ${this.i18n.translate('forms.units.ms')} (${formatDurationMs(ms)})`;
+  }
+
+  /**
+   * Opens Replace file. The track is read again afterwards, so the form and the length come from
+   * the backend; the page then says what the replace cleared or reset.
+   */
+  protected replaceFile(track: Track): void {
+    this.replaced.set(null);
+    this.dialog
+      .open<ReplaceFileDialogComponent, ReplaceFileDialogData, Track>(ReplaceFileDialogComponent, {
+        data: { track },
+        width: '32rem',
+        maxWidth: 'calc(100vw - 2rem)',
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((saved) => {
+        if (saved) {
+          this.replaced.set(replaceOutcome(track, saved));
+          this.track.reload();
+        }
+      });
+  }
+
   protected save(): void {
     if (this.form.invalid || this.busy()) {
       this.form.markAllAsTouched();
       return;
     }
     const stored = this.stored();
-    const body = trackBody(this.form, stored);
     const ruleIds = this.form.controls.rule_ids.value ?? [];
     const saveTrack: Observable<Track> = stored
-      ? this.api.put('/api/tracks/{id}', { path: { id: stored.id }, body })
-      : this.api.post('/api/tracks', { body });
+      ? this.api.put('/api/tracks/{id}', {
+          path: { id: stored.id },
+          body: updateTrackBody(this.form),
+        })
+      : this.api.post('/api/tracks', { body: createTrackBody(this.form) });
 
     this.busy.set(true);
     this.error.set(null);

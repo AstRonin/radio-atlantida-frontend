@@ -68,6 +68,7 @@ import {
     <app-page-header
       [titleKey]="ruleId() === null ? 'playRules.edit.createTitle' : 'playRules.edit.editTitle'"
       helpPage="help.play-rules"
+      backTo="/play-rules"
     />
 
     @if (rule.isLoading()) {

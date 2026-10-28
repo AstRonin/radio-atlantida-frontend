@@ -77,6 +77,7 @@ interface Loaded {
     <app-page-header
       [titleKey]="stored() === null ? 'playlists.edit.createTitle' : 'playlists.edit.editTitle'"
       helpPage="help.playlists"
+      backTo="/playlists"
     />
 
     @if (loaded.isLoading()) {

@@ -10,7 +10,7 @@ import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import { applyServerErrors } from '../../shared/forms/server-errors';
-import { ImportFolderSelectComponent } from './import-folder-select.component';
+import { ImportFolderSelectComponent } from '../../shared/pickers/import-folder-select.component';
 import ImportPageComponent from './import-page.component';
 
 type Folders = ApiSchema<'ImportFolders'>;
@@ -68,6 +68,8 @@ interface ImportView {
     playlist_ids: FormControl<number[] | null>;
     artist_id: FormControl<number | null>;
   }>;
+  analysing: () => boolean;
+  analysisPercent: () => number | null;
 }
 
 const filesUrl = (request: { url: string }) => request.url === '/api/import/files';
@@ -289,6 +291,80 @@ describe('import', () => {
       expect(review?.getAttribute('href')).toBe('/library?reviewed=false');
       expect(view(fixture).form.controls.folder.value).toBe('jingles');
       expect(button(page, 'import.form.start')?.disabled).toBe(true);
+    });
+
+    it('shows the analysis of the running import as a bar', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      await choose(fixture, 'jingles');
+      view(fixture).form.patchValue({ type_id: 1, playlist_ids: [4] });
+      await settlePage();
+
+      button(page, 'import.form.start')?.click();
+      http.expectOne({ method: 'POST', url: '/api/import' }).flush(
+        { operation_id: 33 },
+        { status: 202, statusText: 'Accepted' },
+      );
+      await settlePage();
+      expect(view(fixture).analysing()).toBe(false);
+
+      const analysed = (operation_id: number, done: number, total: number) =>
+        server.latest.send({
+          type: 'track.analysed',
+          time: '2026-10-15T08:04:30Z',
+          data: { track_id: done, quality_issues: [], operation_id, done, total },
+        });
+      analysed(33, 1, 3);
+      await settlePage();
+      expect(view(fixture).analysing()).toBe(true);
+
+      analysed(33, 2, 3);
+      await settlePage();
+      expect(view(fixture).analysisPercent()).toBe(67);
+      expect(page.querySelector('.analysis-status')?.textContent).toContain('operations.progress');
+
+      // An analysis of another operation (an analyse run, say) is not this import's.
+      analysed(34, 3, 3);
+      await settlePage();
+      expect(view(fixture).analysisPercent()).toBe(67);
+
+      completed(33, 'folder jingles: 3 imported; analysis: analysed 3');
+      await settlePage();
+      http.expectOne('/api/import/folders').flush(folders());
+      http.expectOne(filesUrl).flush(files());
+      await settlePage();
+      // The import is over: the analysis bar is gone, the summary stays.
+      expect(view(fixture).analysing()).toBe(false);
+      expect(page.querySelector('.analysis-status')).toBeNull();
+      expect(page.textContent).toContain('folder jingles: 3 imported; analysis: analysed 3');
+    });
+
+    it('applies the analysis that arrived before the start response named the import', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      await choose(fixture, 'jingles');
+      view(fixture).form.patchValue({ type_id: 1 });
+      await settlePage();
+
+      button(page, 'import.form.start')?.click();
+      const start = http.expectOne({ method: 'POST', url: '/api/import' });
+      // The backend analyses the first tracks before the start response reaches the page.
+      const analysed = (done: number) =>
+        server.latest.send({
+          type: 'track.analysed',
+          time: '2026-10-15T08:04:30Z',
+          data: { track_id: done, quality_issues: [], operation_id: 35, done, total: 3 },
+        });
+      analysed(1);
+      analysed(2);
+      await settlePage();
+      expect(view(fixture).analysing()).toBe(false);
+
+      start.flush({ operation_id: 35 }, { status: 202, statusText: 'Accepted' });
+      await settlePage();
+      expect(view(fixture).analysing()).toBe(true);
+      expect(view(fixture).analysisPercent()).toBe(67);
+      expect(page.querySelector('.analysis-status')?.textContent).toContain('operations.progress');
     });
 
     it('sends no folder for the whole media folder and no artist when none is chosen', async () => {

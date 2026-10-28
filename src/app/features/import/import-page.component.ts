@@ -40,7 +40,10 @@ import { FileSizePipe } from '../../shared/ui/file-size.pipe';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { providePaginatorIntl } from '../../shared/ui/paginator-intl';
-import { ImportFolderSelectComponent, MEDIA_ROOT } from './import-folder-select.component';
+import {
+  ImportFolderSelectComponent,
+  MEDIA_ROOT,
+} from '../../shared/pickers/import-folder-select.component';
 
 type ImportFile = ApiSchema<'ImportFile'>;
 
@@ -232,6 +235,23 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
         </div>
       </form>
       <app-operation-status [state]="importRun.state()" runningLabel="import.form.running" />
+      @if (analysing()) {
+        <!-- The import bar reaches its end before the analysis of the new tracks does. -->
+        <div class="analysis-status">
+          <mat-progress-bar
+            mode="determinate"
+            [value]="analysisPercent() ?? 0"
+            [attr.aria-label]="'import.form.analysing' | translate"
+          />
+          <p class="muted" role="status">
+            {{ 'import.form.analysing' | translate }}
+            {{
+              'operations.progress'
+                | translate: { done: analysisDone() ?? 0, total: analysisTotal() }
+            }}
+          </p>
+        </div>
+      }
       @if (importRun.state()?.status === 'completed') {
         <p class="links">
           <a routerLink="/library" [queryParams]="{ reviewed: 'false' }">{{
@@ -271,6 +291,10 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
 
     .path {
       overflow-wrap: anywhere;
+    }
+
+    .analysis-status p {
+      margin: 0.5rem 0 0;
     }
 
     .links {
@@ -372,6 +396,20 @@ export default class ImportPageComponent {
 
   protected readonly importRun = followOperation();
   protected readonly importError = signal<string | null>(null);
+  /** The latest `track.analysed` of the running import: tracks done and total; null before one. */
+  protected readonly analysisDone = signal<number | null>(null);
+  protected readonly analysisTotal = signal(0);
+  /** Analysis events that came before the import's operation id was known, latest per operation. */
+  private readonly earlyAnalysis = new Map<number, { done: number; total: number }>();
+  /** The analysis bar: shown while the import runs and its first analysed track has arrived. */
+  protected readonly analysing = computed(
+    () => this.importRun.running() && this.analysisDone() !== null,
+  );
+  protected readonly analysisPercent = computed(() => {
+    const total = this.analysisTotal();
+    const done = this.analysisDone();
+    return done !== null && total > 0 ? Math.round((100 * done) / total) : null;
+  });
   protected readonly analyseRun = followOperation();
   protected readonly analyseError = signal<string | null>(null);
 
@@ -388,6 +426,44 @@ export default class ImportPageComponent {
     merge(realtime.on('import.completed'), realtime.on('import.failed'))
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.reload());
+
+    // The analysis of an import runs in the same operation, one event per track. Events of other
+    // operations (an analyse run, say) are not this import's, and are ignored. The backend may
+    // analyse the first tracks before the start response names the operation: until then, the
+    // latest event per operation is kept, and the effect below applies it once the id is known.
+    realtime
+      .on('track.analysed')
+      .pipe(takeUntilDestroyed())
+      .subscribe((event) => {
+        if (!this.importRun.running()) {
+          return;
+        }
+        const operation = this.importRun.state();
+        const progress = { done: event.data.done, total: event.data.total };
+        if (operation === null) {
+          this.earlyAnalysis.set(event.data.operation_id, progress);
+        } else if (event.data.operation_id === operation.id) {
+          this.earlyAnalysis.clear();
+          this.analysisDone.set(progress.done);
+          this.analysisTotal.set(progress.total);
+        }
+      });
+
+    // The operation id is known from the start response on: apply the analysis that came earlier.
+    effect(() => {
+      const id = this.importRun.state()?.id;
+      if (id === undefined) {
+        return;
+      }
+      untracked(() => {
+        const early = this.earlyAnalysis.get(id);
+        this.earlyAnalysis.clear();
+        if (early !== undefined) {
+          this.analysisDone.set(early.done);
+          this.analysisTotal.set(early.total);
+        }
+      });
+    });
 
     this.form.controls.folder.valueChanges.pipe(takeUntilDestroyed()).subscribe((folder) => {
       // Another folder starts at its first page; a reload of the same one keeps the page.
@@ -446,6 +522,9 @@ export default class ImportPageComponent {
       ...(value.artist_id === null ? {} : { artist_id: value.artist_id }),
     };
     this.importError.set(null);
+    this.analysisDone.set(null);
+    this.analysisTotal.set(0);
+    this.earlyAnalysis.clear();
     // A failed operation is already an error.alert popup; the status line names it.
     this.importRun
       .run(this.api.post('/api/import', { body }))

@@ -23,6 +23,10 @@
       "text": "Fix loudness brings the loudness to the station level and keeps the format. Optimize track also converts the file to the broadcast standard. A button appears only when it removes at least one issue. Choose whether the fixed file replaces the original or is kept as an optimal copy next to it."
     },
     {
+      "term": "Replace file",
+      "text": "Changes the file of a track that exists: you type the path of another file in the media folder, and the panel analyses that file when you save. Title, artist, type, playlists, and notes are edited with Save and do not change the file. The old file is not deleted. A track in use cannot be replaced, and the reason lists what uses it."
+    },
+    {
       "term": "Delete selected tracks",
       "text": "Delete (N) next to Clear selection removes up to 1,000 selected tracks from the library in one step. The files stay on disk. A track that has aired, is planned, or is a timed insert of a clock or a one-time insert is kept: the result lists each kept track with the reason, links the clocks that use it, and leaves it selected."
     },
@@ -103,11 +107,15 @@
     },
     "file_path": {
       "label": "File path",
-      "text": "Relative to the media folder, with forward slashes, for example music/song.mp3. No drive letters and no \"..\"."
+      "text": "Relative to the media folder, with forward slashes, for example music/song.mp3. No drive letters and no \"..\". On a track that exists, the path is shown here and changed with Replace file."
     },
     "duration_ms": {
       "label": "Duration",
-      "text": "Length of the track in milliseconds. Read from the file when possible. A track without a duration is not planned."
+      "text": "Length of the track in milliseconds. Read from the file when possible. A track without a duration is not planned. On a track that exists, the length comes from its file; Replace file reads it again."
+    },
+    "replace_file": {
+      "label": "Replace file",
+      "text": "Points the track at another file in the media folder and analyses it at once. The reviewed mark is cleared, and the start and stop points are reset when the new file is shorter. Save the other changes first. The old file stays on disk. Replace is refused while the track is in a clock or a one-time insert, planned, on air, or queued."
     },
     "playlist_ids": {
       "label": "Playlists",

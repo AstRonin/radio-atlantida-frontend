@@ -199,7 +199,8 @@ describe('playlists', () => {
     it('narrows the library search with the track filters', async () => {
       const { ref } = await open();
       const root = ref.location.nativeElement as HTMLElement;
-      const filters = root.querySelector('app-playlist-tracks app-track-filters');
+      // The members have their own filters first; the library search comes second.
+      const filters = root.querySelectorAll('app-playlist-tracks app-track-filters').item(1);
       expect(filters?.querySelector('input[type="search"]')).not.toBeNull();
 
       filters?.querySelector<HTMLButtonElement>('.filters-toggle')?.click();

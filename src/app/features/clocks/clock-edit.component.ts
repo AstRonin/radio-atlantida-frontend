@@ -89,6 +89,7 @@ const DEFAULT_TOLERANCE_SETTING = 'rotation.default_fixed_tolerance_ms';
     <app-page-header
       [titleKey]="clockId() === null ? 'clocks.edit.createTitle' : 'clocks.edit.editTitle'"
       helpPage="help.clocks"
+      backTo="/clocks"
     />
 
     @if (loaded.isLoading()) {
