@@ -24,7 +24,7 @@
     },
     {
       "term": "Replace file",
-      "text": "Changes the file of a track that exists: you type the path of another file in the media folder, and the panel analyses that file when you save. Title, artist, type, playlists, and notes are edited with Save and do not change the file. The old file is not deleted. A track in use cannot be replaced, and the reason lists what uses it."
+      "text": "Changes the file of a track that exists: you type the path of another file in the media folder, and the panel analyses that file when you save. Title, artist, type, playlists, and notes are edited with Save and do not change the file. The old file is not deleted. While a clock insert, a one-time insert, or a plan item that has not aired uses the track, Replace file is disabled and a hint explains why; remove the track from the clock or the plan first."
     },
     {
       "term": "Delete selected tracks",

@@ -676,7 +676,8 @@
       "busy": "Analysing…",
       "success": "The file is replaced and analysed. Check the quality and listen to the track before it goes to air.",
       "reviewCleared": "The reviewed mark was cleared. Mark the track reviewed again once you have checked it.",
-      "cueReset": "The start and stop points were reset because the new file is shorter than the stop point. Set them again if needed."
+      "cueReset": "The start and stop points were reset because the new file is shorter than the stop point. Set them again if needed.",
+      "inUse": "The track is used by a clock or the plan. Remove it from there to replace the file."
     },
     "analysis": {
       "source_bitrate": "Source bitrate",

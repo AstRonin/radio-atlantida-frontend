@@ -24,6 +24,7 @@ import { ApiClient } from '../../core/api/api-client.service';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { OperationsService } from '../../core/operations/operations.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { formatDurationMs } from '../../core/time/duration';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
@@ -202,7 +203,9 @@ import {
             <button
               matButton="outlined"
               type="button"
-              [disabled]="dirty() || media.run.running()"
+              [disabled]="
+                dirty() || media.run.running() || mediaOperationRunning() || track.in_use === true
+              "
               (click)="replaceFile(track)"
             >
               {{ 'library.replaceFile.button' | translate }}
@@ -210,6 +213,9 @@ import {
             <app-field-hint page="help.library" field="replace_file" />
             @if (dirty()) {
               <span class="muted">{{ 'library.edit.reviewSaveFirst' | translate }}</span>
+            }
+            @if (track.in_use === true) {
+              <span class="muted">{{ 'library.replaceFile.inUse' | translate }}</span>
             }
           </div>
           @if (replaced(); as result) {
@@ -395,6 +401,8 @@ export default class TrackEditComponent implements PendingChanges {
 
   /** The track is read again when its operation ends; the form then resets from it. */
   protected readonly media = trackMedia(() => this.track.reload());
+  /** Media operations started anywhere; the backend refuses a replace while one runs. */
+  protected readonly mediaOperationRunning = inject(OperationsService).mediaOperationRunning;
 
   protected readonly track = rxResource({
     params: () => {

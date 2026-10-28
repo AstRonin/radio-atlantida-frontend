@@ -50,6 +50,17 @@ export interface OperationState {
   progress?: OperationProgress;
 }
 
+/**
+ * The operation kinds the backend's ingest worker runs one at a time (`internal/ingest`). A replace
+ * is refused with `media_operation_running` while any of them runs, whoever started it. Clock,
+ * rotation, and hour-insert builds are not media operations.
+ */
+export const MEDIA_OPERATION_KINDS: ReadonlySet<string> = new Set([
+  'import',
+  'analyse',
+  'transcode',
+]);
+
 /** Wait this long for the terminal event before reading the stored outcome once. */
 export const OPERATION_FALLBACK_MS = 30_000;
 /** Operations the store keeps for the header list; older ones are dropped. */
@@ -83,6 +94,15 @@ export class OperationsService {
   readonly operations = computed(() => [...this.states().values()].sort((a, b) => b.id - a.id));
   readonly activeCount = computed(
     () => this.operations().filter((operation) => !isTerminal(operation)).length,
+  );
+  /** True while an import, analysis, or transcode runs, whoever started it. */
+  readonly mediaOperationRunning = computed(() =>
+    this.operations().some(
+      (operation) =>
+        !isTerminal(operation) &&
+        operation.kind !== null &&
+        MEDIA_OPERATION_KINDS.has(operation.kind),
+    ),
   );
   /** Emits once per operation when it completes or fails. */
   readonly terminal$: Observable<OperationState> = this.terminalSubject.asObservable();

@@ -39,6 +39,7 @@ const track = (id: number, overrides: Partial<Track> = {}): Track => ({
   quality_notes: '',
   created_at: '2026-10-01T00:00:00Z',
   type: { id: 1, code: 'music', name: 'Music' },
+  in_use: null,
   ...overrides,
 });
 

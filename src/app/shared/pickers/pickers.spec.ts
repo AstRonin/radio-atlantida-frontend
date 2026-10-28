@@ -36,6 +36,7 @@ const track = (id: number, title: string, artist?: string): ApiSchema<'Track'> =
   quality_notes: '',
   created_at: '2026-10-01T00:00:00Z',
   type: { id: 1, code: 'music', name: 'Music' },
+  in_use: null,
 });
 
 const playlist = (id: number, name: string, type: string): ApiSchema<'Playlist'> => ({

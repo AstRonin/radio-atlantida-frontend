@@ -36,6 +36,7 @@ const track = (id: number, overrides: Partial<Track> = {}): Track => ({
   playlist_ids: [7, 8],
   created_at: '2026-10-01T00:00:00Z',
   type: { id: 1, code: 'music', name: 'Music' },
+  in_use: null,
   ...overrides,
 });
 

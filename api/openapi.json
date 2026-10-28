@@ -4201,6 +4201,13 @@
             "minimum": 0,
             "type": "integer"
           },
+          "in_use": {
+            "description": "True when a clock insert, a one-time insert, or a plan item that has not aired uses the track (the refusal of replace-file); false otherwise. null in lists; computed on the track detail. Queued or on-air items are not counted.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "loudness_lufs": {
             "description": "Integrated loudness (EBU R128). Absent until analysed, and for a silent file.",
             "format": "double",
@@ -4303,7 +4310,8 @@
           "fixes",
           "cue_in_ms",
           "fade_in_ms",
-          "fade_out_ms"
+          "fade_out_ms",
+          "in_use"
         ],
         "type": "object"
       },
@@ -9879,7 +9887,7 @@
     },
     "/api/tracks/{id}/replace-file": {
       "post": {
-        "description": "Points the track at another file under the media root and analyses it (checksum, format, loudness, quality issues) in one step; the response is the updated track. The old file is not removed. The reviewed mark is cleared, and the cue is reset when it no longer fits the new length. The same path with the same content changes nothing. Refused while a clock insert, a one-time insert, or a plan item that has not aired uses the track (track_in_use, with used_by), while the track is queued in Liquidsoap or on air (track_in_use), and while another media operation runs (media_operation_running). A path that another track has is a field error (taken); a missing file is track_file_not_found.",
+        "description": "Points the track at another file under the media root and analyses it (checksum, format, loudness, quality issues) in one step; the response is the updated track. The old file is not removed. The reviewed mark is cleared unless the path and the content are both unchanged, and the cue is reset when it no longer fits the new length. The same path with the same content changes nothing, the reviewed mark stays. Refused while a clock insert, a one-time insert, or a plan item that has not aired uses the track (track_in_use, with used_by), while the track is queued in Liquidsoap or on air (track_in_use), and while another media operation runs (media_operation_running). A path that another track has is a field error (taken); a missing file is track_file_not_found.",
         "operationId": "replace-track-file",
         "parameters": [
           {

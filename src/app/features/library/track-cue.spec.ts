@@ -42,6 +42,7 @@ const track = (overrides: Partial<Track> = {}): Track => ({
   fade_out_ms: 0,
   created_at: '2026-10-01T00:00:00Z',
   type: { id: 1, code: 'music', name: 'Music' },
+  in_use: null,
   ...overrides,
 });
 
@@ -105,7 +106,11 @@ describe('track cue editor (F20)', () => {
         },
         {
           provide: OperationsService,
-          useValue: { operations: signal([rebuild]).asReadonly(), runOperation },
+          useValue: {
+            operations: signal([rebuild]).asReadonly(),
+            mediaOperationRunning: signal(false).asReadonly(),
+            runOperation,
+          },
         },
       ],
     });

@@ -36,6 +36,7 @@ const track = (id: number, overrides: Partial<Track> = {}): Track => ({
   quality_notes: '',
   created_at: '2026-10-01T00:00:00Z',
   type: { id: 1, code: 'music', name: 'Music' },
+  in_use: null,
   ...overrides,
 });
 
@@ -177,6 +178,30 @@ describe('replace track file', () => {
     expect(page.textContent).toContain('library.edit.reviewSaveFirst');
   });
 
+  it('disables Replace file with a hint while the track is in a clock or the plan', async () => {
+    const fixture = await openEdit(track(3, { in_use: true }));
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(button(page, 'library.replaceFile.button')?.disabled).toBe(true);
+    expect(page.textContent).toContain('library.replaceFile.inUse');
+  });
+
+  it('enables Replace file when the track is not in use', async () => {
+    const fixture = await openEdit(track(3, { in_use: false }));
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(button(page, 'library.replaceFile.button')?.disabled).toBe(false);
+    expect(page.textContent).not.toContain('library.replaceFile.inUse');
+  });
+
+  it('enables Replace file when the use is unknown (null)', async () => {
+    const fixture = await openEdit(track(3, { in_use: null }));
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(button(page, 'library.replaceFile.button')?.disabled).toBe(false);
+    expect(page.textContent).not.toContain('library.replaceFile.inUse');
+  });
+
   it('disables Replace file while another media operation runs', async () => {
     TestBed.inject(RealtimeService).connect();
     server.latest.open();
@@ -191,6 +216,49 @@ describe('replace track file', () => {
     await settlePage();
 
     expect(button(page, 'library.replaceFile.button')?.disabled).toBe(true);
+  });
+
+  it('disables Replace file while a media operation started elsewhere runs', async () => {
+    TestBed.inject(RealtimeService).connect();
+    server.latest.open();
+    const fixture = await openEdit(track(3));
+    const page = fixture.nativeElement as HTMLElement;
+    expect(button(page, 'library.replaceFile.button')?.disabled).toBe(false);
+
+    server.latest.send({
+      type: 'import.progress',
+      time: '2026-10-15T08:05:00Z',
+      operation_id: 70,
+      data: { kind: 'import', done: 1, total: 4, message: 'music/new.wav' },
+    });
+    await settlePage();
+    expect(button(page, 'library.replaceFile.button')?.disabled).toBe(true);
+
+    server.latest.send({
+      type: 'import.completed',
+      time: '2026-10-15T08:06:00Z',
+      operation_id: 70,
+      data: { kind: 'import', summary: '4 imported' },
+    });
+    await settlePage();
+    expect(button(page, 'library.replaceFile.button')?.disabled).toBe(false);
+  });
+
+  it('keeps Replace file enabled while a non-media operation runs', async () => {
+    TestBed.inject(RealtimeService).connect();
+    server.latest.open();
+    const fixture = await openEdit(track(3));
+    const page = fixture.nativeElement as HTMLElement;
+
+    server.latest.send({
+      type: 'clock_build.progress',
+      time: '2026-10-15T08:05:00Z',
+      operation_id: 71,
+      data: { kind: 'clock_build', done: 3, total: 24, message: 'hour 3' },
+    });
+    await settlePage();
+
+    expect(button(page, 'library.replaceFile.button')?.disabled).toBe(false);
   });
 
   it('loads the folders on open and no files until a folder is chosen', async () => {
