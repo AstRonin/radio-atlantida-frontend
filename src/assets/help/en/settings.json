@@ -187,10 +187,6 @@
       "label": "Play log days",
       "text": "How long aired history is kept. Missed items stay until resolved. It must cover the longest interval of the play rules; a lower value is refused."
     },
-    "retention.log_days": {
-      "label": "Log days",
-      "text": "How long log files are kept."
-    },
     "import.target_codec": {
       "label": "Target codec",
       "text": "The broadcast standard format for track files."

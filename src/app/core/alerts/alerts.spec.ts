@@ -105,13 +105,13 @@ describe('alerts', () => {
       expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
     });
 
-    it('links each alert to its entry in the log of its UTC day', () => {
+    it('links each alert to the log of the 30 minutes around it', () => {
       server.latest.send(alert('icecast connection lost'));
       dialogText();
       const link = document.querySelector<HTMLAnchorElement>('app-error-alert-dialog a.log-link');
       expect(link?.textContent?.trim()).toBe('alerts.dialog.openLog');
       expect(link?.getAttribute('href')).toBe(
-        '/logs?file=app-2026-10-15.log&component=icecast&request=r-1',
+        '/logs?from=2026-10-15T07:45:00Z&to=2026-10-15T08:15:00Z&component=icecast&request=r-1',
       );
     });
 

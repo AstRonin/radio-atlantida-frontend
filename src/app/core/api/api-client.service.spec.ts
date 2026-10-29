@@ -52,8 +52,8 @@ describe('ApiClient', () => {
   });
 
   it('encodes path parameters', () => {
-    api.get('/api/logs/files/{name}', { path: { name: 'app 1/2.log' } }).subscribe();
-    http.expectOne('/api/logs/files/app%201%2F2.log').flush({ items: [] });
+    api.put('/api/settings/{key}', { path: { key: 'app 1/2' }, body: { value: 'on' } }).subscribe();
+    http.expectOne('/api/settings/app%201%2F2').flush({});
   });
 
   it('completes a 204 delete without a body', () => {

@@ -1,6 +1,7 @@
 # Phase F11 Plan — Logs (radio-atlantida-frontend)
 
 Status: Done
+Superseded by frontend/docs/logs-loki-plan.md (2026-10-29): the Logs page reads GET /api/logs from Loki; file select and offset paging are gone.
 Based on: `docs/base.md`, `docs/tech-design.md` (§6.1, §10.1, §10.2), `docs/frontend-init-plan.md` §8 item 11
 Last updated: 2026-10-15
 

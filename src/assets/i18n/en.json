@@ -211,8 +211,7 @@
         "failed_checks_to_open": "Failed checks before an outage"
       },
       "retention": {
-        "play_log_days": "Play log days",
-        "log_days": "Log days"
+        "play_log_days": "Play log days"
       },
       "playout": {
         "emergency_playlist_id": "Emergency playlist",
@@ -457,7 +456,6 @@
     "not_acceptable": "The server cannot answer in the requested format.",
     "internal_error": "The server had an internal error. The error is in the logs.",
     "operation_not_found": "The operation was not found.",
-    "log_file_not_found": "The log file was not found.",
     "setting_not_found": "The setting was not found.",
     "setting_not_editable": "This setting cannot be changed in the panel.",
     "playlist_type_not_found": "The playlist type was not found.",
@@ -496,7 +494,9 @@
     "unexpected_response": "The server sent an unexpected answer. Try again in a moment.",
     "track_on_air": "The track is on air or queued; try again after it has played.",
     "track_not_analysed": "Analyse the track first: its length is not known.",
-    "waveform_unavailable": "The file cannot be read."
+    "waveform_unavailable": "The file cannot be read.",
+    "logs_unavailable": "Logs are not available right now (the log store does not answer).",
+    "range_too_long": "The time range is too long for the log store. Choose a shorter range."
   },
   "nav": {
     "live": "Live",
@@ -1317,15 +1317,22 @@
   },
   "logs": {
     "title": "Logs",
-    "filters": "Log file and filters",
-    "note": "Files are named by their UTC date. Times are shown in the station timezone ({zone}).",
-    "noFiles": "No log files yet.",
-    "fileOption": "{date} (UTC)",
+    "filters": "Time range and filters",
+    "note": "Entries come from the log store, newest first. Times are shown in the station timezone ({zone}).",
     "refresh": "Refresh",
     "fields": {
-      "file": "Log file",
+      "range": "Time range",
       "level": "Level",
-      "component": "Component"
+      "component": "Component",
+      "search": "Text",
+      "requestId": "Request ID"
+    },
+    "range": {
+      "hour": "Last hour",
+      "6h": "Last 6 hours",
+      "24h": "Last 24 hours",
+      "7d": "Last 7 days",
+      "linked": "From the error popup: {from} to {to}"
     },
     "levels": {
       "DEBUG": "DEBUG and above",
@@ -1335,6 +1342,7 @@
     },
     "entries": "Entries",
     "shown": "{shown} of {total}",
+    "shownOnly": "{shown} shown",
     "columns": {
       "time": "Time",
       "level": "Level",
@@ -1344,7 +1352,6 @@
     "requestId": "Request ID: {id}",
     "requested": "From the error popup",
     "empty": "No entries match the filters.",
-    "offsetLimit": "Older entries of this file cannot be read here. Narrow the filters to see them.",
     "openGrafana": "Search in Grafana"
   },
   "waveform": {

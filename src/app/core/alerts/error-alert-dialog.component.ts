@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../i18n/translate.pipe';
-import { logLink } from '../logs/log-files';
+import { logLink } from '../logs/log-query';
 import { StationTimePipe } from '../time/station-time.pipe';
 import type { Alert } from './alerts.service';
 

@@ -3,8 +3,8 @@
   "summary": "The logs show the backend's diagnostic messages: errors, warnings, and connection changes. Use them when something did not work as expected.",
   "entities": [
     {
-      "term": "Log file",
-      "text": "One file per day (UTC date), kept for 10 days by default."
+      "term": "Time range",
+      "text": "The part of time the entries are read from: the last hour, 6 hours, 24 hours, or 7 days, counted back from now. A link from an error popup sets the range to 15 minutes either side of the error."
     },
     {
       "term": "Level",
@@ -16,35 +16,36 @@
     },
     {
       "term": "Request ID",
-      "text": "Links an error popup in the panel to its entry in the log."
+      "text": "Links an error popup in the panel to its entry in the log. Letters, digits, and the characters + / = . _ - only."
     },
     {
       "term": "Grafana",
       "text": "The station's monitoring tool, when it is switched on. Its Logs dashboard searches the text of the log and the playout journal across several days and shows errors per component over time. It asks for its own login."
     }
   ],
-  "usage": "Choose a day, then filter by level and component. File dates are UTC; times are converted to the station timezone. Errors also appear as popups when they happen, and each popup has an Open log link to its entry.",
+  "usage": "Choose a time range, then filter by level and component. Text and request ID are applied with Refresh or Enter; the other filters apply at once. Times are shown in the station timezone. Errors also appear as popups when they happen, and each popup has an Open log link to its entries.",
   "steps": [
-    "Choose the log file of the day.",
+    "Choose the time range, for example the last 6 hours.",
     "Set the level to WARN to see only problems.",
     "Filter by component, for example icecast for stream problems.",
-    "From an error popup, use Open log: the page opens that day's file and marks the entry with the popup's request ID.",
-    "Press Refresh to read new entries; the page does not update by itself.",
-    "For text search or several days at once, use Search in Grafana (shown only when monitoring is on). It opens in a new tab."
+    "Type a word in Text to find entries whose message contains it, then press Enter or Refresh.",
+    "From an error popup, use Open log: the page opens the 30 minutes around the error and marks the entry with the popup's request ID.",
+    "Press Refresh to read new entries; the page does not update by itself. Load more reads older entries.",
+    "For several days at once, use Search in Grafana (shown only when monitoring is on). It opens in a new tab."
   ],
   "mistakes": [
-    "Looking in the wrong day's file near midnight: file dates are UTC, not station time.",
+    "Expecting the log to show everything from long ago: a range longer than the log store keeps returns only what is kept.",
     "Expecting secrets in the log. Passwords are always masked."
   ],
   "example": {
     "title": "Why did the stream stop?",
-    "text": "An outage banner appeared at 14:05. Open today's log, set level WARN and component icecast. The entries show \"connection lost\" at 14:05 and \"connected\" at 14:12, with reconnect attempts in between."
+    "text": "An outage banner appeared at 14:05. Open the logs, choose the last hour, and set level WARN and component icecast. The entries show \"connection lost\" at 14:05 and \"connected\" at 14:12, with reconnect attempts in between."
   },
   "operations": {},
   "fields": {
-    "file": {
-      "label": "Log file",
-      "text": "One file per UTC day, newest first, with its size."
+    "range": {
+      "label": "Time range",
+      "text": "Counted back from now. The presets are the last hour, the last 6 hours (the default), the last 24 hours, and the last 7 days."
     },
     "level": {
       "label": "Level",
@@ -53,6 +54,14 @@
     "component": {
       "label": "Component",
       "text": "Show only entries from one part of the system."
+    },
+    "search": {
+      "label": "Text",
+      "text": "Show only entries whose message contains this text, up to 200 characters. Not case-sensitive."
+    },
+    "request_id": {
+      "label": "Request ID",
+      "text": "Show only the entries of one request, as the error popup shows it."
     }
   }
 }
