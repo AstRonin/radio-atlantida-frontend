@@ -43,6 +43,10 @@
       "text": "The list shows one page at a time; choose the rows per page and move with the arrows under the table, which also show how many tracks match. Click a column header to sort the whole library, or the whole filtered list, by that column; click again to reverse the order. Tracks without the value, such as no artist or no length, are always last. The page and the order are kept when you open a track and come back."
     },
     {
+      "term": "Save and Next",
+      "text": "On a track, Save and Next saves it like Save and opens the next track of the list you are working through, in the order, filters, and page the list shows, so you can go through the tracks one after another. On the last track it stays open with a note. After a reload of the browser the list is not known, so the track stays open too."
+    },
+    {
       "term": "Play button",
       "text": "Plays the track in your browser only. A preview never goes to air and does not count as a play."
     },

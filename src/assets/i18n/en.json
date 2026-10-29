@@ -661,7 +661,9 @@
       "hz": "{hz} Hz",
       "qualityOverride": "Quality OK (your choice, until the next analysis)",
       "titleHint": "Listeners see this title and the artist. A change applies to tracks queued after saving. Changing the title, artist, or file clears the reviewed mark.",
-      "reviewSaveFirst": "Save the changes first."
+      "reviewSaveFirst": "Save the changes first.",
+      "saveAndNext": "Save and Next",
+      "noNextTrack": "Saved. There is no next track in this list."
     },
     "replaceFile": {
       "button": "Replace file",

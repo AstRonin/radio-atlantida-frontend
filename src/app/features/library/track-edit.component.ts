@@ -22,6 +22,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Observable, concatMap, map, merge, of } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import { errorMessage } from '../../core/api/problem-message';
+import { CatalogService } from '../../core/catalog/catalog.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { OperationsService } from '../../core/operations/operations.service';
@@ -49,6 +50,7 @@ import {
   trackForm,
   updateTrackBody,
 } from './track-form';
+import { LibraryCursorService } from './library-cursor';
 import { TrackAnalysisComponent } from './track-analysis.component';
 import { TrackCueComponent } from './track-cue.component';
 import { trackMedia } from './track-media';
@@ -284,10 +286,23 @@ import {
       @if (error(); as message) {
         <p class="form-error" role="alert">{{ message }}</p>
       }
+      @if (noNextTrack()) {
+        <p class="muted" role="status">{{ 'library.edit.noNextTrack' | translate }}</p>
+      }
       <div class="form-actions">
         <button matButton="filled" type="submit" [disabled]="busy() || invalid()">
           {{ 'common.save' | translate }}
         </button>
+        @if (!creating()) {
+          <button
+            matButton="outlined"
+            type="button"
+            [disabled]="busy() || invalid()"
+            (click)="saveAndNext()"
+          >
+            {{ 'library.edit.saveAndNext' | translate }}
+          </button>
+        }
         <a matButton routerLink="/library">{{ 'common.back' | translate }}</a>
       </div>
     </form>
@@ -305,6 +320,13 @@ import {
     .section-title {
       margin: 0 0 0.5rem;
       font: var(--mat-sys-title-medium);
+    }
+
+    app-track-cue {
+      display: block;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--mat-sys-outline-variant);
     }
 
     .duration {
@@ -355,6 +377,8 @@ export default class TrackEditComponent implements PendingChanges {
   private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
+  private readonly catalog = inject(CatalogService);
+  private readonly cursor = inject(LibraryCursorService);
 
   /** Route parameter; absent on `library/new`. */
   readonly id = input<string>();
@@ -363,6 +387,8 @@ export default class TrackEditComponent implements PendingChanges {
   protected readonly form = trackForm();
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Save and Next saved the track but there is no next one; the form stays open. */
+  protected readonly noNextTrack = signal(false);
   protected readonly reviewing = signal(false);
   protected readonly reviewError = signal<string | null>(null);
   /** What the last Replace file changed; null until one succeeds on this page. */
@@ -497,10 +523,21 @@ export default class TrackEditComponent implements PendingChanges {
   }
 
   protected save(): void {
+    this.submit(() => void this.router.navigateByUrl('/library'));
+  }
+
+  /** Saves, then opens the next track of the list, one after another as on air. */
+  protected saveAndNext(): void {
+    this.submit((savedId) => this.openNext(savedId));
+  }
+
+  /** Saves the track and its play rules; `then` runs once both are stored. */
+  private submit(then: (savedId: number) => void): void {
     if (this.form.invalid || this.busy()) {
       this.form.markAllAsTouched();
       return;
     }
+    this.noNextTrack.set(false);
     const stored = this.stored();
     const ruleIds = this.form.controls.rule_ids.value ?? [];
     const saveTrack: Observable<Track> = stored
@@ -532,15 +569,80 @@ export default class TrackEditComponent implements PendingChanges {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (saved) => {
           this.form.markAsPristine();
-          void this.router.navigateByUrl('/library');
+          then(saved.id);
         },
         error: (error: unknown) => {
           this.busy.set(false);
           this.error.set(applySubmitError(this.form, error, this.i18n));
         },
       });
+  }
+
+  /**
+   * Opens the track after the saved one in the list (library-cursor.ts). The saved track stays
+   * open when this is the last track, or when the list is not known here (after a reload).
+   */
+  private openNext(savedId: number): void {
+    this.busy.set(false);
+    const cursor = this.cursor.current();
+    const index = cursor ? cursor.trackIds.indexOf(savedId) : -1;
+    if (!cursor || index < 0) {
+      this.stayOnSaved();
+      return;
+    }
+    const following = cursor.trackIds[index + 1];
+    if (following !== undefined) {
+      this.openTrack(following);
+      return;
+    }
+    const offset = cursor.offset + cursor.size;
+    if (offset >= cursor.total) {
+      this.stayOnSaved();
+      return;
+    }
+    // The track is the last on its page: read the next page in the same order.
+    this.busy.set(true);
+    this.catalog
+      .tracks({ ...cursor.query, offset, limit: cursor.size })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (page) => {
+          this.busy.set(false);
+          const [first] = page.items;
+          if (!first) {
+            this.stayOnSaved();
+            return;
+          }
+          this.cursor.set({
+            query: cursor.query,
+            offset,
+            size: cursor.size,
+            total: page.total,
+            trackIds: page.items.map((item) => item.id),
+          });
+          this.openTrack(first.id);
+        },
+        error: (error: unknown) => {
+          this.busy.set(false);
+          this.error.set(errorMessage(error, this.i18n));
+        },
+      });
+  }
+
+  /** The same route with another ID: the page reads that track and fills the form from it. */
+  private openTrack(id: number): void {
+    this.error.set(null);
+    this.reviewError.set(null);
+    this.replaced.set(null);
+    // Unsaved start and stop edits are asked for by the route guard before the track changes.
+    void this.router.navigate(['/library', id]);
+  }
+
+  private stayOnSaved(): void {
+    this.noNextTrack.set(true);
+    this.track.reload();
   }
 }
 

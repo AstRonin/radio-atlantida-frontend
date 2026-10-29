@@ -19,6 +19,7 @@ import {
   listStateParams,
   readListState,
 } from './library-list-state';
+import { LibraryCursorService } from './library-cursor';
 import TrackEditComponent from './track-edit.component';
 import { Track, createTrackBody, resetStoredForm, trackForm, updateTrackBody } from './track-form';
 
@@ -257,6 +258,22 @@ describe('library', () => {
         for (const column of ['select', 'play', 'actions']) {
           expect(header(page, column)?.hasAttribute('mat-sort-header'), column).toBe(false);
         }
+      });
+
+      it('keeps the rows of the page in list order for Save and Next', async () => {
+        await createPage();
+        tracksRequest({ offset: '0', sort: 'title' }).flush({
+          items: [track(7), track(2), track(9)],
+          total: 3,
+        });
+        await settlePage();
+
+        expect(TestBed.inject(LibraryCursorService).current()).toMatchObject({
+          offset: 0,
+          size: LIBRARY_DEFAULT_PAGE_SIZE,
+          total: 3,
+          trackIds: [7, 2, 9],
+        });
       });
 
       it('sorts on the backend and shows the rows in the order it returns', async () => {
@@ -637,6 +654,116 @@ describe('library', () => {
         put.flush(track(3, { title: 'Renamed' }));
         await settlePage();
         expect(navigate).toHaveBeenCalledWith('/library');
+      });
+
+      describe('Save and Next', () => {
+        const cursorOf = (
+          trackIds: number[],
+          paging: { offset: number; size: number; total: number },
+        ) => {
+          TestBed.inject(LibraryCursorService).set({
+            query: { sort: 'title', order: 'asc', offset: paging.offset, limit: paging.size },
+            ...paging,
+            trackIds,
+          });
+        };
+
+        async function openEdit(id: number) {
+          const fixture = TestBed.createComponent(TrackEditComponent);
+          fixture.componentRef.setInput('id', String(id));
+          await settlePage();
+          http.expectOne(`/api/tracks/${id}`).flush(track(id));
+          await settlePage();
+          http
+            .match((req) => !req.url.startsWith('assets/'))
+            .forEach((request) => request.flush({ items: [] }));
+          await settlePage();
+          return fixture;
+        }
+
+        function saveAndNext(fixture: ComponentFixture<TrackEditComponent>) {
+          const component = fixture.componentInstance as unknown as {
+            form: ReturnType<typeof trackForm>;
+            saveAndNext(): void;
+          };
+          component.form.controls.title.setValue('Renamed');
+          component.form.markAsDirty();
+          component.saveAndNext();
+        }
+
+        it('saves, then opens the next track of the list', async () => {
+          cursorOf([3, 4, 5], { offset: 0, size: 50, total: 3 });
+          const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+          const fixture = await openEdit(3);
+
+          saveAndNext(fixture);
+          http
+            .expectOne({ method: 'PUT', url: '/api/tracks/3' })
+            .flush(track(3, { title: 'Renamed' }));
+          await settlePage();
+
+          expect(navigate).toHaveBeenCalledWith(['/library', 4]);
+        });
+
+        it('stays on the last track of the list with a note', async () => {
+          cursorOf([3], { offset: 0, size: 50, total: 1 });
+          const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+          const fixture = await openEdit(3);
+
+          saveAndNext(fixture);
+          http
+            .expectOne({ method: 'PUT', url: '/api/tracks/3' })
+            .flush(track(3, { title: 'Renamed' }));
+          await settlePage();
+          http.expectOne('/api/tracks/3').flush(track(3, { title: 'Renamed' }));
+          await settlePage();
+
+          expect(navigate).not.toHaveBeenCalled();
+          expect(fixture.nativeElement.textContent).toContain('library.edit.noNextTrack');
+        });
+
+        it('reads the next page in the same order when the track is its last row', async () => {
+          cursorOf([3], { offset: 0, size: 1, total: 2 });
+          const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+          const fixture = await openEdit(3);
+
+          saveAndNext(fixture);
+          http
+            .expectOne({ method: 'PUT', url: '/api/tracks/3' })
+            .flush(track(3, { title: 'Renamed' }));
+          tracksRequest({ sort: 'title', order: 'asc', offset: '1', limit: '1' }).flush({
+            items: [track(4)],
+            total: 2,
+          });
+          await settlePage();
+
+          expect(navigate).toHaveBeenCalledWith(['/library', 4]);
+          expect(TestBed.inject(LibraryCursorService).current()).toMatchObject({
+            offset: 1,
+            trackIds: [4],
+          });
+        });
+
+        it('stays on the form with the error when the save fails', async () => {
+          cursorOf([3, 4], { offset: 0, size: 50, total: 2 });
+          const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+          const fixture = await openEdit(3);
+
+          saveAndNext(fixture);
+          http.expectOne({ method: 'PUT', url: '/api/tracks/3' }).flush(
+            {
+              status: 500,
+              code: 'internal_error',
+              title: 'Internal Server Error',
+              detail: 'down',
+            },
+            { status: 500, statusText: 'Internal Server Error' },
+          );
+          await settlePage();
+
+          expect(navigate).not.toHaveBeenCalled();
+          expect(fixture.nativeElement.querySelector('.form-error')?.textContent).toContain('down');
+        });
       });
 
       it('keeps Save disabled while the path is outside the media root', async () => {

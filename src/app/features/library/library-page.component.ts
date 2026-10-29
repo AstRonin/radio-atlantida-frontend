@@ -71,6 +71,7 @@ import {
   readReviewedFilter,
   readWithoutPlaylist,
 } from './library-list-state';
+import { LibraryCursorService } from './library-cursor';
 import { MediaRequest, trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
 import { TrackQualityComponent } from './track-quality.component';
@@ -646,6 +647,8 @@ export default class LibraryPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
+  /** The rows as read, so the track editor can open the next one (Save and Next). */
+  private readonly cursor = inject(LibraryCursorService);
 
   /** Query parameter `quality`, as the import's "tracks with issues" link sets it. */
   readonly quality = input<string>();
@@ -780,6 +783,13 @@ export default class LibraryPageComponent implements OnInit {
         }
         this.rows.set(page.items);
         this.total.set(page.total);
+        this.cursor.set({
+          query: request.query,
+          offset,
+          size: pageSize,
+          total: page.total,
+          trackIds: page.items.map((track) => track.id),
+        });
         this.pageStatus.set({
           page: this.list().pageIndex + 1,
           pages: Math.max(1, Math.ceil(page.total / pageSize)),
