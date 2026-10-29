@@ -1,6 +1,6 @@
 {
   "title": "Track plan",
-  "summary": "The track plan shows the concrete tracks planned for the coming hours. The system builds it from the grid and keeps it 24 to 48 hours ahead. You can add a one-time insert, such as today's news, to an hour that has not started.",
+  "summary": "The track plan shows the concrete tracks planned for the coming hours. The system builds it from the grid and keeps it 31 days ahead by default; the number of days is set in Settings. A full pass rebuilds the whole horizon every night at the set time, or with its button. You can add a one-time insert, such as today's news, to an hour that has not started.",
   "entities": [
     {
       "term": "Planned hour",
@@ -25,7 +25,7 @@
   ],
   "usage": "Look ahead to check what will play. To add today's news, use Add insert on its hour. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
   "steps": [
-    "Choose the hours to look at (up to 7 days).",
+    "Choose the hours to look at (up to 31 days).",
     "Read the warnings of each hour.",
     "For a one-time insert, click Add insert on the hour, set the time and tolerance, choose the track (news tracks are shown first), and add it.",
     "Fix the cause of a warning on the Clocks, Playlists, or Play rules page.",
@@ -52,7 +52,7 @@
     },
     "to": {
       "label": "To",
-      "text": "Last hour, at most 7 days after the first."
+      "text": "Last hour, at most 31 days after the first. Dates run from today to six months ahead."
     },
     "offset_ms": {
       "label": "Time in the hour",

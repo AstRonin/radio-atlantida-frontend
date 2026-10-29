@@ -105,6 +105,17 @@ describe('settings', () => {
       ).toBe('playlist');
     });
 
+    it('edits the nightly full pass time as HH:MM', () => {
+      const time = setting('rotation.full_pass_time', { type: 'string', value: '03:00' });
+      expect(settingKind(time)).toBe('time');
+      const control = settingControl(time);
+      expect(control.valid).toBe(true);
+      control.setValue('25:00');
+      expect(control.hasError('timeOfDay')).toBe(true);
+      control.setValue('04:30');
+      expect(control.valid).toBe(true);
+    });
+
     it('mirrors the range and the length limits of the backend', () => {
       const fade = settingControl(fadeOut);
       fade.setValue(1500);

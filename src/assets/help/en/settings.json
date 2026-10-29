@@ -153,11 +153,31 @@
     },
     "rotation.grid_horizon_days": {
       "label": "Grid horizon",
-      "text": "How many days ahead the grid can be edited. Up to 30."
+      "text": "How many days ahead the grid can be edited. 1 to 183 (six months); default 183."
     },
-    "rotation.plan_horizon_hours": {
+    "rotation.plan_horizon_days": {
       "label": "Plan horizon",
-      "text": "How many hours ahead tracks are planned, 24 to 48."
+      "text": "How many days ahead the track plan is kept up to date every five minutes, counted from today. 1 to 183; default 31."
+    },
+    "rotation.full_pass_time": {
+      "label": "Nightly full pass at",
+      "text": "The station time at which every planned hour in the horizon is rebuilt once a day, as HH:MM. A change applies from the next day. Default 03:00."
+    },
+    "rotation.full_pass_enabled": {
+      "label": "Nightly full pass",
+      "text": "Whether the full pass runs every night. Off stops the nightly run; the Full pass button on the Track plan page still works."
+    },
+    "rotation.full_pass_batch_hours": {
+      "label": "Full pass batch",
+      "text": "How many planned hours one full pass rebuilds per transaction, 24 to 744. A smaller batch uses less memory and holds locks for less time. Default 168 (one week)."
+    },
+    "rotation.full_pass_slow_ms": {
+      "label": "Full pass slow threshold",
+      "text": "A full pass that takes longer than this is logged as a warning, in milliseconds. Default 60000 (one minute)."
+    },
+    "rotation.full_pass_heap_warn_mb": {
+      "label": "Full pass heap threshold",
+      "text": "A full pass that uses more heap memory than this is logged as a warning, in megabytes. Default 512."
     },
     "rotation.lookahead_items": {
       "label": "Lookahead",

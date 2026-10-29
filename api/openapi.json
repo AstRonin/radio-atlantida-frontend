@@ -1031,11 +1031,15 @@
             "retention.completed": "#/components/schemas/OperationCompletedEvent",
             "retention.failed": "#/components/schemas/OperationFailedEvent",
             "retention.progress": "#/components/schemas/OperationProgressEvent",
+            "rotation.plan_full": "#/components/schemas/TrackPlanFullEvent",
             "track.analysed": "#/components/schemas/TrackAnalysedEvent",
             "track_plan.completed": "#/components/schemas/OperationCompletedEvent",
             "track_plan.failed": "#/components/schemas/OperationFailedEvent",
             "track_plan.progress": "#/components/schemas/OperationProgressEvent",
             "track_plan.warning": "#/components/schemas/TrackPlanWarningEvent",
+            "track_plan_full.completed": "#/components/schemas/OperationCompletedEvent",
+            "track_plan_full.failed": "#/components/schemas/OperationFailedEvent",
+            "track_plan_full.progress": "#/components/schemas/OperationProgressEvent",
             "transcode.completed": "#/components/schemas/OperationCompletedEvent",
             "transcode.failed": "#/components/schemas/OperationFailedEvent",
             "transcode.progress": "#/components/schemas/OperationProgressEvent"
@@ -1060,6 +1064,9 @@
           },
           {
             "$ref": "#/components/schemas/TrackPlanWarningEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TrackPlanFullEvent"
           },
           {
             "$ref": "#/components/schemas/NowPlayingEvent"
@@ -2201,6 +2208,16 @@
             "description": "Operation kind; its events are \u003ckind\u003e.completed, \u003ckind\u003e.failed, \u003ckind\u003e.progress.",
             "type": "string"
           },
+          "progress_done": {
+            "description": "Units done so far, as last stored by the operation; absent when it reports no progress.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "progress_total": {
+            "description": "Units the operation expects in all, with progress_done.",
+            "format": "int64",
+            "type": "integer"
+          },
           "result_summary": {
             "description": "Set for completed operations.",
             "type": "string"
@@ -2287,7 +2304,8 @@
               "hour_insert.completed",
               "import.completed",
               "analyse.completed",
-              "transcode.completed"
+              "transcode.completed",
+              "track_plan_full.completed"
             ],
             "type": "string"
           }
@@ -2359,7 +2377,8 @@
               "hour_insert.failed",
               "import.failed",
               "analyse.failed",
-              "transcode.failed"
+              "transcode.failed",
+              "track_plan_full.failed"
             ],
             "type": "string"
           }
@@ -2443,7 +2462,8 @@
               "hour_insert.progress",
               "import.progress",
               "analyse.progress",
-              "transcode.progress"
+              "transcode.progress",
+              "track_plan_full.progress"
             ],
             "type": "string"
           }
@@ -3556,6 +3576,7 @@
           "grid_conflict",
           "hour_insert_not_found",
           "hour_started",
+          "track_plan_full_running",
           "liquidsoap_unavailable",
           "missed_item_not_found",
           "missed_item_resolved",
@@ -4663,6 +4684,74 @@
         ],
         "type": "object"
       },
+      "TrackPlanFullData": {
+        "additionalProperties": false,
+        "properties": {
+          "elapsed_ms": {
+            "description": "Milliseconds since the pass started.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "hours_built": {
+            "description": "Hours built and committed so far.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "hours_skipped": {
+            "description": "Hours not built: started, queued, unchanged, or without a clock.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "items": {
+            "description": "Items of the built hours.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "description": "started, completed, or failed.",
+            "enum": [
+              "started",
+              "completed",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "hours_built",
+          "hours_skipped",
+          "items",
+          "elapsed_ms"
+        ],
+        "type": "object"
+      },
+      "TrackPlanFullEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TrackPlanFullData"
+          },
+          "time": {
+            "description": "UTC time of the event.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always rotation.plan_full.",
+            "enum": [
+              "rotation.plan_full"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
+        ],
+        "type": "object"
+      },
       "TrackPlanHour": {
         "additionalProperties": false,
         "properties": {
@@ -4857,7 +4946,7 @@
             "type": "string"
           },
           "to": {
-            "description": "... and before this one; at most 7 days after from. Hours that have started are never rebuilt.",
+            "description": "... and before this one; at most 31 days after from. Hours that have started are never rebuilt.",
             "format": "date-time",
             "type": "string"
           }
@@ -5005,6 +5094,189 @@
         "required": [
           "track_id",
           "code"
+        ],
+        "type": "object"
+      },
+      "TrackSimulation": {
+        "additionalProperties": false,
+        "properties": {
+          "elapsed_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "from": {
+            "description": "First station local date.",
+            "type": "string"
+          },
+          "history_plays": {
+            "description": "Plays read before from: the history of the first hour.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "hours": {
+            "description": "The built hours, in time order.",
+            "items": {
+              "$ref": "#/components/schemas/TrackSimulationHour"
+            },
+            "type": "array"
+          },
+          "hours_built": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "hours_skipped": {
+            "description": "Grid hours whose clock no longer exists; not built.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "items": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "library_tracks": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "queries": {
+            "description": "Reads of the run (settings, grid, library, history, clocks, one-time inserts per hour).",
+            "format": "int64",
+            "type": "integer"
+          },
+          "to": {
+            "description": "Last station local date, inclusive.",
+            "type": "string"
+          },
+          "warnings_by_code": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "description": "Warnings of all built hours, by code.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "hours",
+          "hours_built",
+          "hours_skipped",
+          "items",
+          "warnings_by_code",
+          "elapsed_ms",
+          "queries",
+          "library_tracks",
+          "history_plays"
+        ],
+        "type": "object"
+      },
+      "TrackSimulationHour": {
+        "additionalProperties": false,
+        "properties": {
+          "clock": {
+            "$ref": "#/components/schemas/TrackPlanClock"
+          },
+          "hour_start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "item_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "items": {
+            "description": "Only with items=true; in time order.",
+            "items": {
+              "$ref": "#/components/schemas/TrackSimulationItem"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/TrackSimulationWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "hour_start_utc",
+          "clock",
+          "item_count",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "TrackSimulationItem": {
+        "additionalProperties": false,
+        "properties": {
+          "artist_name": {
+            "type": "string"
+          },
+          "planned_in_ms": {
+            "description": "In point from the start of the file.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "planned_out_ms": {
+            "description": "Out point from the start of the file.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "fill",
+              "rule",
+              "insert",
+              "hour_insert",
+              "reschedule",
+              "general"
+            ],
+            "type": "string"
+          },
+          "start_utc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "track_id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "start_utc",
+          "track_id",
+          "title",
+          "planned_in_ms",
+          "planned_out_ms",
+          "truncated",
+          "source"
+        ],
+        "type": "object"
+      },
+      "TrackSimulationWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
         ],
         "type": "object"
       },
@@ -8417,6 +8689,84 @@
         ]
       }
     },
+    "/api/rotation/simulate": {
+      "get": {
+        "description": "Builds every grid hour of the station local dates, inclusive, in time order, as the planner would, and returns the result. Nothing is stored: the plan, the scheduled items and the one-time inserts are not changed. Each built hour adds its items to the history of the later hours, so the play rules hold across the simulated hours. Hours whose clock no longer exists are skipped and counted.",
+        "operationId": "simulate-track-plan",
+        "parameters": [
+          {
+            "description": "First station local date.",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "First station local date.",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last station local date, inclusive; at most 31 days in all.",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "Last station local date, inclusive; at most 31 days in all.",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Include the items of every built hour.",
+            "explode": false,
+            "in": "query",
+            "name": "items",
+            "schema": {
+              "description": "Include the items of every built hour.",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackSimulation"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Simulate the track plan for a date range",
+        "tags": [
+          "Track plan"
+        ]
+      }
+    },
     "/api/settings": {
       "get": {
         "description": "Every admin setting with its value, default, limits, and apply mode. A setting that was never saved has its code default and is_default true. Secrets are not listed (see GET /api/settings/secrets).",
@@ -8600,7 +8950,7 @@
     },
     "/api/track-plan": {
       "get": {
-        "description": "The built hours that start in the range, with their tracks in time order (§7). The plan covers the next rotation.plan_horizon_hours.",
+        "description": "The built hours that start in the range, with their tracks in time order (§7). The 5-minute pass keeps the plan for the next rotation.plan_horizon_days.",
         "operationId": "get-track-plan",
         "parameters": [
           {
@@ -8616,13 +8966,13 @@
             }
           },
           {
-            "description": "... and before this one; at most 7 days after from.",
+            "description": "... and before this one; at most 31 days after from.",
             "explode": false,
             "in": "query",
             "name": "to",
             "required": true,
             "schema": {
-              "description": "... and before this one; at most 7 days after from.",
+              "description": "... and before this one; at most 31 days after from.",
               "format": "date-time",
               "type": "string"
             }
@@ -8839,6 +9189,48 @@
           }
         },
         "summary": "Rebuild the track plan",
+        "tags": [
+          "Track plan"
+        ]
+      }
+    },
+    "/api/track-plan/rebuild-full": {
+      "post": {
+        "description": "Starts the full pass of the track plan: the hours from now to the grid horizon are rebuilt in batches, as a track_plan_full operation. Hours that have started, hours with an item in Liquidsoap's queue, and hours whose inputs did not change are skipped. Progress is stored on the operation; rotation.plan_full is sent at the start and at the end. Refused (track_plan_full_running) while another full pass runs.",
+        "operationId": "rebuild-track-plan-full",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Rebuild the whole track plan",
         "tags": [
           "Track plan"
         ]

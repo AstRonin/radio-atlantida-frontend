@@ -178,19 +178,39 @@ describe('TrackPlanPageComponent', () => {
     expect(page.querySelector('.warnings')?.textContent).toContain('refused');
   });
 
-  it('refuses a range longer than 7 days', async () => {
+  it('refuses a range longer than 31 days', async () => {
     const fixture = await open();
     const view = fixture.componentInstance as PlanView;
     const page = fixture.nativeElement as HTMLElement;
 
-    view.form.controls.to.setValue('2026-10-22');
+    // 15 October to 15 November is 32 days, both included: one day too many.
+    view.form.controls.to.setValue('2026-11-15');
     await settlePage();
     expect(view.form.controls.to.hasError('dateRange')).toBe(true);
     expect(button(page, 'trackPlan.rebuild.action')?.disabled).toBe(true);
 
-    view.form.controls.to.setValue('2026-10-21');
+    view.form.controls.to.setValue('2026-11-14');
     await settlePage();
-    expectPlan(FROM, '2026-10-21T20:00:00.000Z');
+    expectPlan(FROM, '2026-11-14T20:00:00.000Z');
+  });
+
+  it('takes dates from today to six months ahead, and at most one month after the start', async () => {
+    const fixture = await open();
+    const view = fixture.componentInstance as PlanView & { maxTo: () => string | null };
+
+    view.form.controls.from.setValue('2026-10-14');
+    expect(view.form.controls.from.hasError('matDatepickerMin')).toBe(true);
+    view.form.controls.from.setValue('2027-04-17');
+    expect(view.form.controls.from.hasError('matDatepickerMax')).toBe(true);
+    view.form.controls.from.setValue('2027-04-01');
+    expect(view.form.controls.from.valid).toBe(true);
+    // The end of the range stops at the window, not at one month after the start.
+    expect(view.maxTo()).toBe('2027-04-16');
+
+    view.form.controls.from.setValue('2026-10-15');
+    expect(view.maxTo()).toBe('2026-11-14');
+    await settlePage();
+    expectPlan(FROM, TO);
   });
 
   it('rebuilds the range and reloads when a build completes', async () => {
@@ -373,6 +393,79 @@ describe('TrackPlanPageComponent', () => {
       const page = fixture.nativeElement as HTMLElement;
       expect(button(page, 'trackPlan.inserts.add')).toBeUndefined();
       expect(button(page, 'common.remove')).toBeUndefined();
+    });
+  });
+
+  describe('full pass', () => {
+    const fullPassEvent = (
+      status: 'started' | 'completed' | 'failed',
+      hours_built = 0,
+    ): { type: 'rotation.plan_full'; time: string; data: Record<string, unknown> } => ({
+      type: 'rotation.plan_full',
+      time: '2026-10-15T01:00:05Z',
+      data: { status, hours_built, hours_skipped: 4, items: 12, elapsed_ms: 2500 },
+    });
+
+    it('starts the pass, holds the button while it runs, and shows the last result', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+      expect(button(page, 'trackPlan.fullPass.action')?.disabled).toBe(false);
+
+      button(page, 'trackPlan.fullPass.action')?.click();
+      http
+        .expectOne({ method: 'POST', url: '/api/track-plan/rebuild-full' })
+        .flush({ operation_id: 60 }, { status: 202, statusText: 'Accepted' });
+      await settlePage();
+      expect(runOperation).toHaveBeenCalledOnce();
+
+      // The start event arrives from the socket: the button is held until the end.
+      server.latest.send(fullPassEvent('started'));
+      await settlePage();
+      expect(button(page, 'trackPlan.fullPass.action')?.disabled).toBe(true);
+      expect(page.textContent).toContain('trackPlan.fullPass.started');
+
+      server.latest.send(fullPassEvent('completed', 3));
+      await settlePage();
+      expectPlan(FROM, TO);
+      await settlePage();
+      expect(button(page, 'trackPlan.fullPass.action')?.disabled).toBe(false);
+      expect(page.textContent).toContain('trackPlan.fullPass.completed');
+      expect(page.textContent).toContain('trackPlan.fullPass.last');
+    });
+
+    it('holds the button for a pass started elsewhere, from its start event', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+
+      server.latest.send(fullPassEvent('started'));
+      await settlePage();
+      expect(button(page, 'trackPlan.fullPass.action')?.disabled).toBe(true);
+      server.latest.send(fullPassEvent('failed'));
+      await settlePage();
+      expectPlan(FROM, TO);
+      await settlePage();
+      expect(button(page, 'trackPlan.fullPass.action')?.disabled).toBe(false);
+    });
+
+    it('shows the refusal when a pass is already running', async () => {
+      const fixture = await open();
+      const page = fixture.nativeElement as HTMLElement;
+
+      button(page, 'trackPlan.fullPass.action')?.click();
+      http.expectOne({ method: 'POST', url: '/api/track-plan/rebuild-full' }).flush(
+        {
+          type: 'about:blank',
+          title: 'Conflict',
+          status: 409,
+          code: 'track_plan_full_running',
+          detail: 'A full pass of the track plan is already running.',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await settlePage();
+      expect(page.querySelector('[role="alert"]')?.textContent).toContain(
+        'A full pass of the track plan is already running.',
+      );
     });
   });
 });

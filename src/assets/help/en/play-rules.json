@@ -15,8 +15,8 @@
       "text": "No track of the same artist starts until this long after the artist's last start, whichever playlist the other track came from, for example 2 hours."
     },
     {
-      "term": "Plays per hour",
-      "text": "The most times the track may start within the same clock hour."
+      "term": "Plays track per hour",
+      "text": "The most times the track may start within the same clock hour. The limit applies to each track separately, also when the rule is set on a playlist. To change how often a playlist plays in a clock, set an override of the playlist's placement in that clock (for example, Spread with a count)."
     },
     {
       "term": "Targets",
@@ -76,8 +76,8 @@
       "text": "Hours and minutes between two starts of tracks of the same artist, for example 2 h. At most the play log retention."
     },
     "max_per_hour": {
-      "label": "Plays per hour",
-      "text": "The most starts of the same track within one clock hour."
+      "label": "Plays track per hour",
+      "text": "The most starts of the same track within one clock hour. It applies to each track of the playlist separately. To change how often a playlist plays in a clock, override its placement rule in that clock (for example, Spread with a count)."
     },
     "notes": {
       "label": "Notes",

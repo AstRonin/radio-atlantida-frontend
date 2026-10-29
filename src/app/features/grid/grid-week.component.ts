@@ -36,7 +36,11 @@ export interface GridCell {
           <tr>
             <th scope="col">{{ 'grid.week.hour' | translate }}</th>
             @for (day of days(); track day.date) {
-              <th scope="col" [class.today]="day.date === today()">
+              <th
+                scope="col"
+                [class.today]="day.date === today()"
+                [class.outside]="!inMonth(day.date)"
+              >
                 <span class="heading">
                   <span>
                     {{ day.label }}
@@ -83,22 +87,27 @@ export interface GridCell {
               </th>
               @for (day of days(); track day.date) {
                 @let entry = cells().get(day.date + '|' + hour);
-                <td [class.selected]="isSelected(day.weekday, hour)">
+                <td
+                  [class.outside]="!inMonth(day.date)"
+                  [class.selected]="isSelected(day.weekday, hour)"
+                >
                   @if (entry) {
                     <a class="clock" [routerLink]="['/clocks', entry.clock.id]">
                       {{ entry.clock.name }}
                     </a>
                   }
-                  <button
-                    type="button"
-                    class="pick"
-                    [attr.aria-label]="
-                      'grid.week.pick' | translate: { day: day.label, hour: hourText(hour) }
-                    "
-                    (click)="pick.emit({ date: day.date, weekday: day.weekday, hour })"
-                  >
-                    +
-                  </button>
+                  @if (canPick(day.date)) {
+                    <button
+                      type="button"
+                      class="pick"
+                      [attr.aria-label]="
+                        'grid.week.pick' | translate: { day: day.label, hour: hourText(hour) }
+                      "
+                      (click)="pick.emit({ date: day.date, weekday: day.weekday, hour })"
+                    >
+                      +
+                    </button>
+                  }
                 </td>
               }
             </tr>
@@ -144,6 +153,12 @@ export interface GridCell {
 
     td.selected {
       background: var(--mat-sys-primary-container);
+    }
+
+    th.outside,
+    td.outside {
+      color: var(--mat-sys-on-surface-variant);
+      background: var(--mat-sys-surface-container-low);
     }
 
     .clock {
@@ -199,6 +214,12 @@ export class GridWeekComponent {
 
   /** The seven station local dates shown, in order. */
   readonly dates = input.required<readonly string[]>();
+  /** The first and last date of the month shown; the other days of the week are dimmed. */
+  readonly first = input.required<string>();
+  readonly last = input.required<string>();
+  /** The dates a cell may be picked on, both included; cells outside them have no "+". */
+  readonly pickFrom = input.required<string>();
+  readonly pickTo = input.required<string>();
   readonly entries = input.required<readonly GridHour[]>();
   readonly today = input.required<string>();
   readonly selectedWeekdays = input<readonly number[]>([]);
@@ -239,5 +260,13 @@ export class GridWeekComponent {
 
   protected isSelected(weekday: number, hour: number): boolean {
     return this.weekdaySet().has(weekday) && this.hourSet().has(hour);
+  }
+
+  protected inMonth(date: string): boolean {
+    return date >= this.first() && date <= this.last();
+  }
+
+  protected canPick(date: string): boolean {
+    return date >= this.pickFrom() && date <= this.pickTo();
   }
 }

@@ -199,6 +199,63 @@ describe('OperationsService', () => {
     expect(operations.get(20)?.updatedAt).toBe('2026-10-15T08:58:00Z');
   });
 
+  it('takes the progress an operation stored, when it is read', () => {
+    run(12);
+    vi.advanceTimersByTime(OPERATION_FALLBACK_MS);
+    http.expectOne('/api/operations/12').flush({
+      id: 12,
+      kind: 'track_plan_full',
+      status: 'running',
+      started_at: '2026-10-15T08:00:00Z',
+      progress_done: 7,
+      progress_total: 30,
+    } satisfies OperationDto);
+
+    expect(operations.get(12)?.progress).toEqual({ done: 7, total: 30 });
+  });
+
+  it('keeps the progress an event reported when a stored read has none', () => {
+    run(22);
+    server.latest.send(progress(22));
+    vi.advanceTimersByTime(OPERATION_FALLBACK_MS);
+    http.expectOne('/api/operations/22').flush({
+      id: 22,
+      kind: 'import',
+      status: 'running',
+      started_at: '2026-10-15T08:00:00Z',
+    } satisfies OperationDto);
+
+    expect(operations.get(22)?.progress).toEqual({
+      done: 12,
+      total: 40,
+      message: '12 of 40 files analysed',
+    });
+  });
+
+  it('shows the stored progress of a running operation after a reconnect', () => {
+    run(21);
+    server.latest.drop();
+    vi.advanceTimersByTime(1_000);
+    server.latest.open();
+
+    http
+      .expectOne((req) => req.url === '/api/operations' && req.params.has('since'))
+      .flush({
+        items: [
+          {
+            id: 21,
+            kind: 'track_plan_full',
+            status: 'running',
+            started_at: '2026-10-15T08:00:00Z',
+            progress_done: 3,
+            progress_total: 9,
+          },
+        ],
+      });
+
+    expect(operations.get(21)?.progress).toEqual({ done: 3, total: 9 });
+  });
+
   it('does not catch up on the first connection', () => {
     http.expectNone('/api/operations');
   });

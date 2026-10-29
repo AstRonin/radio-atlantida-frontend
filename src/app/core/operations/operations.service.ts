@@ -216,6 +216,15 @@ export class OperationsService {
       summary: operation.result_summary,
       error: operation.error_message,
     };
+    // The progress the operation stored; a DTO without it keeps the progress already known.
+    if (operation.progress_done !== undefined) {
+      const message = previous?.progress?.message;
+      next.progress = {
+        done: operation.progress_done,
+        total: operation.progress_total ?? 0,
+        ...(message === undefined ? {} : { message }),
+      };
+    }
     this.update(next);
     return next;
   }

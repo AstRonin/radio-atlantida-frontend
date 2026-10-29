@@ -10,6 +10,7 @@ import { TimeZoneSelectComponent } from '../../core/time/time-zone-select.compon
 import { controlErrorMessage } from '../../shared/forms/field-errors';
 import { NumberInputComponent } from '../../shared/forms/number-input.component';
 import { TextInputComponent } from '../../shared/forms/text-input.component';
+import { TimeInputComponent } from '../../shared/forms/time-input.component';
 import { PlaylistSelectComponent } from '../../shared/pickers/playlist-select.component';
 import { FieldHintComponent } from '../../shared/ui/field-hint.component';
 import { settingKind } from './settings-form';
@@ -30,6 +31,7 @@ import { settingKind } from './settings-form';
     NumberInputComponent,
     PlaylistSelectComponent,
     TextInputComponent,
+    TimeInputComponent,
     TimeZoneSelectComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,6 +76,14 @@ import { settingKind } from './settings-form';
           <app-time-zone-select [control]="textControl()" [label]="label()" />
           <app-field-hint page="help.settings" [field]="setting().key" />
         </div>
+      }
+      @case ('time') {
+        <app-time-input
+          [control]="textControl()"
+          [label]="label()"
+          hintPage="help.settings"
+          [hintField]="setting().key"
+        />
       }
       @case ('playlist') {
         <app-playlist-select

@@ -1,7 +1,7 @@
 import { AbstractControl, FormControl, ValidatorFn, Validators } from '@angular/forms';
 import type { ApiSchema } from '../../core/api/api-types';
 import type { Setting } from '../../core/settings/settings.service';
-import { rangeValidator } from '../../shared/forms/validators';
+import { rangeValidator, timeOfDayValidator } from '../../shared/forms/validators';
 
 export type SettingGroup = Setting['group'];
 export type SecretStatus = ApiSchema<'SecretStatus'>;
@@ -23,11 +23,14 @@ export const GROUP_ORDER: readonly SettingGroup[] = [
  * How a setting is edited. Most follow from the metadata the backend sends (type, enum, limits);
  * two keys need a dedicated input: a timezone from the IANA list and a playlist.
  */
-export type SettingKind = 'number' | 'select' | 'text' | 'boolean' | 'timezone' | 'playlist';
+export type SettingKind =
+  'number' | 'select' | 'text' | 'boolean' | 'timezone' | 'playlist' | 'time';
 
 const SPECIAL_KINDS: Readonly<Record<string, SettingKind>> = {
   'station.timezone': 'timezone',
   'playout.emergency_playlist_id': 'playlist',
+  // A time of day is a string the backend sends as HH:MM; the time input checks the form.
+  'rotation.full_pass_time': 'time',
 };
 
 export function settingKind(setting: Setting): SettingKind {
@@ -67,6 +70,11 @@ export function settingControl(setting: Setting): AbstractControl {
       return new FormControl<boolean>(setting.value === true, { nonNullable: true });
     case 'playlist':
       return new FormControl<number | null>(numberOrNull(setting.value), required);
+    case 'time':
+      return new FormControl<string | null>(
+        typeof setting.value === 'string' ? setting.value : null,
+        [...required, timeOfDayValidator],
+      );
     case 'select':
       return new FormControl<unknown>(setting.value, required);
     default: {

@@ -74,15 +74,32 @@ describe('GridPageComponent', () => {
       (item) => item.textContent?.trim() === label,
     );
 
-  function flushWeek(items: ApiSchema<'GridHour'>[] = []): void {
+  /** The grid request of one month, from its first to its last day. */
+  function flushMonth(
+    items: ApiSchema<'GridHour'>[] = [],
+    from = '2026-10-01',
+    to = '2026-10-31',
+  ): void {
     http
       .expectOne(
         (req) =>
-          req.url === '/api/grid' &&
-          req.params.get('from') === '2026-10-15' &&
-          req.params.get('to') === '2026-10-21',
+          req.url === '/api/grid' && req.params.get('from') === from && req.params.get('to') === to,
       )
       .flush({ items });
+  }
+
+  /** The "+" of a day cell: week block, hour row, and weekday column (0 = Monday). */
+  function pickButton(
+    page: HTMLElement,
+    week: number,
+    hour: number,
+    column: number,
+  ): HTMLButtonElement | null {
+    const block = page.querySelectorAll('app-grid-week')[week];
+    const row = block?.querySelectorAll('tbody tr')[hour];
+    return (
+      row?.querySelectorAll('td')[column]?.querySelector<HTMLButtonElement>('button.pick') ?? null
+    );
   }
 
   function flushSlots(items: GridSlot[] = []): void {
@@ -94,7 +111,7 @@ describe('GridPageComponent', () => {
   async function open(): Promise<ComponentFixture<GridPageComponent>> {
     const fixture = TestBed.createComponent(GridPageComponent);
     await settlePage();
-    flushWeek([
+    flushMonth([
       {
         date: '2026-10-15',
         weekday: 4,
@@ -109,21 +126,52 @@ describe('GridPageComponent', () => {
     return fixture;
   }
 
-  it('shows the week from today in the station zone', async () => {
+  it('shows the month from today in the station zone, one block per week', async () => {
     const fixture = await open();
     const page = fixture.nativeElement as HTMLElement;
-    expect(page.querySelector('app-grid-week')?.textContent).toContain('Weekday morning');
+    // October 2026 runs over five Monday-to-Sunday weeks, from 28 September to 1 November.
+    expect(page.querySelectorAll('app-grid-week')).toHaveLength(5);
+    // The slot of Thursday 15 October at 10:00 is in the block of the week of 12 to 18 October.
+    expect(page.querySelectorAll('app-grid-week')[2].textContent).toContain('Weekday morning');
+  });
 
-    button(page, 'grid.week.next')?.click();
+  it('moves the grid one month at a time and back to the current month', async () => {
+    const fixture = await open();
+    const page = fixture.nativeElement as HTMLElement;
+
+    button(page, 'grid.month.next')?.click();
     await settlePage();
-    http
-      .expectOne(
-        (req) =>
-          req.url === '/api/grid' &&
-          req.params.get('from') === '2026-10-22' &&
-          req.params.get('to') === '2026-10-28',
-      )
-      .flush({ items: [] });
+    flushMonth([], '2026-11-01', '2026-11-30');
+    await settlePage();
+
+    button(page, 'grid.month.previous')?.click();
+    await settlePage();
+    flushMonth([], '2026-10-01', '2026-10-31');
+    await settlePage();
+
+    button(page, 'grid.month.previous')?.click();
+    await settlePage();
+    flushMonth([], '2026-09-01', '2026-09-30');
+    await settlePage();
+
+    button(page, 'grid.month.current')?.click();
+    await settlePage();
+    flushMonth([], '2026-10-01', '2026-10-31');
+    await settlePage();
+  });
+
+  it('dims the days outside the month and gives them no "+"', async () => {
+    const fixture = await open();
+    const page = fixture.nativeElement as HTMLElement;
+    // The first block starts on Monday 28 September: its first three days are outside October.
+    const firstRow = page.querySelector('app-grid-week')?.querySelector('tbody tr');
+    const cells = [...(firstRow?.querySelectorAll('td') ?? [])];
+    expect(cells[0].classList.contains('outside')).toBe(true);
+    expect(cells[0].querySelector('button.pick')).toBeNull();
+    // 1 October is in the month but before today (15 October), so it cannot be picked either.
+    expect(cells[3].querySelector('button.pick')).toBeNull();
+    // Thursday 15 October is today, the first day that can be picked.
+    expect(pickButton(page, 2, 0, 3)).not.toBeNull();
   });
 
   it('assigns a clock to the picked hours and names the replaced slots', async () => {
@@ -131,16 +179,15 @@ describe('GridPageComponent', () => {
     const view = fixture.componentInstance as unknown as GridView;
     const page = fixture.nativeElement as HTMLElement;
 
-    // Saturday 2026-10-17 at 11:00, then Sunday at 12:00.
-    const picks = [...page.querySelectorAll<HTMLButtonElement>('button.pick')];
-    // Columns are the seven dates; rows the hours. Cell index = hour * 7 + day.
-    picks[11 * 7 + 2].click();
-    picks[12 * 7 + 3].click();
+    // Saturday 2026-10-17 at 11:00, then Sunday 2026-10-18 at 12:00; both in the week of 12 to 18.
+    pickButton(page, 2, 11, 5)?.click();
+    pickButton(page, 2, 12, 6)?.click();
     expect(view.form.controls.weekdays.value).toEqual([6, 7]);
     expect(view.form.controls.hours.value).toEqual([11, 12]);
     expect(view.form.controls.valid_from.value).toBe('2026-10-17');
 
     view.form.controls.clock_id.setValue(2);
+    view.form.controls.valid_to.setValue('2026-10-31');
     await settlePage();
     button(page, 'grid.change.assign')?.click();
 
@@ -149,7 +196,7 @@ describe('GridPageComponent', () => {
       weekdays: [6, 7],
       hours: [11, 12],
       valid_from: '2026-10-17',
-      valid_to: null,
+      valid_to: '2026-10-31',
       clock_id: 2,
     });
     assign.flush({
@@ -158,7 +205,7 @@ describe('GridPageComponent', () => {
       build_operation_id: 41,
     });
     await settlePage();
-    flushWeek();
+    flushMonth();
     flushSlots();
     await settlePage();
 
@@ -170,15 +217,17 @@ describe('GridPageComponent', () => {
     const fixture = await open();
     const view = fixture.componentInstance as unknown as GridView;
     const page = fixture.nativeElement as HTMLElement;
-    const picks = [...page.querySelectorAll<HTMLButtonElement>('button.pick')];
     expect(page.querySelector('button.unpick')).toBeNull();
 
     // Saturday at 11:00 and Sunday at 12:00: weekdays 6 and 7, hours 11 and 12.
-    picks[11 * 7 + 2].click();
-    picks[12 * 7 + 3].click();
+    pickButton(page, 2, 11, 5)?.click();
+    pickButton(page, 2, 12, 6)?.click();
     await settlePage();
-    const unpicks = page.querySelectorAll<HTMLButtonElement>('button.unpick');
-    // One button per chosen day in the header, then one per chosen hour down the rows.
+    // Within the block of the week of 12 to 18: one button per chosen day in the header, then
+    // one per chosen hour down the rows. Every block shows them, so the first block is used.
+    const unpicks = page
+      .querySelectorAll<HTMLButtonElement>('app-grid-week')[2]
+      .querySelectorAll<HTMLButtonElement>('button.unpick');
     expect(unpicks).toHaveLength(4);
 
     unpicks[0].click();
@@ -196,7 +245,12 @@ describe('GridPageComponent', () => {
   it('clears hours without a clock', async () => {
     const fixture = await open();
     const view = fixture.componentInstance as unknown as GridView;
-    view.form.patchValue({ weekdays: [1], hours: [3], valid_from: '2026-10-20' });
+    view.form.patchValue({
+      weekdays: [1],
+      hours: [3],
+      valid_from: '2026-10-20',
+      valid_to: '2026-10-31',
+    });
     await settlePage();
 
     button(fixture.nativeElement as HTMLElement, 'grid.change.clear')?.click();
@@ -205,11 +259,11 @@ describe('GridPageComponent', () => {
       weekdays: [1],
       hours: [3],
       valid_from: '2026-10-20',
-      valid_to: null,
+      valid_to: '2026-10-31',
     });
     clear.flush({ created: [], replaced: [] });
     await settlePage();
-    flushWeek();
+    flushMonth();
     flushSlots();
   });
 
@@ -220,7 +274,137 @@ describe('GridPageComponent', () => {
     button(overlay, 'common.delete')?.click();
     http.expectOne({ method: 'DELETE', url: '/api/grid/slots/9' }).flush(null);
     await settlePage();
-    flushWeek();
+    flushMonth();
     flushSlots();
+  });
+
+  // 2026-10-15 is a Thursday (weekday 4); the cases below use station dates only.
+  describe('weekdays against the date range', () => {
+    async function setRange(
+      weekdays: number[],
+      valid_from: string,
+      valid_to: string | null,
+    ): Promise<ComponentFixture<GridPageComponent>> {
+      const fixture = await open();
+      const view = fixture.componentInstance as unknown as GridView;
+      view.form.patchValue({ clock_id: 2, weekdays, hours: [3], valid_from, valid_to });
+      await settlePage();
+      return fixture;
+    }
+
+    const viewOf = (fixture: ComponentFixture<GridPageComponent>) =>
+      fixture.componentInstance as unknown as GridView;
+
+    it('refuses a one-day range on a weekday it does not contain', async () => {
+      const fixture = await setRange([1], '2026-10-15', '2026-10-15');
+      const view = viewOf(fixture);
+      expect(view.form.controls.weekdays.hasError('weekdaysOutsideRange')).toBe(true);
+      expect(view.form.valid).toBe(false);
+      expect(button(fixture.nativeElement as HTMLElement, 'grid.change.assign')?.disabled).toBe(
+        true,
+      );
+    });
+
+    it('still allows clearing the hours when the range refuses an assignment', async () => {
+      const fixture = await setRange([1], '2026-10-15', '2026-10-15');
+      expect(button(fixture.nativeElement as HTMLElement, 'grid.change.clear')?.disabled).toBe(
+        false,
+      );
+    });
+
+    it('shows the server error when the backend refuses the range anyway', async () => {
+      const fixture = await setRange([4], '2026-10-15', '2026-10-15');
+      const page = fixture.nativeElement as HTMLElement;
+      // The page's check passes, so the request goes out and the backend answers.
+      button(page, 'grid.change.assign')?.click();
+      http.expectOne({ method: 'POST', url: '/api/grid/assign' }).flush(
+        {
+          type: 'about:blank',
+          title: 'Validation failed',
+          status: 422,
+          code: 'validation_failed',
+          detail: 'The request has invalid fields.',
+          errors: [{ field: 'weekdays', code: 'invalid', message: 'no weekday falls in range' }],
+        },
+        { status: 422, statusText: 'Unprocessable Entity' },
+      );
+      await settlePage();
+      expect(viewOf(fixture).form.controls.weekdays.hasError('server')).toBe(true);
+      expect(page.querySelector('app-weekdays-input .error')).not.toBeNull();
+    });
+
+    it('accepts a one-day range on the matching weekday', async () => {
+      const view = viewOf(await setRange([4], '2026-10-15', '2026-10-15'));
+      expect(view.form.controls.weekdays.hasError('weekdaysOutsideRange')).toBe(false);
+      expect(view.form.valid).toBe(true);
+    });
+
+    it('accepts a week range', async () => {
+      const view = viewOf(await setRange([1], '2026-10-15', '2026-10-21'));
+      expect(view.form.controls.weekdays.hasError('weekdaysOutsideRange')).toBe(false);
+      expect(view.form.valid).toBe(true);
+    });
+
+    it('requires an end date, since a range is at most one month', async () => {
+      const view = viewOf(await setRange([1], '2026-10-15', null));
+      expect(view.form.controls.valid_to.hasError('required')).toBe(true);
+      expect(view.form.valid).toBe(false);
+    });
+
+    it('accepts a partial match: one chosen weekday falls in the range', async () => {
+      const view = viewOf(await setRange([1, 4], '2026-10-15', '2026-10-15'));
+      expect(view.form.controls.weekdays.hasError('weekdaysOutsideRange')).toBe(false);
+      expect(view.form.valid).toBe(true);
+    });
+  });
+
+  describe('date limits', () => {
+    const viewOf = (fixture: ComponentFixture<GridPageComponent>) =>
+      fixture.componentInstance as unknown as GridView & {
+        windowEnd: () => string;
+        validToMax: () => string | null;
+        pickFrom: () => string;
+        pickTo: () => string;
+      };
+
+    it('takes dates from today to six months ahead', async () => {
+      const view = viewOf(await open());
+      // 15 October 2026 plus 183 days.
+      expect(view.windowEnd()).toBe('2027-04-16');
+      expect(view.pickFrom()).toBe('2026-10-15');
+      expect(view.pickTo()).toBe('2026-10-31');
+    });
+
+    it('refuses a start before today and after six months', async () => {
+      const fixture = await open();
+      const view = viewOf(fixture);
+      view.form.controls.valid_from.setValue('2026-10-14');
+      expect(view.form.controls.valid_from.hasError('matDatepickerMin')).toBe(true);
+
+      view.form.controls.valid_from.setValue('2027-04-17');
+      expect(view.form.controls.valid_from.hasError('matDatepickerMax')).toBe(true);
+
+      view.form.controls.valid_from.setValue('2027-04-16');
+      expect(view.form.controls.valid_from.valid).toBe(true);
+    });
+
+    it('allows a range of at most one month and no more', async () => {
+      const fixture = await open();
+      const view = viewOf(fixture);
+      view.form.controls.valid_from.setValue('2026-10-15');
+      view.form.controls.valid_to.setValue('2026-11-14');
+      expect(view.form.controls.valid_to.hasError('dateRange')).toBe(false);
+
+      view.form.controls.valid_to.setValue('2026-11-15');
+      expect(view.form.controls.valid_to.hasError('dateRange')).toBe(true);
+      expect(view.validToMax()).toBe('2026-11-14');
+    });
+
+    it('caps the end date at the window when the start is near its end', async () => {
+      const fixture = await open();
+      const view = viewOf(fixture);
+      view.form.controls.valid_from.setValue('2027-04-01');
+      expect(view.validToMax()).toBe('2027-04-16');
+    });
   });
 });

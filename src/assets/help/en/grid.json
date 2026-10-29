@@ -1,21 +1,21 @@
 {
   "title": "Grid",
-  "summary": "The grid says which clock plays in which hour, up to 30 days ahead. The track plan for the next 24 to 48 hours is built from it automatically.",
+  "summary": "The grid says which clock plays in which hour, up to six months ahead. The page shows one month at a time. The track plan for the coming days is built from it automatically: 31 days by default, set in Settings. A full pass rebuilds the whole horizon every night at the set time, or with its button on the Track plan page.",
   "entities": [
     {
       "term": "Slot",
-      "text": "A clock assigned to a weekday and hour, valid from one date to another. Hours are in the station timezone."
+      "text": "A clock assigned to a weekday and hour, valid from one date to another, at most one month. Hours are in the station timezone."
     },
     {
       "term": "Valid from and to",
-      "text": "The dates on which the slot applies, both included. An empty end date means it applies until you change it."
+      "text": "The dates on which the slot applies, both included. The end date is required and at most 31 days after the start."
     },
     {
       "term": "Replacement",
       "text": "Assigning a clock to hours that already have one replaces the old slot for those dates. The result names the replaced slot."
     }
   ],
-  "usage": "Choose hours on the weekly view and assign a clock to them for a range of dates. Changes rebuild only planned hours that have not started; aired and missed items stay as they are.",
+  "usage": "Choose hours on the monthly view and assign a clock to them for a range of dates. Changes rebuild only planned hours that have not started; aired and missed items stay as they are.",
   "steps": [
     "Select the weekdays and hours to fill.",
     "Choose the clock and the date range.",
@@ -25,11 +25,12 @@
   "mistakes": [
     "Leaving hours without a clock. Those hours have no plan, and only the emergency playlist can play.",
     "Forgetting that hours are station time, not the time on your computer.",
+    "Choosing weekdays that do not fall on any date between valid from and valid to. The grid refuses the assignment, because those weekdays would create no slot.",
     "Expecting the hour that is on air to change. Hours that are about to start are frozen."
   ],
   "example": {
     "title": "A weekend clock",
-    "text": "Select Saturday and Sunday, 10:00 to 13:00, choose the clock \"Weekend brunch\", and set valid from 1 November with no end date. The weekday clock in those hours is replaced from that date, and the plan for the coming weekend is rebuilt."
+    "text": "Select Saturday and Sunday, 10:00 to 13:00, choose the clock \"Weekend brunch\", and set valid from 1 November to 30 November. The weekday clock in those hours is replaced from that date, and the plan for the coming weekend is rebuilt."
   },
   "operations": {
     "create": "Overlapping slots are replaced for the overlapping dates only.",
@@ -51,11 +52,11 @@
     },
     "valid_from": {
       "label": "Valid from",
-      "text": "First date on which the assignment applies, from today up to the grid horizon (30 days by default)."
+      "text": "First date on which the assignment applies: from today, up to six months ahead."
     },
     "valid_to": {
       "label": "Valid to",
-      "text": "Last date on which it applies, included. Leave empty for no end."
+      "text": "Last date on which it applies, included. Required: at most 31 days after valid from."
     }
   }
 }

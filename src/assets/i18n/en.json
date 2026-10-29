@@ -201,9 +201,15 @@
       "rotation": {
         "grid_horizon_days": "Grid horizon",
         "plan_horizon_hours": "Plan horizon",
+        "plan_horizon_days": "Plan horizon",
         "lookahead_items": "Lookahead",
         "default_fixed_tolerance_ms": "Default insert tolerance",
-        "min_gap_ms": "Smallest gap for music"
+        "min_gap_ms": "Smallest gap for music",
+        "full_pass_time": "Nightly full pass at",
+        "full_pass_enabled": "Nightly full pass",
+        "full_pass_batch_hours": "Full pass batch",
+        "full_pass_slow_ms": "Full pass slow threshold",
+        "full_pass_heap_warn_mb": "Full pass heap threshold"
       },
       "outage": {
         "heartbeat_timeout_seconds": "Heartbeat timeout",
@@ -260,6 +266,7 @@
       "maxlength": "Enter at most {length} characters.",
       "timeOfDay": "Enter a time as HH:MM, from 00:00 to 23:59.",
       "weekdays": "Choose days from Monday to Sunday.",
+      "weekdaysOutsideRange": "None of the chosen weekdays falls between Valid from and Valid to. Choose another weekday or change the dates.",
       "bothOrNone": "Fill in both fields or leave both empty.",
       "atLeastOne": "Set at least one of these fields.",
       "pattern": "The value does not have the expected form.",
@@ -559,7 +566,7 @@
       "weekdays": "Weekdays",
       "min_interval_minutes": "Track interval",
       "artist_min_interval_minutes": "Artist interval",
-      "max_per_hour": "Plays per hour",
+      "max_per_hour": "Plays track per hour",
       "notes": "Notes",
       "track_ids": "Tracks",
       "playlist_ids": "Playlists"
@@ -925,11 +932,13 @@
       "valid_from": "Valid from",
       "valid_to": "Valid to"
     },
+    "month": {
+      "title": "{month}",
+      "previous": "Previous month",
+      "current": "This month",
+      "next": "Next month"
+    },
     "week": {
-      "title": "Week from {from} to {to}",
-      "previous": "Previous week",
-      "current": "This week",
-      "next": "Next week",
       "note": "Hours and dates are in the station timezone ({zone}). Use + in a cell to add its weekday and hour to the change below, and − next to a chosen day or hour to take it out.",
       "caption": "Clocks by hour for the week",
       "hour": "Hour",
@@ -970,12 +979,22 @@
     },
     "range": {
       "title": "Dates",
-      "note": "Dates and times are in the station timezone ({zone}). Up to 7 days at once.",
+      "note": "Dates and times are in the station timezone ({zone}). Up to {days} days at once, from today to six months ahead.",
       "reset": "Today and tomorrow"
     },
     "rebuild": {
       "action": "Rebuild these dates",
       "note": "A rebuild chooses the tracks of the planned hours again. Hours that have started keep their plan."
+    },
+    "fullPass": {
+      "title": "Full pass",
+      "note": "Rebuilds every planned hour in the horizon in batches, in the background. Hours that have started, hours in the queue, and hours that did not change are skipped. It also runs every night at the time set in Settings, and a rebuild waits while a full pass runs.",
+      "action": "Run full pass",
+      "running": "Running the full pass…",
+      "started": "The full pass has started.",
+      "completed": "The full pass has completed.",
+      "failed": "The full pass failed.",
+      "last": "Last full pass: {built} hours built, {skipped} skipped, {items} items, {seconds} s."
     },
     "hours": {
       "title": "Planned hours",

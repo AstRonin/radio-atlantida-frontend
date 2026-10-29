@@ -7,7 +7,14 @@ import {
   signal,
 } from '@angular/core';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
@@ -18,20 +25,26 @@ import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { OperationStatus, OperationsService } from '../../core/operations/operations.service';
-import { SettingsService } from '../../core/settings/settings.service';
 import {
   addDays,
+  daysBetween,
   hourLabel,
+  isLocalDate,
   localDateAsUtcNoon,
   stationToday,
   weekdayName,
+  weekdayOf,
 } from '../../core/time/local-date';
 import { StationTimeService } from '../../core/time/station-time.service';
 import { DateInputComponent } from '../../shared/forms/date-input.component';
 import { controlVersion } from '../../shared/forms/field-errors';
 import { HoursInputComponent } from '../../shared/forms/hours-input.component';
 import { applySubmitError } from '../../shared/forms/server-errors';
-import { nonEmptyValidator, weekdaysValidator } from '../../shared/forms/validators';
+import {
+  dateRangeValidator,
+  nonEmptyValidator,
+  weekdaysValidator,
+} from '../../shared/forms/validators';
 import { WeekdaysInputComponent } from '../../shared/forms/weekdays-input.component';
 import { ClockSelectComponent } from '../../shared/pickers/clock-select.component';
 import { ConfirmService } from '../../shared/ui/confirm.service';
@@ -41,16 +54,22 @@ import { GridCell, GridWeekComponent } from './grid-week.component';
 type GridSlot = ApiSchema<'GridSlot'>;
 type GridAssignResult = ApiSchema<'GridAssignResult'>;
 
-/** The setting that limits how far ahead `valid_from` may lie (design §4). */
-export const GRID_HORIZON_KEY = 'rotation.grid_horizon_days';
-export const DEFAULT_GRID_HORIZON_DAYS = 30;
+/**
+ * The dates an assignment may use: from today to this many days ahead (six months, station
+ * local). The backend's `rotation.grid_horizon_days` setting bounds the same window.
+ */
+export const GRID_WINDOW_DAYS = 183;
+/** An assignment's range is at most one month: 31 days, both dates included. */
+export const GRID_RANGE_MAX_DAYS = 31;
 const WEEK_DAYS = 7;
+/** Validation error on `weekdays` when no chosen weekday falls in the dates (`forms.errors`). */
+const WEEKDAYS_OUTSIDE_RANGE = 'weekdaysOutsideRange';
 
 /**
- * The grid (design §4, §7): which clock plays in which station local hour, up to the horizon. The
- * week view shows the hours as the backend resolves them; one form assigns a clock to weekdays and
- * hours for a date range, or clears them. Overlapping slots are replaced by the backend, and the
- * result names them. Each change rebuilds the affected planned hours (`clock_build`).
+ * The grid (design §4, §7): which clock plays in which station local hour, up to six months ahead.
+ * The month view shows the hours as the backend resolves them, one block per week. One form
+ * assigns a clock to weekdays and hours for a date range, or clears them. Overlapping slots are
+ * replaced by the backend, and the result names them. Each change rebuilds the affected planned hours (`clock_build`).
  */
 @Component({
   selector: 'app-grid-page',
@@ -71,47 +90,51 @@ const WEEK_DAYS = 7;
   template: `
     <app-page-header titleKey="grid.title" helpPage="help.grid" />
 
-    <section class="page-section" aria-labelledby="week-heading">
-      <div class="week-head">
-        <h2 id="week-heading" class="section-title">
-          {{
-            'grid.week.title' | translate: { from: dateText(dates()[0]), to: dateText(dates()[6]) }
-          }}
+    <section class="page-section" aria-labelledby="month-heading">
+      <div class="month-head">
+        <h2 id="month-heading" class="section-title">
+          {{ 'grid.month.title' | translate: { month: monthText() } }}
         </h2>
-        <span class="week-nav">
-          <button matButton type="button" (click)="shiftWeek(-1)">
-            {{ 'grid.week.previous' | translate }}
+        <span class="month-nav">
+          <button matButton type="button" (click)="shiftMonth(-1)">
+            {{ 'grid.month.previous' | translate }}
           </button>
-          <button matButton type="button" (click)="weekStart.set(null)">
-            {{ 'grid.week.current' | translate }}
+          <button matButton type="button" (click)="month.set(null)">
+            {{ 'grid.month.current' | translate }}
           </button>
-          <button matButton type="button" (click)="shiftWeek(1)">
-            {{ 'grid.week.next' | translate }}
+          <button matButton type="button" (click)="shiftMonth(1)">
+            {{ 'grid.month.next' | translate }}
           </button>
         </span>
       </div>
       <p class="muted">{{ 'grid.week.note' | translate: { zone: zone() } }}</p>
-      @if (week.isLoading()) {
+      @if (monthGrid.isLoading()) {
         <mat-progress-bar mode="indeterminate" [attr.aria-label]="'common.loading' | translate" />
       }
-      @if (weekError(); as message) {
+      @if (monthError(); as message) {
         <p class="load-error" role="alert">
           {{ message }}
-          <button matButton type="button" (click)="week.reload()">
+          <button matButton type="button" (click)="monthGrid.reload()">
             {{ 'common.retry' | translate }}
           </button>
         </p>
       }
-      <app-grid-week
-        [dates]="dates()"
-        [entries]="weekEntries()"
-        [today]="today()"
-        [selectedWeekdays]="selectedWeekdays()"
-        [selectedHours]="selectedHours()"
-        (pick)="pick($event)"
-        (unpickWeekday)="unpick('weekdays', $event)"
-        (unpickHour)="unpick('hours', $event)"
-      />
+      @for (week of weeks(); track week[0]) {
+        <app-grid-week
+          [dates]="week"
+          [first]="monthFirst()"
+          [last]="monthLast()"
+          [pickFrom]="pickFrom()"
+          [pickTo]="pickTo()"
+          [entries]="monthEntries()"
+          [today]="today()"
+          [selectedWeekdays]="selectedWeekdays()"
+          [selectedHours]="selectedHours()"
+          (pick)="pick($event)"
+          (unpickWeekday)="unpick('weekdays', $event)"
+          (unpickHour)="unpick('hours', $event)"
+        />
+      }
     </section>
 
     <section class="page-section" aria-labelledby="change-heading">
@@ -141,7 +164,7 @@ const WEEK_DAYS = 7;
             [control]="form.controls.valid_from"
             label="grid.fields.valid_from"
             [min]="today()"
-            [max]="horizonDate()"
+            [max]="windowEnd()"
             hintPage="help.grid"
             hintField="valid_from"
           />
@@ -149,6 +172,7 @@ const WEEK_DAYS = 7;
             [control]="form.controls.valid_to"
             label="grid.fields.valid_to"
             [min]="form.controls.valid_from.value"
+            [max]="validToMax()"
             hintPage="help.grid"
             hintField="valid_to"
           />
@@ -258,7 +282,7 @@ const WEEK_DAYS = 7;
       font: var(--mat-sys-title-medium);
     }
 
-    .week-head {
+    .month-head {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
@@ -266,7 +290,7 @@ const WEEK_DAYS = 7;
       justify-content: space-between;
     }
 
-    .week-nav {
+    .month-nav {
       display: flex;
       flex-wrap: wrap;
     }
@@ -293,31 +317,54 @@ export default class GridPageComponent {
   private readonly i18n = inject(I18nService);
   private readonly confirm = inject(ConfirmService);
   private readonly operations = inject(OperationsService);
-  private readonly settings = inject(SettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly zone = inject(StationTimeService).zone;
   protected readonly today = computed(() => stationToday(this.zone()));
-  protected readonly horizonDate = computed(() => {
-    const value: unknown = this.settings.get(GRID_HORIZON_KEY)?.value;
-    const days = typeof value === 'number' ? value : DEFAULT_GRID_HORIZON_DAYS;
-    return addDays(this.today(), days);
-  });
+  /** The last date an assignment may use: six months ahead of today. */
+  protected readonly windowEnd = computed(() => addDays(this.today(), GRID_WINDOW_DAYS));
 
-  /** First date of the week shown; null follows today. */
-  protected readonly weekStart = signal<string | null>(null);
-  protected readonly dates = computed(() => {
-    const start = this.weekStart() ?? this.today();
-    return Array.from({ length: WEEK_DAYS }, (_, day) => addDays(start, day));
-  });
+  /** The first day of the month shown; null follows the current month. */
+  protected readonly month = signal<string | null>(null);
+  protected readonly monthFirst = computed(() => monthStartOf(this.month() ?? this.today()));
+  protected readonly monthLast = computed(() => addDays(addMonths(this.monthFirst(), 1), -1));
+  /** The month as weeks, Monday to Sunday; the days outside the month are shown but not picked. */
+  protected readonly weeks = computed(() => weeksOf(this.monthFirst(), this.monthLast()));
+  /** The dates a cell may be picked on: from today, inside the window, and inside the month. */
+  protected readonly pickFrom = computed(() => laterOf(this.today(), this.monthFirst()));
+  protected readonly pickTo = computed(() => earlierOf(this.windowEnd(), this.monthLast()));
+  protected readonly monthText = computed(() =>
+    new Intl.DateTimeFormat(this.i18n.locale(), {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(localDateAsUtcNoon(this.monthFirst())),
+  );
 
-  protected readonly form = new FormGroup({
-    clock_id: new FormControl<number | null>(null, Validators.required),
-    weekdays: new FormControl<number[] | null>([], [nonEmptyValidator, weekdaysValidator]),
-    hours: new FormControl<number[] | null>([], nonEmptyValidator),
-    valid_from: new FormControl<string | null>(null, Validators.required),
-    valid_to: new FormControl<string | null>(null),
-  });
+  protected readonly form = new FormGroup(
+    {
+      clock_id: new FormControl<number | null>(null, Validators.required),
+      weekdays: new FormControl<number[] | null>([], [nonEmptyValidator, weekdaysValidator]),
+      hours: new FormControl<number[] | null>([], nonEmptyValidator),
+      valid_from: new FormControl<string | null>(null, Validators.required),
+      valid_to: new FormControl<string | null>(null, Validators.required),
+    },
+    {
+      validators: [
+        weekdaysOccurInRange,
+        dateRangeValidator('valid_from', 'valid_to', GRID_RANGE_MAX_DAYS),
+      ],
+    },
+  );
+  // Shows the range message in the weekdays field as soon as a pick or a date makes it fail.
+  private readonly rangeWatch = this.form.valueChanges
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe(() => {
+      const weekdays = this.form.controls.weekdays;
+      if (weekdays.hasError(WEEKDAYS_OUTSIDE_RANGE)) {
+        weekdays.markAsTouched();
+      }
+    });
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly result = signal<GridAssignResult | null>(null);
@@ -336,20 +383,35 @@ export default class GridPageComponent {
     this.version();
     return this.form.valid;
   });
-  protected readonly canClear = computed(() => {
+  /** The latest `valid_to` a range from `valid_from` may have: one month, inside the window. */
+  protected readonly validToMax = computed(() => {
     this.version();
-    const { weekdays, hours, valid_from } = this.form.controls;
-    return weekdays.valid && hours.valid && valid_from.valid;
+    const from = this.form.controls.valid_from.value;
+    return from ? earlierOf(addDays(from, GRID_RANGE_MAX_DAYS - 1), this.windowEnd()) : null;
   });
 
-  protected readonly week = rxResource({
-    params: () => ({ from: this.dates()[0], to: this.dates()[WEEK_DAYS - 1] }),
+  protected readonly canClear = computed(() => {
+    this.version();
+    const { weekdays, hours, valid_from, valid_to } = this.form.controls;
+    // The range refuses only an assignment, so clearing the same hours stays possible.
+    return (
+      onlyErrorIs(weekdays, WEEKDAYS_OUTSIDE_RANGE) &&
+      hours.valid &&
+      valid_from.valid &&
+      valid_to.valid
+    );
+  });
+
+  protected readonly monthGrid = rxResource({
+    params: () => ({ from: this.monthFirst(), to: this.monthLast() }),
     stream: ({ params }) =>
       this.api.get('/api/grid', { query: params }).pipe(map((schedule) => schedule.items)),
   });
-  protected readonly weekEntries = computed(() => (this.week.hasValue() ? this.week.value() : []));
-  protected readonly weekError = computed(() =>
-    this.week.status() === 'error' ? errorMessage(this.week.error(), this.i18n) : null,
+  protected readonly monthEntries = computed(() =>
+    this.monthGrid.hasValue() ? this.monthGrid.value() : [],
+  );
+  protected readonly monthError = computed(() =>
+    this.monthGrid.status() === 'error' ? errorMessage(this.monthGrid.error(), this.i18n) : null,
   );
 
   protected readonly slots = rxResource({
@@ -364,8 +426,8 @@ export default class GridPageComponent {
 
   protected readonly hourText = hourLabel;
 
-  protected shiftWeek(by: -1 | 1): void {
-    this.weekStart.set(addDays(this.dates()[0], by * WEEK_DAYS));
+  protected shiftMonth(by: -1 | 1): void {
+    this.month.set(addMonths(this.monthFirst(), by));
   }
 
   /** Adds the cell's weekday and hour to the form; the first pick also sets the start date. */
@@ -374,7 +436,7 @@ export default class GridPageComponent {
     weekdays.setValue(addSorted(weekdays.value, cell.weekday));
     hours.setValue(addSorted(hours.value, cell.hour));
     if (!valid_from.value) {
-      valid_from.setValue(cell.date < this.today() ? this.today() : cell.date);
+      valid_from.setValue(cell.date);
     }
     this.form.markAsDirty();
   }
@@ -457,7 +519,7 @@ export default class GridPageComponent {
       weekdays: value.weekdays ?? [],
       hours: value.hours ?? [],
       valid_from: value.valid_from ?? '',
-      valid_to: value.valid_to || null,
+      valid_to: value.valid_to ?? '',
     };
   }
 
@@ -484,7 +546,7 @@ export default class GridPageComponent {
   }
 
   private reload(): void {
-    this.week.reload();
+    this.monthGrid.reload();
     this.slots.reload();
   }
 
@@ -498,6 +560,99 @@ export default class GridPageComponent {
   }
 }
 
+/**
+ * Group validator: some chosen weekday must fall on a date from `valid_from` to `valid_to`, both
+ * included, as the backend refuses otherwise. The error is on the weekdays field, where the user
+ * changes it, and on the form, which disables the assign button.
+ */
+function weekdaysOccurInRange(group: AbstractControl): ValidationErrors | null {
+  const weekdays = group.get('weekdays');
+  const missing = noWeekdayInRange(
+    group.get('valid_from')?.value,
+    group.get('valid_to')?.value,
+    weekdays?.value,
+  );
+  if (weekdays) {
+    setWeekdaysOutsideRange(weekdays, missing);
+  }
+  return missing ? { [WEEKDAYS_OUTSIDE_RANGE]: true } : null;
+}
+
+/**
+ * Whether no chosen weekday falls on a date from `from` to `to`. An open end, an empty list, and
+ * an unfinished or reversed range are not judged here: the other validators report those. Dates
+ * are station dates, so they are walked as calendar dates in UTC and the browser zone does not
+ * matter. Seven consecutive dates hold every weekday, so a longer range needs no more.
+ */
+function noWeekdayInRange(from: unknown, to: unknown, chosen: unknown): boolean {
+  if (
+    typeof from !== 'string' ||
+    !isLocalDate(from) ||
+    typeof to !== 'string' ||
+    !isLocalDate(to) ||
+    !Array.isArray(chosen) ||
+    chosen.length === 0 ||
+    daysBetween(from, to) < 0
+  ) {
+    return false;
+  }
+  const last = Math.min(daysBetween(from, to), WEEK_DAYS - 1);
+  for (let day = 0; day <= last; day++) {
+    if (chosen.includes(weekdayOf(addDays(from, day)))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Adds or removes only this error, so the field's own errors are kept.
+function setWeekdaysOutsideRange(control: AbstractControl, missing: boolean): void {
+  if (control.hasError(WEEKDAYS_OUTSIDE_RANGE) === missing) {
+    return;
+  }
+  const others = Object.entries(control.errors ?? {}).filter(
+    ([name]) => name !== WEEKDAYS_OUTSIDE_RANGE,
+  );
+  const errors = Object.fromEntries(missing ? [...others, [WEEKDAYS_OUTSIDE_RANGE, true]] : others);
+  control.setErrors(Object.keys(errors).length > 0 ? errors : null);
+}
+
+// True when the control's only error, if any, is `key`.
+function onlyErrorIs(control: AbstractControl, key: string): boolean {
+  return Object.keys(control.errors ?? {}).every((name) => name === key);
+}
+
 function addSorted(values: readonly number[] | null, value: number): number[] {
   return [...new Set([...(values ?? []), value])].sort((a, b) => a - b);
+}
+
+/** The first day of the month of a station date. */
+function monthStartOf(date: string): string {
+  return `${date.slice(0, 7)}-01`;
+}
+
+/** The first day of the month `months` after the month of `firstOfMonth`. */
+function addMonths(firstOfMonth: string, months: number): string {
+  const year = Number(firstOfMonth.slice(0, 4));
+  const month = Number(firstOfMonth.slice(5, 7)) - 1 + months;
+  return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
+}
+
+/** The weeks (Monday to Sunday, seven dates each) that cover the days from `first` to `last`. */
+function weeksOf(first: string, last: string): string[][] {
+  const monday = addDays(first, 1 - weekdayOf(first));
+  const weeks: string[][] = [];
+  for (let start = monday; start <= last; start = addDays(start, WEEK_DAYS)) {
+    weeks.push(Array.from({ length: WEEK_DAYS }, (_, day) => addDays(start, day)));
+  }
+  return weeks;
+}
+
+// Station dates are `YYYY-MM-DD`, so their order is their string order.
+function laterOf(a: string, b: string): string {
+  return a > b ? a : b;
+}
+
+function earlierOf(a: string, b: string): string {
+  return a < b ? a : b;
 }

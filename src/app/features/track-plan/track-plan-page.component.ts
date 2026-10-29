@@ -36,9 +36,20 @@ import { PlanHourView, PlanInsertView, TrackPlanHourComponent } from './track-pl
 
 type TrackPlanHour = ApiSchema<'TrackPlanHour'>;
 type TrackPlanInsert = ApiSchema<'TrackPlanInsert'>;
+type TrackPlanFullData = ApiSchema<'TrackPlanFullData'>;
 
-/** The API reads at most 7 days of the plan at once. */
-export const PLAN_RANGE_MAX_DAYS = 7;
+/** The last full pass that ended, as the panel shows it. */
+interface FullPassResult {
+  built: number;
+  skipped: number;
+  items: number;
+  seconds: string;
+}
+
+/** A rebuild or a read covers at most one month: 31 days, both dates included. */
+export const PLAN_RANGE_MAX_DAYS = 31;
+/** The dates may lie from today to this many days ahead (six months, station local). */
+export const PLAN_WINDOW_DAYS = 183;
 const HOUR_MS = 3_600_000;
 /** Used when the setting of a new insert's tolerance is not loaded: ±1 minute. */
 const DEFAULT_INSERT_TOLERANCE_MS = 60_000;
@@ -74,11 +85,15 @@ interface PlanRange {
 
     <section class="page-section" aria-labelledby="range-heading">
       <h2 id="range-heading" class="section-title">{{ 'trackPlan.range.title' | translate }}</h2>
-      <p class="muted">{{ 'trackPlan.range.note' | translate: { zone: zone() } }}</p>
+      <p class="muted">
+        {{ 'trackPlan.range.note' | translate: { zone: zone(), days: maxDays } }}
+      </p>
       <form class="range" [formGroup]="form" (ngSubmit)="rebuild()">
         <app-date-input
           [control]="form.controls.from"
           label="trackPlan.fields.from"
+          [min]="today()"
+          [max]="windowEnd()"
           hintPage="help.track-plan"
           hintField="from"
         />
@@ -135,6 +150,42 @@ interface PlanRange {
         }
       }
     </section>
+
+    <section class="page-section" aria-labelledby="full-heading">
+      <h2 id="full-heading" class="section-title">{{ 'trackPlan.fullPass.title' | translate }}</h2>
+      <p class="muted">{{ 'trackPlan.fullPass.note' | translate }}</p>
+      <div class="form-actions">
+        <button
+          matButton="filled"
+          type="button"
+          [disabled]="fullPassBusy()"
+          (click)="startFullPass()"
+        >
+          {{ 'trackPlan.fullPass.action' | translate }}
+        </button>
+      </div>
+      @if (fullPassError(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      @if (fullPassStatus(); as status) {
+        <p class="muted" role="status">{{ 'trackPlan.fullPass.' + status | translate }}</p>
+      }
+      <app-operation-status [state]="fullRun.state()" runningLabel="trackPlan.fullPass.running" />
+      @if (fullPassLast(); as last) {
+        <p class="muted">
+          {{
+            'trackPlan.fullPass.last'
+              | translate
+                : {
+                    built: last.built,
+                    skipped: last.skipped,
+                    items: last.items,
+                    seconds: last.seconds,
+                  }
+          }}
+        </p>
+      }
+    </section>
   `,
   styles: `
     .section-title {
@@ -171,10 +222,21 @@ export default class TrackPlanPageComponent {
   );
   private readonly version = controlVersion(signal(this.form));
 
+  protected readonly maxDays = PLAN_RANGE_MAX_DAYS;
+  protected readonly today = computed(() => stationToday(this.zone()));
+  /** The last date that may be picked: six months ahead of today. */
+  protected readonly windowEnd = computed(() => addDays(this.today(), PLAN_WINDOW_DAYS));
+
+  /** The last date of the range: one month after the first, and never past the window. */
   protected readonly maxTo = computed(() => {
     this.version();
     const from = this.form.controls.from.value;
-    return from ? addDays(from, PLAN_RANGE_MAX_DAYS - 1) : null;
+    const windowEnd = this.windowEnd();
+    if (!from) {
+      return windowEnd;
+    }
+    const rangeEnd = addDays(from, PLAN_RANGE_MAX_DAYS - 1);
+    return rangeEnd < windowEnd ? rangeEnd : windowEnd;
   });
 
   /** The range as UTC instants; null while the form is invalid. */
@@ -207,6 +269,16 @@ export default class TrackPlanPageComponent {
   protected readonly rebuildError = signal<string | null>(null);
   /** The last one-time insert added or removed, followed until its hour is rebuilt. */
   protected readonly insertRun = followOperation();
+  /** The full pass started from this page, followed for its progress and its status line. */
+  protected readonly fullRun = followOperation();
+  protected readonly fullPassError = signal<string | null>(null);
+  protected readonly fullPassStatus = signal<'started' | 'completed' | 'failed' | null>(null);
+  protected readonly fullPassLast = signal<FullPassResult | null>(null);
+  /** True from a `rotation.plan_full` start event until its end, whoever started the pass. */
+  private readonly fullPassRunning = signal(false);
+  protected readonly fullPassBusy = computed(
+    () => this.fullPassRunning() || this.fullRun.running(),
+  );
 
   constructor() {
     this.showToday();
@@ -220,6 +292,42 @@ export default class TrackPlanPageComponent {
     )
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.plan.reload());
+    // The nightly pass and the button both send these; the button is held until the end arrives.
+    realtime
+      .on('rotation.plan_full')
+      .pipe(takeUntilDestroyed())
+      .subscribe((event) => this.onFullPass(event.data));
+  }
+
+  protected startFullPass(): void {
+    if (this.fullPassBusy()) {
+      return;
+    }
+    this.fullPassError.set(null);
+    // A refused start (track_plan_full_running) is shown here; a failed pass is an error.alert.
+    this.fullRun
+      .run(this.api.post('/api/track-plan/rebuild-full'))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (error: unknown) => this.fullPassError.set(errorMessage(error, this.i18n)),
+      });
+  }
+
+  private onFullPass(data: TrackPlanFullData): void {
+    this.fullPassStatus.set(data.status);
+    this.fullPassRunning.set(data.status === 'started');
+    if (data.status === 'started') {
+      return;
+    }
+    this.fullPassLast.set({
+      built: data.hours_built,
+      skipped: data.hours_skipped,
+      items: data.items,
+      seconds: new Intl.NumberFormat(this.i18n.locale(), { maximumFractionDigits: 1 }).format(
+        data.elapsed_ms / 1000,
+      ),
+    });
+    this.plan.reload();
   }
 
   /** Today and tomorrow in the station zone, the part of the plan that is always built. */
