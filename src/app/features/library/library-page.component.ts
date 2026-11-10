@@ -36,6 +36,7 @@ import {
   of,
   startWith,
   switchMap,
+  tap,
   throttleTime,
 } from 'rxjs';
 import { errorMessage } from '../../core/api/problem-message';
@@ -316,9 +317,11 @@ interface PageRequest {
       </section>
     }
 
-    @if (loading()) {
-      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'common.loading' | translate" />
-    }
+    <div class="load-slot">
+      @if (loading()) {
+        <mat-progress-bar mode="indeterminate" [attr.aria-label]="'common.loading' | translate" />
+      }
+    </div>
     @if (loadError(); as message) {
       <p class="load-error" role="alert">
         {{ message }}
@@ -331,6 +334,7 @@ interface PageRequest {
       <table
         mat-table
         [dataSource]="rows()"
+        [trackBy]="trackById"
         matSort
         [matSortActive]="list().sort"
         [matSortDirection]="list().order"
@@ -590,6 +594,12 @@ interface PageRequest {
     </p>
   `,
   styles: `
+    /* The space is kept when the bar is gone, or the table would move on every reload. In flow on
+       purpose: an absolutely positioned bar widens the scrollable content. */
+    .load-slot {
+      height: 4px;
+    }
+
     .section-title {
       display: flex;
       align-items: center;
@@ -694,6 +704,8 @@ export default class LibraryPageComponent implements OnInit {
   protected readonly reviewedFilters = REVIEWED_FILTERS;
   protected readonly inPlanFilters = IN_PLAN_FILTERS;
   protected readonly pageSizes = LIBRARY_PAGE_SIZES;
+  /** A reload then updates the rows that stay on the page instead of recreating them. */
+  protected readonly trackById = (_index: number, track: Track): number => track.id;
   protected readonly playlists = catalogList(this.catalog.playlists());
   protected readonly types = catalogList(this.catalog.playlistTypes());
 
@@ -861,17 +873,56 @@ export default class LibraryPageComponent implements OnInit {
       )
       .subscribe(() => this.reload());
 
-    // The usage marks follow the air without polling: the same events as the air window (F15).
+    // The event says which track is on air, so the mark moves without a request, for every source.
+    realtime
+      .on('playout.now_playing')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ data }) =>
+        this.patchRows((track) =>
+          track.id === data.track_id
+            ? { ...track, playout_state: 'on_air' }
+            : this.withoutOnAir(track),
+        ),
+      );
+
+    // Only the row of the ended track: a late end of the previous track must not clear the mark of
+    // the track that has just started.
+    realtime
+      .on('playout.track_ended')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ data }) =>
+        this.patchRows((track) => (track.id === data.track_id ? this.withoutOnAir(track) : track)),
+      );
+
+    // A planned start changes the queued marks and In plan, which no event carries; an emergency
+    // track and the end of a track change neither. The figures depend on the plan only through the
+    // in_plan filter, so a planned start alone leaves them unless that filter is on.
+    let planChanged = false;
     merge(
-      realtime.on('playout.now_playing'),
-      realtime.on('playout.track_ended'),
-      realtime.on('track_plan.completed'),
-      realtime.on('clock_build.completed'),
-      realtime.on('reschedule.completed'),
-      realtime.on('missed_items.completed'),
+      realtime.on('playout.now_playing').pipe(
+        filter(({ data }) => data.source === 'plan'),
+        map(() => false),
+      ),
+      merge(
+        realtime.on('track_plan.completed'),
+        realtime.on('clock_build.completed'),
+        realtime.on('reschedule.completed'),
+        realtime.on('missed_items.completed'),
+      ).pipe(map(() => true)),
     )
-      .pipe(debounceTime(LIBRARY_USAGE_RELOAD_MS), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.reload());
+      .pipe(
+        tap((plan) => (planChanged ||= plan)),
+        debounceTime(LIBRARY_USAGE_RELOAD_MS),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        if (planChanged || this.filterQuery.in_plan !== undefined) {
+          this.reload();
+        } else {
+          this.readPage();
+        }
+        planChanged = false;
+      });
   }
 
   ngOnInit(): void {
@@ -1117,6 +1168,19 @@ export default class LibraryPageComponent implements OnInit {
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+  }
+
+  /** Keeps the current array when no row changed, so an event for another page renders nothing. */
+  private patchRows(patch: (track: Track) => Track): void {
+    const rows = this.rows();
+    const patched = rows.map(patch);
+    if (patched.some((track, index) => track !== rows[index])) {
+      this.rows.set(patched);
+    }
+  }
+
+  private withoutOnAir(track: Track): Track {
+    return track.playout_state === 'on_air' ? { ...track, playout_state: undefined } : track;
   }
 
   /** A cut track plays shorter than its file. */

@@ -90,8 +90,9 @@ behind `WAVEFORM_BROWSER`), `app-duration-input` (`m:ss.SSS`), Save with `PUT /a
 then "Mark as reviewed", the plan rebuild followed; previews honour the cue and fades through a
 `GainNode` (`PREVIEW_FADER_FACTORY`, faked in `fake-audio.testing.ts`); the library shows the on-air
 length, In plan, on air / queued, and the playlist count, filters `in_plan` and `in_playlist=false`,
-and reloads on playout and plan events; plan lengths are `out − in` (`plannedLength` pipe),
-`docs/f20-track-cue-editor-plan.md`), and F21 (playlist placement rules, clock inserts, separation
+moves the on-air mark from the playout events without a request, and reloads on a planned track
+start and on plan events (`docs/library-playout-reload-plan.md`); plan lengths are `out − in`
+(`plannedLength` pipe), `docs/f20-track-cue-editor-plan.md`), and F21 (playlist placement rules, clock inserts, separation
 in play rules: `app-clock-rule-input` on the playlist page and a rule badge in the list; the clock
 editor of playlists with overrides and shares, timed inserts (`app-offset-input`, `mm:ss`;
 `app-seconds-input` for tolerances), and the backend's sample hour and warnings; one-time inserts

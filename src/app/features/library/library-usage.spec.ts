@@ -1,4 +1,4 @@
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpRequest, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -210,38 +210,250 @@ describe('library usage marks (F20)', () => {
     await settlePage();
   });
 
-  it('reads the page once after a burst of playout and plan events', async () => {
-    TestBed.inject(RealtimeService).connect();
-    server.latest.open();
-    await open([track(1)]);
+  describe('following the air', () => {
+    const isTracks = (req: HttpRequest<unknown>) => req.url === '/api/tracks';
+    const isStats = (req: HttpRequest<unknown>) => req.url === '/api/tracks/stats';
+    const FIGURES = { total: 1, reviewed: 0, with_issues: 0, unanalysed: 0, air_duration_ms: 1 };
 
-    vi.useFakeTimers();
-    server.latest.send({
+    /** The page with the realtime stream open and its first figures answered. */
+    async function openLive(rows: Track[], inputs: Record<string, string> = {}) {
+      TestBed.inject(RealtimeService).connect();
+      server.latest.open();
+      const fixture = await open(rows, inputs);
+      http.expectOne(isStats).flush(FIGURES);
+      await settlePage();
+      return fixture;
+    }
+
+    const nowPlaying = (id: number, source: 'plan' | 'emergency') => ({
       type: 'playout.now_playing',
       time: '2026-10-16T10:00:00Z',
       data: {
-        track_id: 1,
-        title: 'Song 1',
-        source: 'plan',
+        track_id: id,
+        ...(source === 'plan' ? { item_id: 900 + id } : {}),
+        title: `Song ${id}`,
+        source,
         started_at: '2026-10-16T10:00:00Z',
         in_ms: 0,
         out_ms: 245_300,
         truncated: false,
       },
     });
-    server.latest.send({
-      type: 'clock_build.completed',
+
+    const trackEnded = (id: number) => ({
+      type: 'playout.track_ended',
+      time: '2026-10-16T10:04:05Z',
+      data: {
+        track_id: id,
+        source: 'emergency',
+        status: 'aired',
+        started_at: '2026-10-16T10:00:00Z',
+        ended_at: '2026-10-16T10:04:05Z',
+        actual_duration_ms: 245_300,
+      },
+    });
+
+    const completed = (kind: string) => ({
+      type: `${kind}.completed`,
       time: '2026-10-16T10:00:01Z',
       operation_id: 31,
-      data: { kind: 'clock_build', summary: 'built' },
+      data: { kind, summary: 'done' },
     });
-    vi.advanceTimersByTime(LIBRARY_USAGE_RELOAD_MS - 10);
-    http.expectNone('/api/tracks');
-    vi.advanceTimersByTime(20);
-    vi.useRealTimers();
-    await settlePage();
-    tracksRequest().flush({ items: [track(1, { playout_state: 'on_air' })], total: 1 });
-    await settlePage();
+
+    /** Sends the events and lets the debounce of the usage reload pass. */
+    async function sendAndWait(...events: Record<string, unknown>[]) {
+      vi.useFakeTimers();
+      events.forEach((event) => server.latest.send(event));
+      vi.advanceTimersByTime(LIBRARY_USAGE_RELOAD_MS + 10);
+      vi.useRealTimers();
+      await settlePage();
+    }
+
+    const mark = (fixture: ComponentFixture<LibraryPageComponent>, row: number) =>
+      cell(fixture, 'title', row).querySelector('.playout')?.getAttribute('aria-label') ?? null;
+
+    it('moves the mark to an emergency track without a request', async () => {
+      const fixture = await openLive([track(1, { playout_state: 'on_air' }), track(2)]);
+
+      await sendAndWait(nowPlaying(2, 'emergency'));
+
+      http.expectNone(isTracks);
+      http.expectNone(isStats);
+      expect(mark(fixture, 0)).toBeNull();
+      expect(mark(fixture, 1)).toBe('library.usage.on_air');
+    });
+
+    it('clears the mark when the new track is not on the page', async () => {
+      const fixture = await openLive([track(1, { playout_state: 'on_air' }), track(2)]);
+
+      await sendAndWait(nowPlaying(99, 'emergency'));
+
+      http.expectNone(isTracks);
+      expect(mark(fixture, 0)).toBeNull();
+      expect(mark(fixture, 1)).toBeNull();
+    });
+
+    it('keeps the queued mark of the other rows when the mark moves', async () => {
+      const fixture = await openLive([
+        track(1, { playout_state: 'on_air' }),
+        track(2),
+        track(3, { playout_state: 'queued' }),
+      ]);
+
+      await sendAndWait(nowPlaying(2, 'emergency'));
+
+      expect(mark(fixture, 2)).toBe('library.usage.queued');
+    });
+
+    it('clears the mark at the end of that track, with no request', async () => {
+      const fixture = await openLive([track(1, { playout_state: 'on_air' })]);
+
+      await sendAndWait(trackEnded(1));
+
+      http.expectNone(isTracks);
+      http.expectNone(isStats);
+      expect(mark(fixture, 0)).toBeNull();
+    });
+
+    it('keeps the mark when a late end belongs to another track', async () => {
+      const fixture = await openLive([track(1), track(2, { playout_state: 'on_air' })]);
+
+      await sendAndWait(trackEnded(1));
+
+      http.expectNone(isTracks);
+      expect(mark(fixture, 1)).toBe('library.usage.on_air');
+    });
+
+    it('reads the page alone once after a planned track starts', async () => {
+      const fixture = await openLive([track(1), track(2, { playout_state: 'on_air' })]);
+
+      vi.useFakeTimers();
+      server.latest.send(nowPlaying(1, 'plan'));
+      vi.advanceTimersByTime(LIBRARY_USAGE_RELOAD_MS - 10);
+      http.expectNone(isTracks);
+      vi.advanceTimersByTime(20);
+      vi.useRealTimers();
+      await settlePage();
+
+      // The mark does not wait for the read.
+      expect(mark(fixture, 0)).toBe('library.usage.on_air');
+      http
+        .expectOne(isTracks)
+        .flush({ items: [track(1, { playout_state: 'on_air' }), track(2)], total: 2 });
+      http.expectNone(isStats);
+      await settlePage();
+    });
+
+    it('reads the figures too on a planned start when the in_plan filter is on', async () => {
+      await openLive([track(1)], { in_plan: 'true' });
+
+      await sendAndWait(nowPlaying(1, 'plan'));
+
+      tracksRequest({ in_plan: 'true' }).flush({ items: [track(1)], total: 1 });
+      const stats = http.expectOne(isStats);
+      expect(stats.request.params.get('in_plan')).toBe('true');
+      stats.flush(FIGURES);
+      await settlePage();
+    });
+
+    it('reads the page and the figures once after a planned start and a plan event', async () => {
+      await openLive([track(1)]);
+
+      await sendAndWait(nowPlaying(1, 'plan'), completed('clock_build'));
+
+      http.expectOne(isTracks).flush({ items: [track(1)], total: 1 });
+      http.expectOne(isStats).flush(FIGURES);
+      await settlePage();
+    });
+
+    it('does not carry a plan event over to a later planned start', async () => {
+      await openLive([track(1)]);
+
+      await sendAndWait(completed('track_plan'));
+      http.expectOne(isTracks).flush({ items: [track(1)], total: 1 });
+      http.expectOne(isStats).flush(FIGURES);
+      await settlePage();
+
+      await sendAndWait(nowPlaying(1, 'plan'));
+      http.expectOne(isTracks).flush({ items: [track(1)], total: 1 });
+      http.expectNone(isStats);
+      await settlePage();
+    });
+
+    it.each(['import', 'analyse', 'transcode'])(
+      'reloads the page and the figures at once on %s.completed',
+      async (kind) => {
+        await openLive([track(1)]);
+
+        server.latest.send(completed(kind));
+        await settlePage();
+
+        http.expectOne(isTracks).flush({ items: [track(1)], total: 1 });
+        http.expectOne(isStats).flush(FIGURES);
+        await settlePage();
+      },
+    );
+
+    it('reloads the page and the figures at once on track.analysed', async () => {
+      await openLive([track(1)]);
+
+      server.latest.send({
+        type: 'track.analysed',
+        time: '2026-10-16T10:00:00Z',
+        data: { track_id: 1, quality_issues: [] },
+      });
+      await settlePage();
+
+      http.expectOne(isTracks).flush({ items: [track(1)], total: 1 });
+      http.expectOne(isStats).flush(FIGURES);
+      await settlePage();
+    });
+
+    it.each(['track_plan', 'clock_build', 'reschedule', 'missed_items'])(
+      'reloads the page and the figures after the debounce on %s.completed',
+      async (kind) => {
+        await openLive([track(1)]);
+
+        await sendAndWait(completed(kind));
+
+        http.expectOne(isTracks).flush({ items: [track(1)], total: 1 });
+        http.expectOne(isStats).flush(FIGURES);
+        await settlePage();
+      },
+    );
+
+    it('keeps the row element on a reload and shows the new values', async () => {
+      const fixture = await openLive([track(1)]);
+      const row = (fixture.nativeElement as HTMLElement).querySelector('tr.mat-mdc-row');
+      expect(row).not.toBeNull();
+
+      await sendAndWait(nowPlaying(1, 'plan'));
+      http.expectOne(isTracks).flush({
+        items: [track(1, { title: 'Renamed', next_planned_at: '2026-10-16T10:15:00Z' })],
+        total: 1,
+      });
+      await settlePage();
+
+      expect((fixture.nativeElement as HTMLElement).querySelector('tr.mat-mdc-row')).toBe(row);
+      expect(cell(fixture, 'title').textContent).toContain('Renamed');
+      expect(cell(fixture, 'inPlan').textContent).toContain('2:15');
+    });
+
+    it('keeps the bar slot with and without the bar', async () => {
+      const fixture = await openLive([track(1)]);
+      const page = fixture.nativeElement as HTMLElement;
+      const slot = () => page.querySelector('.load-slot');
+      expect(slot()).not.toBeNull();
+      expect(slot()?.querySelector('mat-progress-bar')).toBeNull();
+
+      await sendAndWait(nowPlaying(1, 'plan'));
+      expect(slot()?.querySelector('mat-progress-bar')).not.toBeNull();
+
+      http.expectOne(isTracks).flush({ items: [track(1)], total: 1 });
+      await settlePage();
+      expect(slot()).not.toBeNull();
+      expect(slot()?.querySelector('mat-progress-bar')).toBeNull();
+    });
   });
 
   it('reads the figures again on a realtime event that reloads the list', async () => {
