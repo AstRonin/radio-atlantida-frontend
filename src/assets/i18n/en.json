@@ -1012,6 +1012,7 @@
       "artist": "Artist",
       "length": "Plays for",
       "source": "Source",
+      "type": "Type",
       "status": "Status"
     },
     "sources": {

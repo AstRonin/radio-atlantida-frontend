@@ -4889,6 +4889,17 @@
             "format": "date-time",
             "type": "string"
           },
+          "playlist": {
+            "description": "The fill or rule playlist the track was drawn from; null for a general item, a one-time insert or a reschedule, and for items built before the playlist was stored.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TrackPlanPlaylist"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "source": {
             "enum": [
               "fill",
@@ -4933,7 +4944,31 @@
           "planned_out_ms",
           "truncated",
           "source",
-          "status"
+          "status",
+          "playlist"
+        ],
+        "type": "object"
+      },
+      "TrackPlanPlaylist": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "description": "Type of the playlist by its code: music, jingle, news, segment, or a custom type.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
         ],
         "type": "object"
       },

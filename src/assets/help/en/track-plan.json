@@ -19,6 +19,10 @@
       "text": "Why an item is there: Fill or Rule (a playlist of the clock), Insert (a timed insert of the clock), One-time insert, Rescheduled (a missed item), or Whole library (no fill track was allowed). Inserts are highlighted."
     },
     {
+      "term": "Type",
+      "text": "The code of the playlist type the track was drawn from, such as music, jingle, or news. It is the playlist's type, not its placement rule. The playlist name is in the tooltip; a dash means the item has no playlist, such as a one-time insert."
+    },
+    {
       "term": "Warning",
       "text": "A problem the engine found while planning, for example a rule track skipped because play rules blocked every track."
     }

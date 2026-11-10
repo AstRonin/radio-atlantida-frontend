@@ -41,6 +41,7 @@ const hour = (overrides: Partial<TrackPlanHour> = {}): TrackPlanHour => ({
       planned_out_ms: 200_000,
       truncated: false,
       source: 'fill',
+      playlist: { id: 7, name: 'Music', type: 'music' },
       status: 'planned',
     },
     {
@@ -53,6 +54,7 @@ const hour = (overrides: Partial<TrackPlanHour> = {}): TrackPlanHour => ({
       planned_out_ms: 180_000,
       truncated: true,
       source: 'general',
+      playlist: null,
       status: 'planned',
     },
   ],
@@ -136,6 +138,20 @@ describe('TrackPlanPageComponent', () => {
     await settlePage();
     return fixture;
   }
+
+  it('shows the playlist type code of an item, a dash without a playlist, the name as tooltip', async () => {
+    const fixture = await open();
+    const page = fixture.nativeElement as HTMLElement;
+    const rows = page.querySelectorAll('tbody tr');
+    const typeCell = (row: Element) => row.querySelectorAll('td')[6];
+
+    // The fill item of the fixture comes from the Music playlist of type music.
+    expect(typeCell(rows[0]).textContent?.trim()).toBe('music');
+    expect(typeCell(rows[0]).getAttribute('title')).toBe('Music');
+    // The general item has no playlist: a dash, and no tooltip.
+    expect(typeCell(rows[1]).textContent?.trim()).toBe('–');
+    expect(typeCell(rows[1]).getAttribute('title')).toBe('');
+  });
 
   it('reads today and tomorrow of the station and shows the items', async () => {
     const fixture = await open();

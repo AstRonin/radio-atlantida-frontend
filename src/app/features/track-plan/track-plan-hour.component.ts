@@ -124,6 +124,7 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
               <th scope="col">{{ 'trackPlan.columns.artist' | translate }}</th>
               <th scope="col">{{ 'trackPlan.columns.length' | translate }}</th>
               <th scope="col">{{ 'trackPlan.columns.source' | translate }}</th>
+              <th scope="col">{{ 'trackPlan.columns.type' | translate }}</th>
               <th scope="col">{{ 'trackPlan.columns.status' | translate }}</th>
             </tr>
           </thead>
@@ -153,6 +154,7 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
                   }
                   {{ 'trackPlan.sources.' + item.source | translate }}
                 </td>
+                <td [title]="item.playlist?.name ?? ''">{{ item.playlist?.type ?? '–' }}</td>
                 <td>
                   <span class="badge" [class.warn]="item.status === 'missed'">
                     {{ 'trackPlan.statuses.' + item.status | translate }}
@@ -161,7 +163,7 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
               </tr>
             } @empty {
               <tr>
-                <td class="muted" colspan="7">{{ 'trackPlan.noItems' | translate }}</td>
+                <td class="muted" colspan="8">{{ 'trackPlan.noItems' | translate }}</td>
               </tr>
             }
           </tbody>
