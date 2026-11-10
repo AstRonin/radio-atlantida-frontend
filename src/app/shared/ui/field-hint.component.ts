@@ -9,7 +9,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 /**
  * A field's short hint from the page help (design §6.1): a tooltip on hover or focus, and a click
  * opens the full page help. Place it beside a form field in a `.field-row` (global styles), or next
- * to its label.
+ * to its label. Something that is not a field of the help file passes a translation key instead.
  */
 @Component({
   selector: 'app-field-hint',
@@ -61,20 +61,29 @@ export class FieldHintComponent {
 
   readonly page = input.required<HelpPageId>();
   /** Control name of the field, as keyed in the help file's `fields`. */
-  readonly field = input.required<string>();
+  readonly field = input('');
+  /** Translation key of the hint; when set, it is shown instead of the help file's field. */
+  readonly textKey = input<string | null>(null);
 
   private readonly content = toSignal(
     toObservable(this.page).pipe(switchMap((page) => this.help.content(page))),
   );
 
   /** No button is shown for a field without a hint, so a missing hint is never an empty tooltip. */
-  protected readonly hint = computed(() => this.content()?.fields[this.field()]?.text ?? null);
+  protected readonly hint = computed(() => {
+    const key = this.textKey();
+    return key === null
+      ? (this.content()?.fields[this.field()]?.text ?? null)
+      : this.i18n.translate(key);
+  });
 
   protected readonly label = computed(() =>
-    this.i18n.translate('help.fieldHint', {
-      field: this.content()?.fields[this.field()]?.label ?? this.field(),
-      hint: this.hint() ?? '',
-    }),
+    this.textKey() === null
+      ? this.i18n.translate('help.fieldHint', {
+          field: this.content()?.fields[this.field()]?.label ?? this.field(),
+          hint: this.hint() ?? '',
+        })
+      : (this.hint() ?? ''),
   );
 
   protected openHelp(event: Event): void {

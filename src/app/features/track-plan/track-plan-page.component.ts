@@ -309,6 +309,9 @@ export default class TrackPlanPageComponent {
 
   constructor() {
     this.showToday();
+    this.form.controls.from.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.keepToAfterFrom());
     const realtime = inject(RealtimeService);
     // The plan job runs every few minutes and a rebuild may come from any page; both end with an
     // event, so the view stays current without polling.
@@ -358,6 +361,16 @@ export default class TrackPlanPageComponent {
   }
 
   /** Today and tomorrow in the station zone, the part of the plan that is always built. */
+  /** A start after the end moves the end to the next day, or to the start at the last date. */
+  private keepToAfterFrom(): void {
+    const { from, to } = this.form.controls;
+    if (from.invalid || !from.value || !to.value || from.value <= to.value) {
+      return;
+    }
+    const next = addDays(from.value, 1);
+    to.setValue(next <= this.windowEnd() ? next : from.value);
+  }
+
   protected showToday(): void {
     const today = stationToday(this.zone());
     this.form.setValue({ from: today, to: addDays(today, 1) });

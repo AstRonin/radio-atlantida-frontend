@@ -1022,6 +1022,7 @@
             "missed_items.failed": "#/components/schemas/OperationFailedEvent",
             "missed_items.progress": "#/components/schemas/OperationProgressEvent",
             "playout.now_playing": "#/components/schemas/NowPlayingEvent",
+            "playout.safety": "#/components/schemas/SafetyEvent",
             "playout.track_ended": "#/components/schemas/TrackEndedEvent",
             "playout_reconcile.completed": "#/components/schemas/OperationCompletedEvent",
             "playout_reconcile.failed": "#/components/schemas/OperationFailedEvent",
@@ -1074,6 +1075,9 @@
           },
           {
             "$ref": "#/components/schemas/TrackEndedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SafetyEvent"
           },
           {
             "$ref": "#/components/schemas/LiquidsoapStateEvent"
@@ -3354,6 +3358,10 @@
             "description": "Liquidsoap request ID.",
             "type": "string"
           },
+          "safety_on_air": {
+            "description": "heartbeat: the safety tone is on air. Absent: unknown, nothing changes.",
+            "type": "boolean"
+          },
           "source": {
             "description": "start and end: a plan item or an emergency track.",
             "enum": [
@@ -3514,10 +3522,20 @@
               "$ref": "#/components/schemas/PlayoutQueuedItem"
             },
             "type": "array"
+          },
+          "safety_on_air": {
+            "description": "The safety tone is on air: two heartbeats in a row reported it. False after the heartbeats are lost.",
+            "type": "boolean"
+          },
+          "safety_since": {
+            "description": "When the backend counted the safety tone on air; absent when it is not.",
+            "format": "date-time",
+            "type": "string"
           }
         },
         "required": [
           "control_link",
+          "safety_on_air",
           "queued"
         ],
         "type": "object"
@@ -3840,6 +3858,49 @@
         "required": [
           "updated",
           "not_found"
+        ],
+        "type": "object"
+      },
+      "SafetyData": {
+        "additionalProperties": false,
+        "properties": {
+          "on_air": {
+            "description": "The safety tone is on air: the plan and the emergency playlist have nothing to play.",
+            "type": "boolean"
+          },
+          "since": {
+            "description": "When the backend counted it on air; absent when it is not.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "on_air"
+        ],
+        "type": "object"
+      },
+      "SafetyEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SafetyData"
+          },
+          "time": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Always playout.safety.",
+            "enum": [
+              "playout.safety"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "time",
+          "data"
         ],
         "type": "object"
       },
@@ -8261,7 +8322,7 @@
     },
     "/api/playlists/{id}": {
       "delete": {
-        "description": "Its tracks stay in the library. Refused while a clock uses the playlist as a clock playlist or an insert source (playlist_in_use, with used_by naming the clocks).",
+        "description": "Its tracks stay in the library. Refused while a clock uses the playlist as a clock playlist or an insert source (playlist_in_use, with used_by naming the clocks), and while it is the emergency playlist (playlist_in_use, with a used_by entry of kind emergency_playlist; first choose another one or clear the setting playout.emergency_playlist_id).",
         "operationId": "delete-playlist",
         "parameters": [
           {
@@ -8610,7 +8671,7 @@
     },
     "/api/playout/callback": {
       "post": {
-        "description": "Called by Liquidsoap only: a track start or end, or the Icecast output state (§8.3). A started plan item moves to the play log; the first end of an item records its actual duration. Repeated events change nothing.",
+        "description": "Called by Liquidsoap only: a track start or end, the Icecast output state, or a heartbeat (§8.3). A started plan item moves to the play log; the first end of an item records its actual duration. Repeated events change nothing.",
         "operationId": "playout-callback",
         "requestBody": {
           "content": {
@@ -8759,7 +8820,7 @@
     },
     "/api/playout/status": {
       "get": {
-        "description": "The Liquidsoap control link, the Icecast output, the track on air, the items waiting in Liquidsoap's queues, and the music gain.",
+        "description": "The Liquidsoap control link, the Icecast output, the track on air, whether the safety tone is on air, the items waiting in Liquidsoap's queues, and the music gain.",
         "operationId": "get-playout-status",
         "responses": {
           "200": {

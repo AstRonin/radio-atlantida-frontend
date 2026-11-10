@@ -104,7 +104,13 @@ interface ListRow {
                 </td>
                 <td>{{ row.artist_name }}</td>
                 <td>{{ row.title }}</td>
-                <td>{{ 'airWindow.sources.' + row.source | translate }}</td>
+                <td>
+                  @if (row.source === 'emergency') {
+                    <span class="badge warn">{{ 'airWindow.sources.emergency' | translate }}</span>
+                  } @else {
+                    {{ 'airWindow.sources.' + row.source | translate }}
+                  }
+                </td>
               </tr>
             }
             @if (nothingOnAirAt() === listRows().length) {

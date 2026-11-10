@@ -18,6 +18,7 @@ import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testin
 import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
+import { addDays } from '../../core/time/local-date';
 import type { PlanRowView } from './track-plan-hour.component';
 import TrackPlanPageComponent from './track-plan-page.component';
 
@@ -229,8 +230,121 @@ describe('TrackPlanPageComponent', () => {
 
     view.form.controls.from.setValue('2026-10-15');
     expect(view.maxTo()).toBe('2026-11-14');
+    view.form.controls.to.setValue('2026-10-16');
     await settlePage();
     expectPlan(FROM, TO);
+  });
+
+  describe('a start after the end', () => {
+    const dates = (fixture: ComponentFixture<unknown>) => {
+      const { from, to } = (fixture.componentInstance as PlanView).form.controls;
+      return { from, to };
+    };
+    const utcMidnight = (date: string) => `${addDays(date, -1)}T20:00:00.000Z`;
+
+    // A new start also revalidates the end, which starts a second read and cancels the first.
+    function readPlan(from: string, to: string): void {
+      const reads = http
+        .match(
+          (req) =>
+            req.url === '/api/track-plan' &&
+            req.params.get('from') === from &&
+            req.params.get('to') === to,
+        )
+        .filter((read) => !read.cancelled);
+      expect(reads).toHaveLength(1);
+      reads[0].flush({ items: [] });
+    }
+
+    it.each([
+      ['the next day', '2026-10-20', '2026-10-21'],
+      ['the next day across a month boundary', '2026-10-31', '2026-11-01'],
+      ['the start itself at the last date of the window', '2027-04-16', '2027-04-16'],
+    ])('moves the end to %s', async (_name, start, end) => {
+      const fixture = await open();
+      const { from, to } = dates(fixture);
+
+      from.setValue(start);
+      await settlePage();
+
+      expect(to.value).toBe(end);
+      expect(to.errors).toBeNull();
+      // One read of the new range, and no rebuild.
+      readPlan(utcMidnight(start), utcMidnight(addDays(end, 1)));
+      http.expectNone({ method: 'POST', url: '/api/track-plan/rebuild' });
+    });
+
+    it('leaves the end when the start equals it', async () => {
+      const fixture = await open();
+      const { from, to } = dates(fixture);
+
+      from.setValue('2026-10-16');
+      await settlePage();
+
+      expect(to.value).toBe('2026-10-16');
+      readPlan(utcMidnight('2026-10-16'), TO);
+    });
+
+    it('leaves the end when the start is earlier', async () => {
+      const fixture = await open();
+      const { from, to } = dates(fixture);
+      to.setValue('2026-10-20');
+      await settlePage();
+      readPlan(FROM, utcMidnight('2026-10-21'));
+
+      from.setValue('2026-10-18');
+      await settlePage();
+
+      expect(to.value).toBe('2026-10-20');
+      readPlan(utcMidnight('2026-10-18'), utcMidnight('2026-10-21'));
+    });
+
+    it('never changes the start when the end changes', async () => {
+      const fixture = await open();
+      const { from, to } = dates(fixture);
+
+      to.setValue('2026-10-15');
+      await settlePage();
+
+      expect(from.value).toBe('2026-10-15');
+      readPlan(FROM, utcMidnight('2026-10-16'));
+    });
+
+    it('moves the end for a typed date, and not for a date still being typed', async () => {
+      const fixture = await open();
+      const { from, to } = dates(fixture);
+      const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(
+        'app-date-input input',
+      );
+      const type = async (text: string) => {
+        if (input) {
+          input.value = text;
+          input.dispatchEvent(new Event('input'));
+        }
+        await settlePage();
+      };
+
+      await type('2026-10-2');
+      expect(from.value).toBeNull();
+      expect(to.value).toBe('2026-10-16');
+
+      await type('2026-10-25');
+      expect(to.value).toBe('2026-10-26');
+      readPlan(utcMidnight('2026-10-25'), utcMidnight('2026-10-27'));
+    });
+
+    it.each([
+      ['empty', null],
+      ['past the window', '2027-04-17'],
+    ])('leaves the end for a start that is %s', async (_name, start) => {
+      const fixture = await open();
+      const { from, to } = dates(fixture);
+
+      from.setValue(start);
+      await settlePage();
+
+      expect(to.value).toBe('2026-10-16');
+    });
   });
 
   it('rebuilds the range and reloads when a build completes', async () => {
@@ -524,8 +638,11 @@ describe('TrackPlanPageComponent', () => {
       const page = fixture.nativeElement as HTMLElement;
       expect(handles(page)).toEqual([false, false]);
       expect(button(page, 'trackPlan.inserts.add')).toBeDefined();
-      expect(page.querySelector('span.lock')?.textContent).toContain('trackPlan.moves.fixed');
+      expect(page.querySelector('span.lock')).not.toBeNull();
       expect(page.querySelector('button.lock')).toBeNull();
+      expect(page.querySelector('tbody app-field-hint button')?.getAttribute('aria-label')).toBe(
+        'trackPlan.moves.fixed',
+      );
     });
 
     it('pins a fill row moved down, at the end of the row it lands on', async () => {
@@ -743,7 +860,9 @@ describe('TrackPlanPageComponent', () => {
       const fixture = await open([planHour()]);
       const page = fixture.nativeElement as HTMLElement;
       const lock = rowsOf(page)[2].querySelector<HTMLButtonElement>('button.lock');
-      expect(lock?.textContent).toContain('trackPlan.moves.fixed');
+      expect(lock?.textContent).not.toContain('trackPlan.moves.fixed');
+      const hint = rowsOf(page)[2].querySelector('app-field-hint button');
+      expect(hint?.getAttribute('aria-label')).toBe('trackPlan.moves.fixed');
       lock?.click();
       await settlePage();
       expect(overlay.textContent).toContain('trackPlan.moves.unpinMessage');

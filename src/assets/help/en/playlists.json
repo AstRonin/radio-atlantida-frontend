@@ -44,7 +44,7 @@
   "operations": {
     "create": "The type is required. The placement rule is Fill unless you choose another one.",
     "edit": "Track changes apply to hours that are planned from now on. A changed placement rule rebuilds the planned hours of the clocks that use the playlist; the page shows that rebuild.",
-    "delete": "A playlist used by a clock, as a playlist or as the source of an insert, cannot be deleted. The message lists the clocks that use it."
+    "delete": "A playlist used by a clock, as a playlist or as the source of an insert, cannot be deleted. The message lists the clocks that use it. The emergency playlist cannot be deleted either: choose another one, or untick its box, first."
   },
   "fields": {
     "name": {
@@ -70,6 +70,10 @@
     "rule_ids": {
       "label": "Play rules",
       "text": "Rules that apply to every track of this playlist, checked for each track separately."
+    },
+    "emergency": {
+      "label": "Use as emergency playlist",
+      "text": "Plays automatically when the plan has nothing to air, for example in an hour with no planned tracks. Tracks are picked at random and play rules do not apply. Only one playlist can be the emergency playlist: choosing this one replaces the current one. Applies at once."
     }
   }
 }

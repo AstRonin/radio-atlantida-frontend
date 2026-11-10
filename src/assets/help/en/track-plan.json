@@ -16,7 +16,7 @@
     },
     {
       "term": "Fixed track",
-      "text": "A track dragged to a new place, or a one-time insert. It shows a lock with the text fixed until the end of the hour, and every rebuild of the hour keeps it. The other tracks of the hour are built around it, and the fill does not draw the same track again in that hour. A jingle or other Rule track that is moved takes over one slot of its rule, so the hour keeps the same number of them."
+      "text": "A track dragged to a new place, or a one-time insert. It shows a lock, with a question mark beside it that says fixed until the end of the hour, and every rebuild of the hour keeps it. The other tracks of the hour are built around it, and the fill does not draw the same track again in that hour. A jingle or other Rule track that is moved takes over one slot of its rule, so the hour keeps the same number of them."
     },
     {
       "term": "Unpin",
@@ -64,7 +64,7 @@
   "fields": {
     "from": {
       "label": "From",
-      "text": "First hour to show or rebuild, station time."
+      "text": "First hour to show or rebuild, station time. A date after To moves To to the next day."
     },
     "to": {
       "label": "To",

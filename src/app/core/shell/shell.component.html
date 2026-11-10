@@ -18,6 +18,7 @@
     stationName() ?? ('shell.stationName' | translate)
   }}</a>
   <span class="spacer"></span>
+  <app-on-air-warning />
   <app-broadcast-status />
   <app-live-indicator />
   @if (openMissedItems(); as count) {

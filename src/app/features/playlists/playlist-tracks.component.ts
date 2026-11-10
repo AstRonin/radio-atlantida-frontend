@@ -288,6 +288,12 @@ export class PlaylistTracksComponent {
     return this.control().value ?? [];
   });
 
+  /** The backend plays a track as the emergency playlist only when its duration is known. */
+  readonly hasKnownDuration = computed(() => {
+    const known = this.known();
+    return this.chosenIds().some((id) => known.get(id)?.duration_ms !== undefined);
+  });
+
   /** Members sorted by title, as the library lists them; the set itself has no order. */
   private readonly memberRows = computed(() => {
     const known = this.known();

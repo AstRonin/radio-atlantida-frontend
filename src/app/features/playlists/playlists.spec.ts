@@ -1,6 +1,11 @@
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  TestRequest,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
+import { Location } from '@angular/common';
 import { ComponentRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
@@ -13,6 +18,7 @@ import { apiProblemInterceptor } from '../../core/api/api.interceptors';
 import { OperationState, OperationsService } from '../../core/operations/operations.service';
 import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testing';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
+import en from '../../../assets/i18n/en.json';
 import PlaylistEditComponent, { MEMBER_PAGE_SIZE } from './playlist-edit.component';
 import PlaylistsPageComponent from './playlists-page.component';
 
@@ -47,6 +53,27 @@ const track = (id: number): Track => ({
   in_use: null,
 });
 
+const EMERGENCY_KEY = 'playout.emergency_playlist_id';
+const SETTING_URL = `/api/settings/${EMERGENCY_KEY}`;
+
+/** The reply to `GET /api/settings` with this emergency playlist; null means none is set. */
+const settingsWith = (value: number | null) => ({
+  items: [{ key: EMERGENCY_KEY, group: 'playout', value, apply: 'immediate' }],
+});
+const savedSetting = (value: number | null) => ({
+  key: EMERGENCY_KEY,
+  group: 'playout',
+  value,
+  apply: 'immediate',
+});
+const serverError = {
+  status: 500,
+  code: 'internal',
+  title: 'Internal Server Error',
+};
+const failWith500 = (request: TestRequest) =>
+  request.flush(serverError, { status: 500, statusText: 'Internal Server Error' });
+
 interface EditView {
   form: FormGroup<{
     name: FormControl<string | null>;
@@ -55,6 +82,7 @@ interface EditView {
     clock_count: FormControl<number | null>;
     rule_ids: FormControl<number[] | null>;
     track_ids: FormControl<number[] | null>;
+    emergency: FormControl<boolean>;
   }>;
   save(): void;
 }
@@ -107,6 +135,7 @@ describe('playlists', () => {
       const fixture = TestBed.createComponent(PlaylistsPageComponent);
       await settlePage();
       http.expectOne('/api/playlist-types').flush({ items: [] });
+      http.expectOne('/api/settings').flush(settingsWith(null));
       http
         .expectOne((req) => req.url === '/api/playlists' && !req.params.has('type_id'))
         .flush({ items: [playlist()] });
@@ -143,13 +172,96 @@ describe('playlists', () => {
       await settlePage();
       expect(overlay.textContent).toContain('Morning clock');
     });
+
+    async function openList(reply: (request: TestRequest) => void): Promise<HTMLElement> {
+      const fixture = TestBed.createComponent(PlaylistsPageComponent);
+      await settlePage();
+      http.expectOne('/api/playlist-types').flush({ items: [] });
+      reply(http.expectOne('/api/settings'));
+      http
+        .expectOne((req) => req.url === '/api/playlists')
+        .flush({ items: [playlist(), playlist({ id: 6, name: 'Jingles' })] });
+      await settlePage();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    const badgedRows = (page: HTMLElement) =>
+      [...page.querySelectorAll('.emergency')].map(
+        (badge) => badge.closest('tr')?.querySelector('a')?.textContent,
+      );
+
+    it('marks only the current emergency playlist', async () => {
+      const page = await openList((request) => request.flush(settingsWith(6)));
+      expect(badgedRows(page)).toEqual(['Jingles']);
+    });
+
+    it('shows no badge when no emergency playlist is set', async () => {
+      const page = await openList((request) => request.flush(settingsWith(null)));
+      expect(badgedRows(page)).toEqual([]);
+    });
+
+    it('works without the badge when the setting cannot be read', async () => {
+      const page = await openList(failWith500);
+      expect(badgedRows(page)).toEqual([]);
+      expect(page.textContent).toContain('Jingles');
+      expect(page.querySelector('.load-error')).toBeNull();
+    });
+
+    it('shows the emergency reason of a refused delete, with the delete button enabled', async () => {
+      const page = await openList((request) => request.flush(settingsWith(4)));
+      const remove = button(page, 'common.delete');
+      expect(remove?.disabled).toBe(false);
+      remove?.click();
+      await settlePage();
+      button(overlay, 'common.delete')?.click();
+      http.expectOne({ method: 'DELETE', url: '/api/playlists/4' }).flush(
+        {
+          status: 409,
+          code: 'playlist_in_use',
+          title: 'Conflict',
+          used_by: [{ kind: 'emergency_playlist', id: 4, name: 'Morning music' }],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await settlePage();
+      expect(overlay.textContent).toContain('Morning music');
+    });
+  });
+
+  it('has the emergency texts in the translations', () => {
+    expect(en.dialogs.usedBy.kinds.emergency_playlist).toContain('Use as emergency playlist');
+    expect(Object.keys(en.playlists.emergency).sort()).toEqual([
+      'badge',
+      'clearFailed',
+      'clears',
+      'label',
+      'noPlayable',
+      'readFailed',
+      'replaces',
+      'replacesUnnamed',
+      'setFailed',
+    ]);
   });
 
   describe('PlaylistEditComponent', () => {
-    async function open(): Promise<{ view: EditView; ref: ComponentRef<PlaylistEditComponent> }> {
+    interface OpenOptions {
+      emergency?: number | null;
+      /** Replies to the read of the setting instead of `emergency`. */
+      settings?: (request: TestRequest) => void;
+      members?: Track[];
+      playlists?: Playlist[];
+    }
+
+    async function open(
+      options: OpenOptions = {},
+    ): Promise<{ view: EditView; ref: ComponentRef<PlaylistEditComponent> }> {
       const fixture = TestBed.createComponent(PlaylistEditComponent);
       fixture.componentRef.setInput('id', '4');
       await settlePage();
+      const reply =
+        options.settings ??
+        ((request: TestRequest) => request.flush(settingsWith(options.emergency ?? null)));
+      reply(http.expectOne('/api/settings'));
       http.expectOne('/api/playlists/4').flush(playlist({ play_rule_ids: [9] }));
       // The members come in pages; every page is read before the form is filled.
       http
@@ -160,15 +272,17 @@ describe('playlists', () => {
             req.params.get('limit') === String(MEMBER_PAGE_SIZE) &&
             !req.params.has('cursor'),
         )
-        .flush({ items: [track(1), track(2)], next_cursor: 'p2' });
+        .flush({ items: options.members ?? [track(1), track(2)], next_cursor: 'p2' });
       http
         .expectOne((req) => req.url === '/api/tracks' && req.params.get('cursor') === 'p2')
-        .flush({ items: [track(3)] });
+        .flush({ items: options.members ? [] : [track(3)] });
       await settlePage();
       for (const request of http.match(
         (req) => req.url !== '/api/tracks' || !req.params.has('playlist_id'),
       )) {
-        request.flush({ items: [] });
+        request.flush({
+          items: request.request.url === '/api/playlists' ? (options.playlists ?? []) : [],
+        });
       }
       await settlePage();
       return {
@@ -300,6 +414,203 @@ describe('playlists', () => {
       );
       await settlePage();
       expect(view.form.controls.clock_count.hasError('server')).toBe(true);
+    });
+
+    describe('emergency playlist box', () => {
+      const text = (ref: ComponentRef<PlaylistEditComponent>) =>
+        (ref.location.nativeElement as HTMLElement).textContent ?? '';
+      const tick = async (view: EditView, value: boolean) => {
+        view.form.controls.emergency.setValue(value);
+        view.form.controls.emergency.markAsDirty();
+        await settlePage();
+      };
+      const stubNavigation = () =>
+        vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+      async function openNew(
+        reply: (request: TestRequest) => void = (r) => r.flush(settingsWith(null)),
+      ) {
+        const fixture = TestBed.createComponent(PlaylistEditComponent);
+        await settlePage();
+        reply(http.expectOne('/api/settings'));
+        await settlePage();
+        for (const request of http.match((req) => req.url !== '/api/tracks')) {
+          request.flush({ items: [] });
+        }
+        for (const request of http.match((req) => req.url === '/api/tracks')) {
+          request.flush({ items: [] });
+        }
+        await settlePage();
+        const view = fixture.componentInstance as unknown as EditView;
+        view.form.controls.name.setValue('Backup');
+        view.form.controls.name.markAsDirty();
+        view.form.controls.type_id.setValue(1);
+        view.form.controls.type_id.markAsDirty();
+        await settlePage();
+        return { view, ref: fixture.componentRef };
+      }
+
+      it('opens ticked only for the current emergency playlist', async () => {
+        const current = await open({ emergency: 4 });
+        expect(current.view.form.controls.emergency.value).toBe(true);
+        expect(current.view.form.controls.emergency.enabled).toBe(true);
+        expect(current.ref.instance.hasUnsavedChanges()).toBe(false);
+      });
+
+      it('opens unticked for another playlist', async () => {
+        const other = await open({ emergency: 9 });
+        expect(other.view.form.controls.emergency.value).toBe(false);
+      });
+
+      it('opens unticked for a new playlist', async () => {
+        const { view } = await openNew();
+        expect(view.form.controls.emergency.value).toBe(false);
+        expect(view.form.controls.emergency.enabled).toBe(true);
+      });
+
+      it('counts a changed box as an unsaved change', async () => {
+        const { view, ref } = await open();
+        await tick(view, true);
+        expect(ref.instance.hasUnsavedChanges()).toBe(true);
+      });
+
+      it('creates the playlist first, then writes the setting with the returned ID', async () => {
+        const navigate = stubNavigation();
+        const { view } = await openNew();
+        await tick(view, true);
+        view.save();
+
+        http.expectNone({ method: 'PUT', url: SETTING_URL });
+        http.expectOne({ method: 'POST', url: '/api/playlists' }).flush(playlist({ id: 12 }));
+        const put = http.expectOne({ method: 'PUT', url: SETTING_URL });
+        expect(put.request.body).toEqual({ value: 12 });
+        put.flush(savedSetting(12));
+        await settlePage();
+        expect(navigate).toHaveBeenCalledWith('/playlists');
+      });
+
+      it('does not write the setting when the box did not change', async () => {
+        const navigate = stubNavigation();
+        const { view } = await open({ emergency: 4 });
+        view.form.controls.name.setValue('Morning pop');
+        view.form.controls.name.markAsDirty();
+        view.save();
+
+        http
+          .expectOne({ method: 'PUT', url: '/api/playlists/4' })
+          .flush(playlist({ name: 'Morning pop', play_rule_ids: [9] }));
+        await settlePage();
+        http.expectNone({ method: 'PUT', url: SETTING_URL });
+        expect(navigate).toHaveBeenCalledWith('/playlists');
+      });
+
+      it('names the playlist it replaces and writes this one', async () => {
+        const navigate = stubNavigation();
+        const { view, ref } = await open({
+          emergency: 9,
+          playlists: [playlist({ id: 9, name: 'Backup' })],
+        });
+        await tick(view, true);
+        expect(text(ref)).toContain('playlists.emergency.replaces');
+        expect(text(ref)).not.toContain('playlists.emergency.replacesUnnamed');
+        view.save();
+
+        const put = http.expectOne({ method: 'PUT', url: SETTING_URL });
+        expect(put.request.body).toEqual({ value: 4 });
+        put.flush(savedSetting(4));
+        await settlePage();
+        expect(navigate).toHaveBeenCalledWith('/playlists');
+      });
+
+      it('warns when the current one is unticked and writes None', async () => {
+        const navigate = stubNavigation();
+        const { view, ref } = await open({ emergency: 4 });
+        await tick(view, false);
+        expect(text(ref)).toContain('playlists.emergency.clears');
+        view.save();
+
+        const put = http.expectOne({ method: 'PUT', url: SETTING_URL });
+        expect(put.request.body).toEqual({ value: null });
+        put.flush(savedSetting(null));
+        await settlePage();
+        expect(navigate).toHaveBeenCalledWith('/playlists');
+      });
+
+      it('does not write the setting when the playlist save fails', async () => {
+        const { view } = await open();
+        await tick(view, true);
+        view.form.controls.name.setValue('Morning pop');
+        view.form.controls.name.markAsDirty();
+        view.save();
+
+        failWith500(http.expectOne({ method: 'PUT', url: '/api/playlists/4' }));
+        await settlePage();
+        http.expectNone({ method: 'PUT', url: SETTING_URL });
+      });
+
+      it('keeps a new playlist saved and on its edit page when the write fails', async () => {
+        const navigate = stubNavigation();
+        const replaceState = vi.spyOn(TestBed.inject(Location), 'replaceState');
+        const { view, ref } = await openNew();
+        await tick(view, true);
+        view.save();
+
+        http.expectOne({ method: 'POST', url: '/api/playlists' }).flush(playlist({ id: 12 }));
+        failWith500(http.expectOne({ method: 'PUT', url: SETTING_URL }));
+        await settlePage();
+
+        expect(navigate).not.toHaveBeenCalled();
+        expect(replaceState).toHaveBeenCalledWith('/playlists/12');
+        expect(text(ref)).toContain('playlists.emergency.setFailed');
+        expect(ref.instance.hasUnsavedChanges()).toBe(true);
+
+        // Saving again retries the setting and does not create the playlist a second time.
+        view.save();
+        http.expectNone({ method: 'POST', url: '/api/playlists' });
+        http.expectOne({ method: 'PUT', url: SETTING_URL }).flush(savedSetting(12));
+        await settlePage();
+        expect(navigate).toHaveBeenCalledWith('/playlists');
+      });
+
+      it('disables the box when the setting cannot be read, and saving still works', async () => {
+        const navigate = stubNavigation();
+        const { view, ref } = await open({ settings: failWith500 });
+        expect(view.form.controls.emergency.disabled).toBe(true);
+        expect(text(ref)).toContain('playlists.emergency.readFailed');
+
+        view.form.controls.name.setValue('Morning pop');
+        view.form.controls.name.markAsDirty();
+        view.save();
+        http
+          .expectOne({ method: 'PUT', url: '/api/playlists/4' })
+          .flush(playlist({ name: 'Morning pop', play_rule_ids: [9] }));
+        await settlePage();
+        http.expectNone({ method: 'PUT', url: SETTING_URL });
+        expect(navigate).toHaveBeenCalledWith('/playlists');
+      });
+
+      it('warns on an empty track list and still saves', async () => {
+        const navigate = stubNavigation();
+        const { view, ref } = await open({ members: [] });
+        await tick(view, true);
+        expect(text(ref)).toContain('playlists.emergency.noPlayable');
+        view.save();
+        http.expectOne({ method: 'PUT', url: SETTING_URL }).flush(savedSetting(4));
+        await settlePage();
+        expect(navigate).toHaveBeenCalledWith('/playlists');
+      });
+
+      it('does not warn when a track has a known duration', async () => {
+        const timed = await open({ members: [{ ...track(1), duration_ms: 1000 }] });
+        await tick(timed.view, true);
+        expect(text(timed.ref)).not.toContain('playlists.emergency.noPlayable');
+      });
+
+      it('warns when the tracks have no known duration', async () => {
+        const untimed = await open({ members: [track(1)] });
+        await tick(untimed.view, true);
+        expect(text(untimed.ref)).toContain('playlists.emergency.noPlayable');
+      });
     });
 
     it('asks before leaving with unsaved changes', async () => {

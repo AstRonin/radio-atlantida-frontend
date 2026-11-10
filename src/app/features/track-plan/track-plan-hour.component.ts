@@ -8,6 +8,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import type { PreviewTrack } from '../../core/player/player.service';
 import { DurationPipe, PlannedLengthPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
+import { FieldHintComponent } from '../../shared/ui/field-hint.component';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
 import type { PlanMoveTarget } from './track-plan-move';
 
@@ -72,6 +73,7 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
     DurationPipe,
     PlannedLengthPipe,
     StationTimePipe,
+    FieldHintComponent,
     PlayButtonComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -191,7 +193,7 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
                     </span>
                   }
                 </td>
-                <td>
+                <td class="source">
                   @if (isInsert(item.source)) {
                     <span class="insert-mark" aria-hidden="true">⏱</span>
                   }
@@ -238,13 +240,10 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
                     }
                     @if (row.lock; as lock) {
                       @if (view().frozen) {
-                        <span class="lock">
-                          <span aria-hidden="true">🔒</span>
-                          {{ 'trackPlan.moves.fixed' | translate }}
-                        </span>
+                        <span class="lock" aria-hidden="true">🔒</span>
                       } @else {
                         <button
-                          matButton
+                          matIconButton
                           type="button"
                           class="lock"
                           [disabled]="blocked()"
@@ -254,9 +253,9 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
                           (click)="unpin.emit(lock)"
                         >
                           <span aria-hidden="true">🔒</span>
-                          {{ 'trackPlan.moves.fixed' | translate }}
                         </button>
                       }
+                      <app-field-hint page="help.track-plan" textKey="trackPlan.moves.fixed" />
                     }
                   </div>
                 </td>
@@ -333,10 +332,18 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
       text-align: start;
     }
 
+    /* Holds the widest source label, so a row that becomes a one-time insert does not shift columns. */
+    .source {
+      min-width: 8.5rem;
+      white-space: nowrap;
+    }
+
+    /* Holds the width of the handle, move buttons, lock, and hint, so a pin does not shift columns. */
     .position {
       display: flex;
       align-items: center;
       gap: 0.25rem;
+      min-width: 10.5rem;
     }
 
     .handle {

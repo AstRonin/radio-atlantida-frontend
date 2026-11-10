@@ -28,6 +28,7 @@ const clocks: HelpContent = {
     </app-page-header>
     <app-field-hint page="help.clocks" field="nominal_duration_ms" />
     <app-field-hint page="help.clocks" field="unknown_field" />
+    <app-field-hint page="help.clocks" textKey="clocks.title" />
   `,
 })
 class PageComponent {}
@@ -73,6 +74,8 @@ describe('help UI', () => {
     expect(hints[1].querySelector('button')).toBeNull();
     const hint = hints[0].querySelector('button');
     expect(hint?.getAttribute('aria-label')).toBe('help.fieldHint');
+    // A hint from a translation key needs no field of the help file.
+    expect(hints[2].querySelector('button')?.getAttribute('aria-label')).toBe('clocks.title');
 
     hint?.click();
     expect(TestBed.inject(HelpService).panelPage()).toBe('help.clocks');

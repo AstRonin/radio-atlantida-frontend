@@ -134,6 +134,34 @@ describe('AirWindowListComponent', () => {
     expect(page.querySelector('.nothing-on-air')).toBeNull();
   });
 
+  it('marks the source of an emergency row with a badge, on air or played', () => {
+    const emergency = { item_id: null, source: 'emergency' } as const;
+    const page = show([
+      row({ ...emergency, track_id: 20, title: 'Reserve One' }),
+      row({
+        ...emergency,
+        kind: 'now',
+        status: 'now',
+        track_id: 21,
+        title: 'Reserve Two',
+        start_utc: '2026-10-15T10:00:00Z',
+        end_utc: '2026-10-15T10:04:00Z',
+      }),
+      planned,
+    ]);
+
+    const [played, onAir, plan] = bodyRows(page);
+    for (const tr of [played, onAir]) {
+      const source = tr.querySelector('td:last-child');
+      expect(plain(source?.querySelector('.badge.warn')?.textContent)).toBe(
+        'airWindow.sources.emergency',
+      );
+    }
+    const planSource = plan.querySelector('td:last-child');
+    expect(planSource?.querySelector('.badge')).toBeNull();
+    expect(plain(planSource?.textContent)).toBe('airWindow.sources.plan');
+  });
+
   it('marks a missed row as not aired with its resolution and a link to resolve it', () => {
     const page = show([yesterdayMissed, missed]);
     const [resolved, open] = bodyRows(page);

@@ -13,7 +13,7 @@ import { LiveBackendState, LiveVoiceService } from '../../core/live/live-voice.s
 import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
-import LivePageComponent from './live-page.component';
+import LivePageComponent, { RELOAD_DEBOUNCE_MS } from './live-page.component';
 import { LiveVoiceComponent } from './live-voice.component';
 
 type PlayoutStatus = ApiSchema<'PlayoutStatus'>;
@@ -22,6 +22,7 @@ const playout = (overrides: Partial<PlayoutStatus> = {}): PlayoutStatus => ({
   control_link: { connected: true, since: '2026-10-15T07:00:00Z' },
   output: { state: 'connected', since: '2026-10-15T07:00:00Z' },
   music_gain: 1,
+  safety_on_air: false,
   now_playing: {
     track_id: 7,
     item_id: 11,
@@ -53,6 +54,35 @@ const button = (root: ParentNode, label: string) =>
   [...root.querySelectorAll<HTMLButtonElement>('button')].find(
     (item) => item.textContent?.trim() === label,
   );
+
+const TRACK_ENDED = {
+  type: 'playout.track_ended',
+  time: '2026-10-15T08:03:20Z',
+  data: {
+    track_id: 7,
+    item_id: 11,
+    source: 'plan',
+    status: 'aired',
+    started_at: '2026-10-15T08:00:00Z',
+    ended_at: '2026-10-15T08:03:20Z',
+    actual_duration_ms: 200_000,
+  },
+};
+
+const NEXT_TRACK = {
+  type: 'playout.now_playing',
+  time: '2026-10-15T08:03:20Z',
+  data: {
+    track_id: 8,
+    item_id: 12,
+    title: 'Next Song',
+    source: 'plan',
+    started_at: '2026-10-15T08:03:20Z',
+    in_ms: 0,
+    out_ms: 180_000,
+    truncated: false,
+  },
+};
 
 describe('LivePageComponent', () => {
   let http: HttpTestingController;
@@ -88,8 +118,17 @@ describe('LivePageComponent', () => {
     http.verify();
   });
 
+  const STATUS_REQUEST = { method: 'GET', url: '/api/playout/status' };
+
   const expectStatus = (status: PlayoutStatus = playout()) =>
-    http.expectOne({ method: 'GET', url: '/api/playout/status' }).flush(status);
+    http.expectOne(STATUS_REQUEST).flush(status);
+
+  // debounceTime compares timestamps, and Date is frozen here, so the clock has to move as well.
+  async function afterDebounce(): Promise<void> {
+    vi.setSystemTime(Date.now() + RELOAD_DEBOUNCE_MS);
+    await new Promise((resolve) => setTimeout(resolve, RELOAD_DEBOUNCE_MS + 50));
+    await settlePage();
+  }
 
   async function open(status = playout()): Promise<ComponentFixture<LivePageComponent>> {
     const fixture = TestBed.createComponent(LivePageComponent);
@@ -117,22 +156,12 @@ describe('LivePageComponent', () => {
     const fixture = await open();
     const page = fixture.nativeElement as HTMLElement;
 
-    server.latest.send({
-      type: 'playout.now_playing',
-      time: '2026-10-15T08:03:20Z',
-      data: {
-        track_id: 8,
-        item_id: 12,
-        title: 'Next Song',
-        source: 'plan',
-        started_at: '2026-10-15T08:03:20Z',
-        in_ms: 0,
-        out_ms: 180_000,
-        truncated: false,
-      },
-    });
+    server.latest.send(NEXT_TRACK);
     await settlePage();
+    // The event itself is shown at once; only the status read waits for the debounce.
     expect(page.querySelector('.now-title')?.textContent).toContain('Next Song');
+    http.expectNone(STATUS_REQUEST);
+    await afterDebounce();
     // A start makes the backend push the next items, so the queue is read again.
     expectStatus(playout({ queued: [] }));
 
@@ -149,6 +178,75 @@ describe('LivePageComponent', () => {
     await settlePage();
     expect(page.textContent).toContain('live.onAir.disconnected');
     expect(page.textContent).toContain('live.onAir.queueEmpty');
+  });
+
+  it('clears a finished track when nothing follows it', async () => {
+    const fixture = await open();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.querySelector('.now-title')?.textContent).toContain('Morning Song');
+
+    server.latest.send(TRACK_ENDED);
+    await settlePage();
+    http.expectNone(STATUS_REQUEST);
+    expect(page.querySelector('.now-title')?.textContent).toContain('Morning Song');
+
+    await afterDebounce();
+    expectStatus(playout({ now_playing: undefined }));
+    await settlePage();
+
+    expect(page.querySelector('.now-title')).toBeNull();
+    expect(page.querySelector('mat-progress-bar[mode="determinate"]')).toBeNull();
+    expect(page.textContent).toContain('live.onAir.nothing');
+  });
+
+  it('reads the status once for an end followed at once by a start', async () => {
+    await open();
+
+    server.latest.send(TRACK_ENDED);
+    server.latest.send(NEXT_TRACK);
+    await afterDebounce();
+
+    // expectOne fails on a second request, even one the switchMap has aborted.
+    expectStatus();
+    await settlePage();
+    http.expectNone(STATUS_REQUEST);
+  });
+
+  it('retries with no delay', async () => {
+    const fixture = TestBed.createComponent(LivePageComponent);
+    await settlePage();
+    http
+      .expectOne(STATUS_REQUEST)
+      .flush(
+        { status: 500, title: 'Internal Server Error' },
+        { status: 500, statusText: 'Internal Server Error' },
+      );
+    await settlePage();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(button(page, 'common.retry')).toBeDefined();
+
+    button(page, 'common.retry')?.click();
+
+    // Checked before any timer can run, so a debounce would leave no request here.
+    expectStatus();
+    await settlePage();
+    expect(button(page, 'common.retry')).toBeUndefined();
+    expect(page.querySelector('.now-title')?.textContent).toContain('Morning Song');
+  });
+
+  it('reads the status with no delay when the connection opens again', async () => {
+    await open();
+
+    server.latest.open();
+
+    expectStatus();
+    http.expectOne('/api/live/status').flush({
+      available: true,
+      state: 'off',
+      harbor_connected: false,
+      packets: 0,
+    });
+    await settlePage();
   });
 
   it('sets the music gain from a preset', async () => {

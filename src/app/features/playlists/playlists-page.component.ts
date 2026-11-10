@@ -14,6 +14,7 @@ import { errorMessage } from '../../core/api/problem-message';
 import { CatalogService, catalogList } from '../../core/catalog/catalog.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { SettingsService } from '../../core/settings/settings.service';
 import { clockRuleLabel } from '../../shared/forms/clock-rule-input.component';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
@@ -23,7 +24,7 @@ type Playlist = ApiSchema<'Playlist'>;
 /**
  * Playlists with their type, placement rule in clocks, and track count, filtered by type
  * (`GET /api/playlists?type_id=`).
- * A playlist used by a clock cannot be deleted; the refusal names the clocks.
+ * A playlist used by a clock, or the emergency playlist, cannot be deleted; the refusal says why.
  */
 @Component({
   selector: 'app-playlists-page',
@@ -74,6 +75,9 @@ type Playlist = ApiSchema<'Playlist'>;
           <th mat-header-cell *matHeaderCellDef>{{ 'playlists.fields.name' | translate }}</th>
           <td mat-cell *matCellDef="let playlist">
             <a [routerLink]="['/playlists', playlist.id]">{{ playlist.name }}</a>
+            @if (playlist.id === emergencyId()) {
+              <span class="badge emergency">{{ 'playlists.emergency.badge' | translate }}</span>
+            }
           </td>
         </ng-container>
         <ng-container matColumnDef="type">
@@ -122,11 +126,17 @@ type Playlist = ApiSchema<'Playlist'>;
       </table>
     </div>
   `,
+  styles: `
+    .emergency {
+      margin-inline-start: 0.5rem;
+    }
+  `,
 })
 export default class PlaylistsPageComponent {
   private readonly api = inject(ApiClient);
   private readonly confirm = inject(ConfirmService);
   private readonly i18n = inject(I18nService);
+  private readonly settings = inject(SettingsService);
 
   protected readonly columns = ['name', 'type', 'clockRule', 'tracks', 'rules', 'actions'];
   protected readonly types = catalogList(inject(CatalogService).playlistTypes());
@@ -143,6 +153,14 @@ export default class PlaylistsPageComponent {
   );
   protected readonly loadError = computed(() =>
     this.playlists.status() === 'error' ? errorMessage(this.playlists.error(), this.i18n) : null,
+  );
+
+  private readonly emergency = rxResource({
+    stream: () => this.settings.emergencyPlaylistId(),
+  });
+  /** A failed read leaves the list without the badge. */
+  protected readonly emergencyId = computed(() =>
+    this.emergency.hasValue() ? this.emergency.value() : null,
   );
 
   protected ruleLabel(playlist: Playlist): string {

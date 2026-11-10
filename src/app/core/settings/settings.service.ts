@@ -14,6 +14,7 @@ export type Setting = ApiSchema<'Setting'>;
 export const SETTING_KEYS = {
   stationTimezone: 'station.timezone',
   stationName: 'station.name',
+  emergencyPlaylistId: 'playout.emergency_playlist_id',
 } as const;
 
 export const RECONNECT_NOTICE_MS = 10_000;
@@ -87,6 +88,19 @@ export class SettingsService {
         this.byKey.set(new Map(items.map((setting) => [setting.key, setting])));
         this.loadedState.set(true);
         this.applyTimezone();
+      }),
+    );
+  }
+
+  /**
+   * Reads the current emergency playlist, null when none is set. It is read again each time, so a
+   * change made in Settings shows on the playlist pages. Fails with an `ApiProblem`.
+   */
+  emergencyPlaylistId(): Observable<number | null> {
+    return this.refresh().pipe(
+      map(() => {
+        const value = this.get(SETTING_KEYS.emergencyPlaylistId)?.value;
+        return typeof value === 'number' ? value : null;
       }),
     );
   }

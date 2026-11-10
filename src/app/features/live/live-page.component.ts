@@ -2,7 +2,17 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { Subject, catchError, interval, map, merge, of, startWith, switchMap } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  debounceTime,
+  interval,
+  map,
+  merge,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
@@ -19,11 +29,15 @@ type PlayoutStatus = ApiSchema<'PlayoutStatus'>;
 /** Progress of the current track is redrawn this often; the backend sends no progress events. */
 export const PROGRESS_TICK_MS = 1_000;
 
+/** An end and the next start arrive within milliseconds; they cause one status read. */
+export const RELOAD_DEBOUNCE_MS = 250;
+
 /**
  * The on-air console (design §8.4, §8.5): live voice from the browser, the music gain, and what
  * plays now. The playout status is read when the page opens and when the event connection opens;
  * after that, `playout.now_playing`, `liquidsoap.state`, and `icecast.state` keep it current, and a
- * new track reads the queue again, because the backend pushes the next items after each start.
+ * new track reads the queue again, because the backend pushes the next items after each start. An
+ * ended track reads the status too: when nothing follows it, no other event says so.
  */
 @Component({
   selector: 'app-live-page',
@@ -125,10 +139,13 @@ export default class LivePageComponent {
     this.realtime
       .on('playout.now_playing')
       .pipe(takeUntilDestroyed())
-      .subscribe(({ data }) => {
-        this.patch((status) => ({ ...status, now_playing: data }));
-        this.reload();
-      });
+      .subscribe(({ data }) => this.patch((status) => ({ ...status, now_playing: data })));
+    // Debounced here and not on `loads`: a second read aborts the first through the switchMap, and
+    // the backend logs each aborted read as a 503, while opening the page, a reconnect, and Retry
+    // must read at once.
+    merge(this.realtime.on('playout.now_playing'), this.realtime.on('playout.track_ended'))
+      .pipe(debounceTime(RELOAD_DEBOUNCE_MS), takeUntilDestroyed())
+      .subscribe(() => this.reload());
     this.realtime
       .on('liquidsoap.state')
       .pipe(takeUntilDestroyed())

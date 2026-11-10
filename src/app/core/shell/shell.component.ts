@@ -20,6 +20,7 @@ import { LiveIndicatorComponent } from '../live/live-indicator.component';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { OperationsMenuComponent } from '../operations/operations-menu.component';
 import { PlayerBarComponent } from '../player/player-bar.component';
+import { OnAirWarningComponent } from '../playout/on-air-warning.component';
 import { ConnectionStatusComponent } from '../realtime/connection-status.component';
 import { SettingsService } from '../settings/settings.service';
 import { NARROW_QUERY } from './layout';
@@ -41,6 +42,7 @@ import { navigationItems } from './navigation';
     HelpPanelComponent,
     LanguageSwitchComponent,
     LiveIndicatorComponent,
+    OnAirWarningComponent,
     OperationsMenuComponent,
     OutageBannerComponent,
     PlayerBarComponent,

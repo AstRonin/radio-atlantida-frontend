@@ -137,7 +137,7 @@
     },
     "playout.emergency_playlist_id": {
       "label": "Emergency playlist",
-      "text": "Plays when no planned track is available, so the air is never silent."
+      "text": "Plays when no planned track is available, so the air is never silent. The box \"Use as emergency playlist\" on a playlist's page sets the same value."
     },
     "playout.prepush_minutes": {
       "label": "Pre-push",

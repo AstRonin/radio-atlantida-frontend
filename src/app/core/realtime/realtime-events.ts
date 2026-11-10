@@ -37,6 +37,7 @@ const EVENT_TYPES: Readonly<Record<RealtimeEventType, true>> = {
   'live.state': true,
   'playout.now_playing': true,
   'playout.track_ended': true,
+  'playout.safety': true,
   'track_plan.warning': true,
   'rotation.plan_full': true,
   'track_plan_full.completed': true,

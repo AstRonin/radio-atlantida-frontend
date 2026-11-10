@@ -84,6 +84,11 @@
       "unchecked": "Icecast mount not checked yet"
     }
   },
+  "onAirWarning": {
+    "label": "On-air warning",
+    "safety": "Nothing is playing: the safety tone is on air",
+    "emergency": "Emergency playlist: {title}"
+  },
   "operations": {
     "button": "Operations ({count} running)",
     "empty": "No operations yet.",
@@ -444,7 +449,8 @@
         "playlist_type": "Playlist type",
         "artist": "Artist",
         "grid_slot": "Grid slot",
-        "hour_insert": "One-time insert"
+        "hour_insert": "One-time insert",
+        "emergency_playlist": "As the emergency playlist (choose another one, or untick \"Use as emergency playlist\" on this playlist, first)"
       }
     },
     "unsaved": {
@@ -469,7 +475,7 @@
     "system_type_not_deletable": "A system playlist type cannot be deleted.",
     "playlist_type_in_use": "The playlist type is in use and cannot be deleted.",
     "playlist_not_found": "The playlist was not found.",
-    "playlist_in_use": "The playlist is used by clocks (as a playlist or an insert) and cannot be deleted.",
+    "playlist_in_use": "The playlist is in use and cannot be deleted.",
     "artist_not_found": "The artist was not found.",
     "artist_in_use": "The artist is in use and cannot be deleted.",
     "artist_has_history": "The artist has play history and cannot be deleted.",
@@ -842,6 +848,17 @@
       "note": "How this playlist is placed in every clock that uses it. A clock may set its own rule for it.",
       "column": "In clocks",
       "rebuilding": "Rebuilding the planned hours of the clocks that use this playlist…"
+    },
+    "emergency": {
+      "label": "Use as emergency playlist",
+      "badge": "Emergency",
+      "replaces": "\"{name}\" is the emergency playlist now. Saving replaces it with this one.",
+      "replacesUnnamed": "Another playlist is the emergency playlist now. Saving replaces it with this one.",
+      "clears": "No emergency playlist will be set. An hour with no plan will air a test tone.",
+      "noPlayable": "This playlist has no track with a known duration, so it will not play as the emergency playlist.",
+      "readFailed": "Could not read the current emergency playlist, so this option is not available.",
+      "setFailed": "The playlist is saved, but it did not become the emergency playlist: {reason}",
+      "clearFailed": "The playlist is saved, but it is still the emergency playlist: {reason}"
     }
   },
   "clocks": {
@@ -989,7 +1006,7 @@
     },
     "rebuild": {
       "action": "Rebuild these dates",
-      "note": "A rebuild chooses the tracks of the planned hours again. Hours that have started keep their plan."
+      "note": "A rebuild chooses the tracks of the planned hours again. Hours that have started keep their plan. A started hour with a clock but no plan gets one once, for the time that is left."
     },
     "fullPass": {
       "title": "Full pass",

@@ -20,6 +20,7 @@ import { apiProblemInterceptor, apiTimeoutInterceptor } from './core/api/api.int
 import { RuntimeConfigService } from './core/config/runtime-config.service';
 import { provideI18n } from './core/i18n/i18n.providers';
 import { OperationsService } from './core/operations/operations.service';
+import { OnAirWarningService } from './core/playout/on-air-warning.service';
 import { LiveVoiceService } from './core/live/live-voice.service';
 import { RealtimeService } from './core/realtime/realtime.service';
 import { PlanWarningsService } from './core/rotation/plan-warnings.service';
@@ -46,6 +47,7 @@ export const appConfig: ApplicationConfig = {
       inject(AlertsService);
       inject(OutageService);
       inject(BroadcastService);
+      inject(OnAirWarningService);
       inject(PlanWarningsService);
       inject(LiveVoiceService);
       inject(SettingsService).load();
