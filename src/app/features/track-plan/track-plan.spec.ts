@@ -490,11 +490,11 @@ describe('TrackPlanPageComponent', () => {
         ),
       );
 
-    it('offers a handle and move buttons only on planned fill rows and fixed inserts', async () => {
+    it('offers a handle and move buttons only on planned fill and rule rows and fixed inserts', async () => {
       const fixture = await open([planHour()]);
       const page = fixture.nativeElement as HTMLElement;
       // Fill, rule, fixed insert, insert at the start, clock insert, fill.
-      const movable = [true, false, true, false, false, true];
+      const movable = [true, true, true, false, false, true];
       expect(handles(page)).toEqual(movable);
       expect(rowsOf(page).map((row) => down(row) !== null)).toEqual(movable);
       expect(up(rowsOf(page)[0])?.disabled).toBe(true);

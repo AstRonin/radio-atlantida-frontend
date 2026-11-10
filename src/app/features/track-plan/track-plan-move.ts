@@ -5,7 +5,7 @@ type TrackPlanInsert = ApiSchema<'TrackPlanInsert'>;
 
 const HOUR_MS = 3_600_000;
 
-/** How a row is moved: a fill row becomes a pin, a one-time insert with a fixed time moves. */
+/** How a row is moved: a fill or rule row becomes a pin, a one-time insert with a fixed time moves. */
 export type PlanMoveTarget =
   { kind: 'pin'; planItemId: number } | { kind: 'insert'; insertId: number };
 
@@ -21,7 +21,7 @@ export function moveTargetOf(
   if (frozen || item.status !== 'planned') {
     return null;
   }
-  if (item.source === 'fill') {
+  if (item.source === 'fill' || item.source === 'rule') {
     return { kind: 'pin', planItemId: item.id };
   }
   if (item.source !== 'hour_insert' && item.source !== 'reschedule') {

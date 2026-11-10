@@ -918,7 +918,8 @@
       "fill_general_pool": "No fill track was allowed; a track was taken from the whole library.",
       "fill_emergency": "No track was allowed at all; the emergency playlist covers the gap.",
       "gap_unfilled": "A gap is left that no track could fill.",
-      "reschedule_dropped": "A rescheduled item could not be placed."
+      "reschedule_dropped": "A rescheduled item could not be placed.",
+      "pin_claim_stale": "A fixed rule track no longer takes a slot because the clock changed, so the hour may have one track more."
     },
     "build": {
       "accepted": "Rebuilding the planned hours…",
@@ -1044,7 +1045,8 @@
       "fill_general_pool": "No fill track was allowed; {track} was taken from the whole library.",
       "fill_emergency": "No track was allowed at all; the emergency playlist covers the gap.",
       "gap_unfilled": "A gap is left that no track could fill.",
-      "reschedule_dropped": "A rescheduled item could not be placed in this hour."
+      "reschedule_dropped": "A rescheduled item could not be placed in this hour.",
+      "pin_claim_stale": "The fixed rule track {track} no longer takes a slot because the clock changed, so the hour may have one track more."
     },
     "inserts": {
       "title": "One-time inserts",
@@ -1078,7 +1080,7 @@
       "unpin": "Unpin",
       "unpinLabel": "Fixed until the end of the hour. Unpin {title}",
       "unpinTitle": "Unpin this track?",
-      "unpinMessage": "“{title}” at {at} is removed from this hour and the hour is rebuilt. Another track may take its place.",
+      "unpinMessage": "“{title}” at {at} is removed from this hour and the hour is rebuilt. Another track may take its place. A track placed by a playlist rule gives its slot back to the rule, and the rule may choose another track there.",
       "unpinRescheduledMessage": "“{title}” at {at} is removed from this hour and the hour is rebuilt. Another track may take its place. The missed item is open again.",
       "toleranceTitle": "Start tolerance of the move",
       "toleranceNote": "The track stays at its new time until the end of the hour. How far may it start before or after that time?",

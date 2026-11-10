@@ -16,11 +16,11 @@
     },
     {
       "term": "Fixed track",
-      "text": "A track dragged to a new place, or a one-time insert. It shows a lock with the text fixed until the end of the hour, and every rebuild of the hour keeps it. The other tracks of the hour are built around it, and the fill does not draw the same track again in that hour."
+      "text": "A track dragged to a new place, or a one-time insert. It shows a lock with the text fixed until the end of the hour, and every rebuild of the hour keeps it. The other tracks of the hour are built around it, and the fill does not draw the same track again in that hour. A jingle or other Rule track that is moved takes over one slot of its rule, so the hour keeps the same number of them."
     },
     {
       "term": "Unpin",
-      "text": "Pressing the lock removes the fixed track from the hour and rebuilds the hour, which may put another track at that place. The panel asks first. A rescheduled missed item is removed the same way, and the missed item opens again."
+      "text": "Pressing the lock removes the fixed track from the hour and rebuilds the hour, which may put another track at that place. For a Rule track the slot goes back to its rule, and the rule may choose another track. The panel asks first. A rescheduled missed item is removed the same way, and the missed item opens again."
     },
     {
       "term": "Source",
@@ -35,20 +35,20 @@
       "text": "A problem the engine found while planning, for example a rule track skipped because play rules blocked every track."
     }
   ],
-  "usage": "Look ahead to check what will play. To add today's news, use Add insert on its hour. To move a track inside its hour, drag it by its handle or use the up and down buttons. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
+  "usage": "Look ahead to check what will play. To add today's news, use Add insert on its hour. To move a track inside its hour, including a jingle or other Rule track, drag it by its handle or use the up and down buttons. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
   "steps": [
     "Choose the hours to look at (up to 31 days).",
     "Read the warnings of each hour.",
     "For a one-time insert, click Add insert on the hour, set the time and tolerance, choose the track (news tracks are shown first), and add it.",
-    "To move a planned track, drag it by its handle to another row of the same hour, or use its up and down buttons, then set the start tolerance. Moving up starts it where the row above it starts; moving down starts it where the row below it ends, or, if it would then not end by 60:00, so that it is the last track of the hour. Tick Don't show again for this hour to keep that tolerance for later moves in the hour, until the page is reloaded.",
-    "To unpin a fixed track, press its lock and confirm. The track leaves the hour, and another track may take its place.",
+    "To move a planned track, Fill or Rule, drag it by its handle to another row of the same hour, or use its up and down buttons, then set the start tolerance. Moving up starts it where the row above it starts; moving down starts it where the row below it ends, or, if it would then not end by 60:00, so that it is the last track of the hour. Tick Don't show again for this hour to keep that tolerance for later moves in the hour, until the page is reloaded. A moved Rule track takes over one slot of its rule, so the hour keeps the same number of Rule tracks. Clock inserts have no handle.",
+    "To unpin a fixed track, press its lock and confirm. The track leaves the hour, and another track may take its place; a Rule slot goes back to its rule.",
     "Fix the cause of a warning on the Clocks, Playlists, or Play rules page.",
     "Rebuild the range and follow the operation in the header."
   ],
   "mistakes": [
     "Trying to change the hour on air. Frozen hours keep their plan and their inserts.",
     "Adding an insert where the inserts of the clock leave no room. The insert is refused and an error explains why.",
-    "Moving a Rule track, a clock insert, or a track in a frozen hour. These rows have no handle and no move buttons.",
+    "Moving a clock insert or a track in a frozen hour. These rows have no handle and no move buttons.",
     "Moving a track to a place it cannot take, such as a place that leaves it no room or breaks a play rule. The move is refused, the reason appears next to the hour, and nothing changes.",
     "Rebuilding without fixing the cause. The same warning comes back."
   ],

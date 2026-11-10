@@ -123,8 +123,11 @@ describe('moveOffsetMs', () => {
 });
 
 describe('moveTargetOf', () => {
-  it('pins a planned fill row', () => {
-    expect(moveTargetOf(item({ id: 9 }), [], false)).toEqual({ kind: 'pin', planItemId: 9 });
+  it.each(['fill', 'rule'] as const)('pins a planned %s row', (source) => {
+    expect(moveTargetOf(item({ id: 9, source }), [], false)).toEqual({
+      kind: 'pin',
+      planItemId: 9,
+    });
   });
 
   it('moves a one-time insert or a reschedule with a fixed time', () => {
@@ -149,7 +152,7 @@ describe('moveTargetOf', () => {
     ).toBe(null);
   });
 
-  it.each(['rule', 'insert', 'general'] as const)('does not move a %s row', (source) => {
+  it.each(['insert', 'general'] as const)('does not move a %s row', (source) => {
     expect(moveTargetOf(item({ source }), [], false)).toBe(null);
   });
 
@@ -160,7 +163,7 @@ describe('moveTargetOf', () => {
     },
   );
 
-  it('moves nothing in a frozen hour', () => {
-    expect(moveTargetOf(item(), [], true)).toBe(null);
+  it.each(['fill', 'rule'] as const)('moves no %s row in a frozen hour', (source) => {
+    expect(moveTargetOf(item({ source }), [], true)).toBe(null);
   });
 });

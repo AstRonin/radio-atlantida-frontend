@@ -820,7 +820,8 @@
               "fill_general_pool",
               "fill_emergency",
               "gap_unfilled",
-              "reschedule_dropped"
+              "reschedule_dropped",
+              "pin_claim_stale"
             ],
             "type": "string"
           },
@@ -4692,7 +4693,7 @@
             "type": "integer"
           },
           "plan_item_id": {
-            "description": "ID of a planned fill track of an hour that has not started.",
+            "description": "ID of a planned fill or rule track of an hour that has not started.",
             "format": "int64",
             "minimum": 1,
             "type": "integer"
@@ -5068,7 +5069,8 @@
               "fill_general_pool",
               "fill_emergency",
               "gap_unfilled",
-              "reschedule_dropped"
+              "reschedule_dropped",
+              "pin_claim_stale"
             ],
             "type": "string"
           },
@@ -9240,7 +9242,7 @@
         ]
       },
       "patch": {
-        "description": "Sets the new start of a one-time insert with a fixed time and rebuilds its hour, as an hour_insert operation (§7.2). The insert keeps its track. Refused once the hour is frozen (hour_started), for an insert without a fixed time (not_movable), and for an unknown ID (hour_insert_not_found). When the builder cannot place the insert at its new place, the operation fails with the reason and the insert keeps its old place.",
+        "description": "Sets the new start of a one-time insert with a fixed time and rebuilds its hour, as an hour_insert operation (§7.2). The insert keeps its track, and a pinned rule track keeps its slot. Refused once the hour is frozen (hour_started), for an insert without a fixed time (not_movable), and for an unknown ID (hour_insert_not_found). When the builder cannot place the insert at its new place, the operation fails with the reason and the insert keeps its old place.",
         "operationId": "move-hour-insert",
         "parameters": [
           {
@@ -9324,7 +9326,7 @@
     },
     "/api/track-plan/pins": {
       "post": {
-        "description": "Fixes a planned fill track of an hour that has not started at a new time with seconds, until the end of the hour, as an hour_insert operation: a one-time insert of the same track is stored and the hour is rebuilt around it in one transaction (§7.2). A later rebuild keeps the track at that place. The rest of the hour is built around it. Refused once the hour is frozen (hour_started), and for an item that is not a planned fill track (not_movable). When the builder cannot place the track at its new place, the operation fails with the reason (insert_does_not_fit or insert_blocked) and nothing changes.",
+        "description": "Fixes a planned fill or rule track of an hour that has not started at a new time with seconds, until the end of the hour, as an hour_insert operation: a one-time insert of the same track is stored and the hour is rebuilt around it in one transaction (§7.2). A later rebuild keeps the track at that place. The rest of the hour is built around it. The pin of a rule track takes over one slot of its rule in that hour, so the hour keeps the same number of rule tracks. Refused once the hour is frozen (hour_started), and for an item that is not a planned fill track or a planned rule track with a known playlist (not_movable). When the builder cannot place the track at its new place, the operation fails with the reason (insert_does_not_fit or insert_blocked) and nothing changes.",
         "operationId": "pin-track-plan-item",
         "requestBody": {
           "content": {
@@ -9388,7 +9390,7 @@
             "description": "Internal Server Error"
           }
         },
-        "summary": "Pin a planned fill track at a new time",
+        "summary": "Pin a planned fill or rule track at a new time",
         "tags": [
           "Track plan"
         ]
