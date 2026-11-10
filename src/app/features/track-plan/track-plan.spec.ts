@@ -1,3 +1,4 @@
+import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -6,15 +7,18 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
-import { Observable, map } from 'rxjs';
+import { Observable, Subject, map, switchMap } from 'rxjs';
 import type { ApiSchema } from '../../core/api/api-types';
 import { apiProblemInterceptor } from '../../core/api/api.interceptors';
+import { I18nService } from '../../core/i18n/i18n.service';
 import { OperationState, OperationsService } from '../../core/operations/operations.service';
 import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testing';
 import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
+import type { PlanRowView } from './track-plan-hour.component';
 import TrackPlanPageComponent from './track-plan-page.component';
 
 type TrackPlanHour = ApiSchema<'TrackPlanHour'>;
@@ -409,6 +413,373 @@ describe('TrackPlanPageComponent', () => {
       const page = fixture.nativeElement as HTMLElement;
       expect(button(page, 'trackPlan.inserts.add')).toBeUndefined();
       expect(button(page, 'common.remove')).toBeUndefined();
+    });
+  });
+
+  describe('moving tracks', () => {
+    type Item = TrackPlanHour['items'][number];
+
+    const item = (id: number, minute: number, overrides: Partial<Item> = {}): Item => ({
+      id,
+      track_id: id + 100,
+      title: `Track ${id}`,
+      duration_ms: 180_000,
+      planned_start_utc: `2026-10-15T06:${String(minute).padStart(2, '0')}:00Z`,
+      planned_in_ms: 0,
+      planned_out_ms: 180_000,
+      truncated: false,
+      source: 'fill',
+      playlist: null,
+      status: 'planned',
+      ...overrides,
+    });
+
+    const planHour = (overrides: Partial<TrackPlanHour> = {}): TrackPlanHour =>
+      hour({
+        items: [
+          item(21, 0),
+          item(22, 3, { source: 'rule' }),
+          item(23, 6, { source: 'hour_insert', hour_insert_id: 5 }),
+          item(24, 9, { source: 'hour_insert', hour_insert_id: 6 }),
+          item(25, 12, { source: 'insert' }),
+          item(26, 15),
+        ],
+        inserts: [
+          { id: 5, placement: 'fixed', offset_ms: 360_000, tolerance_ms: 60_000, track_id: 123 },
+          { id: 6, placement: 'start', tolerance_ms: 60_000, track_id: 124 },
+        ],
+        ...overrides,
+      });
+
+    const rowsOf = (page: HTMLElement) => [...page.querySelectorAll<HTMLElement>('tbody tr')];
+    const titles = (page: HTMLElement) =>
+      rowsOf(page).map((row) => row.querySelectorAll('td')[2].textContent?.trim());
+    const down = (row: HTMLElement) =>
+      row.querySelector<HTMLButtonElement>('button[aria-label="trackPlan.moves.moveDown"]');
+    const up = (row: HTMLElement) =>
+      row.querySelector<HTMLButtonElement>('button[aria-label="trackPlan.moves.moveUp"]');
+    const handles = (page: HTMLElement) =>
+      rowsOf(page).map((row) => row.querySelector('.cdk-drag-handle') !== null);
+
+    interface ToleranceForm {
+      form: FormGroup<{ tolerance_ms: FormControl<number | null>; skip: FormControl<boolean> }>;
+    }
+
+    const toleranceForm = () =>
+      (TestBed.inject(MatDialog).openDialogs[0].componentInstance as unknown as ToleranceForm).form;
+
+    async function confirmTolerance(seconds = 60, skip = false): Promise<void> {
+      await settlePage();
+      toleranceForm().setValue({ tolerance_ms: seconds * 1000, skip });
+      await settlePage();
+      button(overlay, 'trackPlan.moves.confirm')?.click();
+      await settlePage();
+    }
+
+    const failed = (reason: string | undefined, error: string) =>
+      runOperation.mockImplementation((start: Observable<{ operation_id: number }>) =>
+        start.pipe(
+          map(({ operation_id }): OperationState => ({
+            id: operation_id,
+            kind: 'hour_insert',
+            status: 'failed',
+            updatedAt: '2026-10-15T01:00:05Z',
+            reason,
+            error,
+          })),
+        ),
+      );
+
+    it('offers a handle and move buttons only on planned fill rows and fixed inserts', async () => {
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      // Fill, rule, fixed insert, insert at the start, clock insert, fill.
+      const movable = [true, false, true, false, false, true];
+      expect(handles(page)).toEqual(movable);
+      expect(rowsOf(page).map((row) => down(row) !== null)).toEqual(movable);
+      expect(up(rowsOf(page)[0])?.disabled).toBe(true);
+      expect(down(rowsOf(page)[5])?.disabled).toBe(true);
+    });
+
+    it('offers no move for a row that is no longer planned', async () => {
+      const fixture = await open([hour({ items: [item(21, 0, { status: 'queued' })] })]);
+      expect(handles(fixture.nativeElement as HTMLElement)).toEqual([false]);
+    });
+
+    it('freezes an hour inside the pre-push window, and "Add insert" stays', async () => {
+      // 01:04 starts within the default 5 minutes of the fixture's 01:00.
+      const fixture = await open([
+        planHour({
+          hour_start_utc: '2026-10-15T01:04:00Z',
+          items: [
+            item(21, 0, { planned_start_utc: '2026-10-15T01:04:00Z' }),
+            item(23, 6, {
+              planned_start_utc: '2026-10-15T01:10:00Z',
+              source: 'hour_insert',
+              hour_insert_id: 5,
+            }),
+          ],
+        }),
+      ]);
+      const page = fixture.nativeElement as HTMLElement;
+      expect(handles(page)).toEqual([false, false]);
+      expect(button(page, 'trackPlan.inserts.add')).toBeDefined();
+      expect(page.querySelector('span.lock')?.textContent).toContain('trackPlan.moves.fixed');
+      expect(page.querySelector('button.lock')).toBeNull();
+    });
+
+    it('pins a fill row moved down, at the end of the row it lands on', async () => {
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      down(rowsOf(page)[0])?.click();
+      await settlePage();
+      // The default is one minute, in the milliseconds the control holds.
+      expect(toleranceForm().controls.tolerance_ms.value).toBe(60_000);
+      await confirmTolerance(45);
+
+      const post = http.expectOne({ method: 'POST', url: '/api/track-plan/pins' });
+      expect(post.request.body).toEqual({
+        plan_item_id: 21,
+        offset_ms: 360_000,
+        tolerance_ms: 45_000,
+      });
+      post.flush({ operation_id: 70 });
+      await settlePage();
+      expect(runOperation).toHaveBeenCalledOnce();
+    });
+
+    it('moves a fixed insert row up with PATCH, at the start of the row it lands on', async () => {
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      up(rowsOf(page)[2])?.click();
+      await confirmTolerance();
+
+      const patch = http.expectOne({ method: 'PATCH', url: '/api/track-plan/inserts/5' });
+      expect(patch.request.body).toEqual({ offset_ms: 180_000, tolerance_ms: 60_000 });
+      patch.flush({ operation_id: 71 });
+      await settlePage();
+    });
+
+    it('sends a drop with the same call, landing where the drop list says', async () => {
+      const fixture = await open([planHour()]);
+      const drops = fixture.debugElement.query(By.directive(CdkDropList));
+      const drags = fixture.debugElement.queryAll(By.directive(CdkDrag));
+      const row = (drags[5].injector.get(CdkDrag) as CdkDrag<PlanRowView>).data;
+      drops.injector
+        .get(CdkDropList)
+        .dropped.emit({ previousIndex: 5, currentIndex: 1, item: { data: row } } as never);
+      await confirmTolerance();
+
+      const post = http.expectOne({ method: 'POST', url: '/api/track-plan/pins' });
+      expect(post.request.body).toEqual({
+        plan_item_id: 26,
+        offset_ms: 180_000,
+        tolerance_ms: 60_000,
+      });
+      post.flush({ operation_id: 72 });
+      await settlePage();
+    });
+
+    it('cancelling the dialog cancels the move', async () => {
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      const before = titles(page);
+      down(rowsOf(page)[0])?.click();
+      await settlePage();
+      button(overlay, 'common.cancel')?.click();
+      await settlePage();
+
+      http.expectNone({ method: 'POST', url: '/api/track-plan/pins' });
+      expect(runOperation).not.toHaveBeenCalled();
+      expect(titles(page)).toEqual(before);
+    });
+
+    it('uses the last tolerance without asking, only for the hour that chose it', async () => {
+      const later = planHour({
+        hour_start_utc: '2026-10-15T07:00:00Z',
+        items: [
+          item(31, 0, { planned_start_utc: '2026-10-15T07:00:00Z' }),
+          item(32, 3, { planned_start_utc: '2026-10-15T07:03:00Z' }),
+        ],
+        inserts: [],
+      });
+      const fixture = await open([planHour(), later]);
+      const page = fixture.nativeElement as HTMLElement;
+      const dialogs = TestBed.inject(MatDialog);
+
+      down(rowsOf(page)[0])?.click();
+      await confirmTolerance(90, true);
+      http.expectOne({ method: 'POST', url: '/api/track-plan/pins' }).flush({ operation_id: 73 });
+      await settlePage();
+
+      // The same hour: no dialog, the same value.
+      up(rowsOf(page)[5])?.click();
+      await settlePage();
+      expect(dialogs.openDialogs).toHaveLength(0);
+      const again = http.expectOne({ method: 'POST', url: '/api/track-plan/pins' });
+      expect(again.request.body).toEqual({
+        plan_item_id: 26,
+        offset_ms: 720_000,
+        tolerance_ms: 90_000,
+      });
+      again.flush({ operation_id: 74 });
+      await settlePage();
+
+      // Another hour still asks.
+      down(rowsOf(page)[6])?.click();
+      await settlePage();
+      expect(dialogs.openDialogs).toHaveLength(1);
+      button(overlay, 'common.cancel')?.click();
+      await settlePage();
+    });
+
+    it('asks again when the checkbox was left off', async () => {
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      down(rowsOf(page)[0])?.click();
+      await confirmTolerance(90);
+      http.expectOne({ method: 'POST', url: '/api/track-plan/pins' }).flush({ operation_id: 75 });
+      await settlePage();
+
+      down(rowsOf(page)[0])?.click();
+      await settlePage();
+      expect(TestBed.inject(MatDialog).openDialogs).toHaveLength(1);
+      expect(toleranceForm().controls.tolerance_ms.value).toBe(60_000);
+      button(overlay, 'common.cancel')?.click();
+      await settlePage();
+    });
+
+    it('a failed operation leaves the list unchanged and shows the reason next to the hour', async () => {
+      failed('insert_does_not_fit', 'developer text');
+      vi.spyOn(TestBed.inject(I18nService), 'has').mockImplementation(
+        (key) => key === 'problems.insert_does_not_fit',
+      );
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      const before = titles(page);
+      down(rowsOf(page)[0])?.click();
+      await confirmTolerance();
+      http.expectOne({ method: 'POST', url: '/api/track-plan/pins' }).flush({ operation_id: 76 });
+      await settlePage();
+
+      expect(page.querySelector('.hour [role="alert"]')?.textContent).toContain(
+        'problems.insert_does_not_fit',
+      );
+      expect(titles(page)).toEqual(before);
+      // Nothing is read again: the list only changes after hour_insert.completed.
+      http.expectNone((req) => req.url === '/api/track-plan');
+    });
+
+    it('shows the backend message for a failure without a known reason', async () => {
+      failed(undefined, 'the planner stopped');
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      down(rowsOf(page)[0])?.click();
+      await confirmTolerance();
+      http.expectOne({ method: 'POST', url: '/api/track-plan/pins' }).flush({ operation_id: 77 });
+      await settlePage();
+      expect(page.querySelector('.hour [role="alert"]')?.textContent).toContain(
+        'the planner stopped',
+      );
+    });
+
+    it('shows a refused request next to the hour by its code', async () => {
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      down(rowsOf(page)[0])?.click();
+      await confirmTolerance();
+      http.expectOne({ method: 'POST', url: '/api/track-plan/pins' }).flush(
+        {
+          type: 'about:blank',
+          title: 'Conflict',
+          status: 409,
+          code: 'hour_started',
+          detail: 'The hour has started.',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await settlePage();
+      expect(page.querySelector('.hour [role="alert"]')?.textContent).toContain(
+        'The hour has started.',
+      );
+      expect(down(rowsOf(page)[0])?.disabled).toBe(false);
+    });
+
+    it('holds the moves of the hour while a move runs, and only that hour', async () => {
+      const finished = new Subject<OperationState>();
+      runOperation.mockImplementation((start: Observable<{ operation_id: number }>) =>
+        start.pipe(switchMap(() => finished)),
+      );
+      const later = planHour({
+        hour_start_utc: '2026-10-15T07:00:00Z',
+        items: [
+          item(31, 0, { planned_start_utc: '2026-10-15T07:00:00Z' }),
+          item(32, 3, { planned_start_utc: '2026-10-15T07:03:00Z' }),
+        ],
+        inserts: [],
+      });
+      const fixture = await open([planHour(), later]);
+      const page = fixture.nativeElement as HTMLElement;
+      down(rowsOf(page)[0])?.click();
+      await confirmTolerance();
+      http.expectOne({ method: 'POST', url: '/api/track-plan/pins' }).flush({ operation_id: 78 });
+      await settlePage();
+
+      expect(page.querySelector('.hour [role="status"]')?.textContent).toContain(
+        'trackPlan.moves.running',
+      );
+      expect(down(rowsOf(page)[0])?.disabled).toBe(true);
+      expect(up(rowsOf(page)[5])?.disabled).toBe(true);
+      expect(page.querySelector<HTMLButtonElement>('button.lock')?.disabled).toBe(true);
+      expect(down(rowsOf(page)[6])?.disabled).toBe(false);
+
+      finished.next({ id: 78, kind: 'hour_insert', status: 'completed', updatedAt: null });
+      finished.complete();
+      await settlePage();
+      expect(down(rowsOf(page)[0])?.disabled).toBe(false);
+    });
+
+    it('warns before unpinning, then removes the insert', async () => {
+      const fixture = await open([planHour()]);
+      const page = fixture.nativeElement as HTMLElement;
+      const lock = rowsOf(page)[2].querySelector<HTMLButtonElement>('button.lock');
+      expect(lock?.textContent).toContain('trackPlan.moves.fixed');
+      lock?.click();
+      await settlePage();
+      expect(overlay.textContent).toContain('trackPlan.moves.unpinMessage');
+      http.expectNone({ method: 'DELETE', url: '/api/track-plan/inserts/5' });
+
+      button(overlay, 'trackPlan.moves.unpin')?.click();
+      http
+        .expectOne({ method: 'DELETE', url: '/api/track-plan/inserts/5' })
+        .flush({ operation_id: 79 });
+      await settlePage();
+      expect(runOperation).toHaveBeenCalledOnce();
+    });
+
+    it('says the missed item opens again when unpinning a reschedule', async () => {
+      const fixture = await open([
+        planHour({
+          items: [item(23, 6, { source: 'reschedule', hour_insert_id: 5 })],
+          inserts: [
+            {
+              id: 5,
+              missed_id: 9,
+              placement: 'fixed',
+              offset_ms: 360_000,
+              tolerance_ms: 60_000,
+              track_id: 123,
+            },
+          ],
+        }),
+      ]);
+      const page = fixture.nativeElement as HTMLElement;
+      page.querySelector<HTMLButtonElement>('button.lock')?.click();
+      await settlePage();
+      expect(overlay.textContent).toContain('trackPlan.moves.unpinRescheduledMessage');
+      button(overlay, 'common.cancel')?.click();
+      await settlePage();
+      http.expectNone({ method: 'DELETE', url: '/api/track-plan/inserts/5' });
     });
   });
 

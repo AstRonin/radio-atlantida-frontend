@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import type { paths } from './generated/api';
 
-export type HttpMethod = 'get' | 'post' | 'put' | 'delete';
+export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 /** Paths of the specification that define `method`. Paths in the spec already start with `/api`. */
 export type ApiPath<M extends HttpMethod> = {
@@ -84,6 +84,13 @@ export class ApiClient {
     ...[options]: OptionsArgs<ApiOperation<P, 'put'>>
   ): Observable<ApiResponse<ApiOperation<P, 'put'>>> {
     return this.request('PUT', path, options);
+  }
+
+  patch<P extends ApiPath<'patch'>>(
+    path: P,
+    ...[options]: OptionsArgs<ApiOperation<P, 'patch'>>
+  ): Observable<ApiResponse<ApiOperation<P, 'patch'>>> {
+    return this.request('PATCH', path, options);
   }
 
   delete<P extends ApiPath<'delete'>>(

@@ -488,6 +488,10 @@
     "grid_conflict": "Another change to the same grid hours was saved at the same time. Reload the grid and try again.",
     "hour_insert_not_found": "The one-time insert was not found; it may have been removed already.",
     "hour_started": "This hour is on air, over, or about to start, so its plan cannot be changed.",
+    "plan_item_not_found": "This track is no longer in the plan. The plan may have been rebuilt; look at the hour again.",
+    "not_movable": "This item cannot be moved. Only planned fill tracks and one-time inserts at a fixed time can.",
+    "insert_does_not_fit": "The track does not fit at this place: its start window or the rest of the hour leaves no room.",
+    "insert_blocked": "The track cannot play at this place because a play rule blocks it.",
     "liquidsoap_unavailable": "Liquidsoap cannot be reached. Try again when the playout is connected.",
     "missed_item_not_found": "The missed item was not found.",
     "missed_item_resolved": "The missed item was already rescheduled or dismissed.",
@@ -1013,7 +1017,8 @@
       "length": "Plays for",
       "source": "Source",
       "type": "Type",
-      "status": "Status"
+      "status": "Status",
+      "position": "Position"
     },
     "sources": {
       "fill": "Fill",
@@ -1062,6 +1067,23 @@
       "removeMessage": "“{title}” at {at} is removed and the hour is rebuilt without it.",
       "removeRescheduledMessage": "“{title}” at {at} is removed and the hour is rebuilt without it. The missed item is open again.",
       "running": "Rebuilding the hour…"
+    },
+    "moves": {
+      "handle": "Drag to move",
+      "moveUp": "Move {title} up",
+      "moveDown": "Move {title} down",
+      "running": "Applying the move and rebuilding the hour…",
+      "failed": "The change could not be applied. The hour is unchanged.",
+      "fixed": "fixed until the end of the hour",
+      "unpin": "Unpin",
+      "unpinLabel": "Fixed until the end of the hour. Unpin {title}",
+      "unpinTitle": "Unpin this track?",
+      "unpinMessage": "“{title}” at {at} is removed from this hour and the hour is rebuilt. Another track may take its place.",
+      "unpinRescheduledMessage": "“{title}” at {at} is removed from this hour and the hour is rebuilt. Another track may take its place. The missed item is open again.",
+      "toleranceTitle": "Start tolerance of the move",
+      "toleranceNote": "The track stays at its new time until the end of the hour. How far may it start before or after that time?",
+      "skipDialog": "Don't show again for this hour",
+      "confirm": "Move"
     }
   },
   "playedTracks": {

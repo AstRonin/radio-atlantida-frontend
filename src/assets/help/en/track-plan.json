@@ -1,6 +1,6 @@
 {
   "title": "Track plan",
-  "summary": "The track plan shows the concrete tracks planned for the coming hours. The system builds it from the grid and keeps it 31 days ahead by default; the number of days is set in Settings. A full pass rebuilds the whole horizon every night at the set time, or with its button. You can add a one-time insert, such as today's news, to an hour that has not started.",
+  "summary": "The track plan shows the concrete tracks planned for the coming hours. The system builds it from the grid and keeps it 31 days ahead by default; the number of days is set in Settings. A full pass rebuilds the whole horizon every night at the set time, or with its button. You can add a one-time insert, such as today's news, to an hour that has not started, and drag a planned track to another place in its hour, where it stays fixed until the end of the hour.",
   "entities": [
     {
       "term": "Planned hour",
@@ -15,6 +15,14 @@
       "text": "A track added to one planned hour at a time with seconds, for example today's news at 18:30:00. The hour is rebuilt around it, and it stays when the hour is rebuilt again later. The clock template does not change."
     },
     {
+      "term": "Fixed track",
+      "text": "A track dragged to a new place, or a one-time insert. It shows a lock with the text fixed until the end of the hour, and every rebuild of the hour keeps it. The other tracks of the hour are built around it, and the fill does not draw the same track again in that hour."
+    },
+    {
+      "term": "Unpin",
+      "text": "Pressing the lock removes the fixed track from the hour and rebuilds the hour, which may put another track at that place. The panel asks first. A rescheduled missed item is removed the same way, and the missed item opens again."
+    },
+    {
       "term": "Source",
       "text": "Why an item is there: Fill or Rule (a playlist of the clock), Insert (a timed insert of the clock), One-time insert, Rescheduled (a missed item), or Whole library (no fill track was allowed). Inserts are highlighted."
     },
@@ -27,17 +35,21 @@
       "text": "A problem the engine found while planning, for example a rule track skipped because play rules blocked every track."
     }
   ],
-  "usage": "Look ahead to check what will play. To add today's news, use Add insert on its hour. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
+  "usage": "Look ahead to check what will play. To add today's news, use Add insert on its hour. To move a track inside its hour, drag it by its handle or use the up and down buttons. If something looks wrong, fix the clock, playlist, or rule, then rebuild the affected hours. The panel shows the plan; it never calculates it.",
   "steps": [
     "Choose the hours to look at (up to 31 days).",
     "Read the warnings of each hour.",
     "For a one-time insert, click Add insert on the hour, set the time and tolerance, choose the track (news tracks are shown first), and add it.",
+    "To move a planned track, drag it by its handle to another row of the same hour, or use its up and down buttons, then set the start tolerance. Moving up starts it where the row above it starts; moving down starts it where the row below it ends, or, if it would then not end by 60:00, so that it is the last track of the hour. Tick Don't show again for this hour to keep that tolerance for later moves in the hour, until the page is reloaded.",
+    "To unpin a fixed track, press its lock and confirm. The track leaves the hour, and another track may take its place.",
     "Fix the cause of a warning on the Clocks, Playlists, or Play rules page.",
     "Rebuild the range and follow the operation in the header."
   ],
   "mistakes": [
     "Trying to change the hour on air. Frozen hours keep their plan and their inserts.",
     "Adding an insert where the inserts of the clock leave no room. The insert is refused and an error explains why.",
+    "Moving a Rule track, a clock insert, or a track in a frozen hour. These rows have no handle and no move buttons.",
+    "Moving a track to a place it cannot take, such as a place that leaves it no room or breaks a play rule. The move is refused, the reason appears next to the hour, and nothing changes.",
     "Rebuilding without fixing the cause. The same warning comes back."
   ],
   "example": {
@@ -45,9 +57,9 @@
     "text": "Click Add insert on the 18:00 hour, enter 30:00, keep ±60 seconds, and choose today's news file. The hour is rebuilt: the music before 18:30 ends inside the window or fades out, and the news plays. If the grid changes later, the hour is rebuilt again and the news stays."
   },
   "operations": {
-    "create": "Adding an insert rebuilds its hour; the status line under the dates shows when it is done.",
+    "create": "Adding an insert rebuilds its hour; the status line under the dates shows when it is done. Moving a track rebuilds its hour too; the hour shows a progress bar and takes no other move until it is done.",
     "edit": "A rebuild changes only planned items in hours that have not started; one-time inserts stay.",
-    "delete": "Removing a one-time insert rebuilds its hour without it. Removing a rescheduled missed item opens the missed item again."
+    "delete": "Removing a one-time insert rebuilds its hour without it. Removing a rescheduled missed item opens the missed item again. Unpinning a fixed track is a removal: the hour may get another track at that place."
   },
   "fields": {
     "from": {

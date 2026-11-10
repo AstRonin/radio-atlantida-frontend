@@ -11,14 +11,18 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { finalize, map, merge, of, tap } from 'rxjs';
+import { Observable, finalize, map, merge, of, tap } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { followOperation } from '../../core/operations/operation-run';
-import { OperationStatus, OperationsService } from '../../core/operations/operations.service';
+import {
+  OperationState,
+  OperationStatus,
+  OperationsService,
+} from '../../core/operations/operations.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { PlanWarningsService, TrackPlanWarning } from '../../core/rotation/plan-warnings.service';
 import { SettingsService } from '../../core/settings/settings.service';
@@ -32,7 +36,17 @@ import { ConfirmService } from '../../shared/ui/confirm.service';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { HourInsertDialogComponent, HourInsertDialogData } from './hour-insert-dialog.component';
-import { PlanHourView, PlanInsertView, TrackPlanHourComponent } from './track-plan-hour.component';
+import {
+  MoveToleranceDialogComponent,
+  MoveToleranceResult,
+} from './move-tolerance-dialog.component';
+import {
+  PlanHourView,
+  PlanInsertView,
+  PlanRowMove,
+  TrackPlanHourComponent,
+} from './track-plan-hour.component';
+import { moveOffsetMs, moveTargetOf } from './track-plan-move';
 
 type TrackPlanHour = ApiSchema<'TrackPlanHour'>;
 type TrackPlanInsert = ApiSchema<'TrackPlanInsert'>;
@@ -53,6 +67,8 @@ export const PLAN_WINDOW_DAYS = 183;
 const HOUR_MS = 3_600_000;
 /** Used when the setting of a new insert's tolerance is not loaded: ±1 minute. */
 const DEFAULT_INSERT_TOLERANCE_MS = 60_000;
+/** Used while `playout.prepush_minutes` is not loaded; the backend's default. */
+const DEFAULT_PREPUSH_MINUTES = 5;
 
 interface PlanRange {
   from: string;
@@ -141,8 +157,13 @@ interface PlanRange {
       @for (view of hours(); track view.hour.hour_start_utc) {
         <app-track-plan-hour
           [view]="view"
+          [busy]="moving().has(view.hour.hour_start_utc)"
+          [blocked]="moving().has(view.hour.hour_start_utc) || plan.isLoading()"
+          [moveError]="moveErrors().get(view.hour.hour_start_utc) ?? null"
           (addInsert)="openAddInsert(view.hour)"
           (removeInsert)="removeInsert($event)"
+          (move)="move(view, $event)"
+          (unpin)="unpin(view.hour.hour_start_utc, $event)"
         />
       } @empty {
         @if (plan.hasValue()) {
@@ -279,6 +300,12 @@ export default class TrackPlanPageComponent {
   protected readonly fullPassBusy = computed(
     () => this.fullPassRunning() || this.fullRun.running(),
   );
+  /** Hours (by start) with a move or unpin being applied; each blocks only its own hour. */
+  protected readonly moving = signal<ReadonlySet<string>>(new Set());
+  /** Why the last move of an hour failed, already translated. */
+  protected readonly moveErrors = signal<ReadonlyMap<string, string>>(new Map());
+  /** Tolerance chosen with "Don't show again", per hour; lost on reload by design. */
+  private readonly hourTolerances = new Map<string, number>();
 
   constructor() {
     this.showToday();
@@ -406,6 +433,164 @@ export default class TrackPlanPageComponent {
       });
   }
 
+  protected move(view: PlanHourView, request: PlanRowMove): void {
+    const hourStart = view.hour.hour_start_utc;
+    // By ID, not by object: a reload during the drag replaces the row objects.
+    const from = view.rows.findIndex((row) => row.item.id === request.row.item.id);
+    const target = view.rows[from]?.move ?? null;
+    if (
+      target === null ||
+      request.to === from ||
+      request.to < 0 ||
+      request.to >= view.rows.length ||
+      this.moving().has(hourStart) ||
+      this.plan.isLoading()
+    ) {
+      return;
+    }
+    const offsetMs = moveOffsetMs(
+      hourStart,
+      view.rows.map((row) => row.item),
+      from,
+      request.to,
+    );
+    this.askTolerance(hourStart)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((toleranceMs) => {
+        if (toleranceMs === null) {
+          return;
+        }
+        const body = { offset_ms: offsetMs, tolerance_ms: toleranceMs };
+        this.followMove(
+          hourStart,
+          target.kind === 'pin'
+            ? this.api.post('/api/track-plan/pins', {
+                body: { plan_item_id: target.planItemId, ...body },
+              })
+            : this.api.patch('/api/track-plan/inserts/{id}', {
+                path: { id: target.insertId },
+                body,
+              }),
+        );
+      });
+  }
+
+  /** Emits the tolerance in milliseconds, or null when the operator cancels. */
+  private askTolerance(hourStart: string): Observable<number | null> {
+    const remembered = this.hourTolerances.get(hourStart);
+    if (remembered !== undefined) {
+      return of(remembered);
+    }
+    return this.dialog
+      .open<MoveToleranceDialogComponent, undefined, MoveToleranceResult>(
+        MoveToleranceDialogComponent,
+        {
+          width: '28rem',
+          maxWidth: 'calc(100vw - 2rem)',
+        },
+      )
+      .afterClosed()
+      .pipe(
+        map((result) => {
+          if (result === undefined) {
+            return null;
+          }
+          if (result.skipForHour) {
+            this.hourTolerances.set(hourStart, result.toleranceMs);
+          }
+          return result.toleranceMs;
+        }),
+      );
+  }
+
+  protected unpin(hourStart: string, row: PlanInsertView): void {
+    if (this.moving().has(hourStart)) {
+      return;
+    }
+    let operationId: number | undefined;
+    this.confirm
+      .confirm({
+        title: 'trackPlan.moves.unpinTitle',
+        message:
+          row.insert.missed_id === undefined
+            ? 'trackPlan.moves.unpinMessage'
+            : 'trackPlan.moves.unpinRescheduledMessage',
+        params: { title: row.title, at: row.at },
+        confirmLabel: 'trackPlan.moves.unpin',
+        destructive: true,
+        action: () =>
+          this.api
+            .delete('/api/track-plan/inserts/{id}', { path: { id: row.insert.id } })
+            .pipe(tap((accepted) => (operationId = accepted.operation_id))),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((removed) => {
+        if (removed && operationId !== undefined) {
+          this.followMove(hourStart, of({ operation_id: operationId }));
+        }
+      });
+  }
+
+  // The list changes only through the reload that hour_insert.completed starts, so a failure
+  // leaves it as it was and only has to be explained.
+  private followMove(hourStart: string, start: Observable<{ operation_id: number }>): void {
+    this.setMoving(hourStart, true);
+    this.setMoveError(hourStart, null);
+    this.operations
+      .runOperation(start)
+      .pipe(
+        finalize(() => this.setMoving(hourStart, false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (state) => {
+          if (state.status === 'failed') {
+            this.setMoveError(hourStart, this.failureMessage(state));
+          }
+        },
+        error: (error: unknown) => this.setMoveError(hourStart, errorMessage(error, this.i18n)),
+      });
+  }
+
+  private failureMessage(state: OperationState): string {
+    const key = `problems.${state.reason}`;
+    if (state.reason !== undefined && this.i18n.has(key)) {
+      return this.i18n.translate(key);
+    }
+    return state.error ?? this.i18n.translate('trackPlan.moves.failed');
+  }
+
+  private setMoving(hourStart: string, moving: boolean): void {
+    this.moving.update((hours) => {
+      const next = new Set(hours);
+      if (moving) {
+        next.add(hourStart);
+      } else {
+        next.delete(hourStart);
+      }
+      return next;
+    });
+  }
+
+  private setMoveError(hourStart: string, message: string | null): void {
+    this.moveErrors.update((errors) => {
+      const next = new Map(errors);
+      if (message === null) {
+        next.delete(hourStart);
+      } else {
+        next.set(hourStart, message);
+      }
+      return next;
+    });
+  }
+
+  // The backend's rule (PlanSettings.frozen): the hour starts within the pre-push window.
+  private isFrozen(hourStartUtc: string, now: number): boolean {
+    const setting: unknown = this.settings.get('playout.prepush_minutes')?.value;
+    const minutes = typeof setting === 'number' ? setting : DEFAULT_PREPUSH_MINUTES;
+    return Date.parse(hourStartUtc) <= now + minutes * 60_000;
+  }
+
   // A failed operation is already an error.alert popup; the line only says how it ended.
   private follow(operationId: number): void {
     this.insertRun
@@ -416,13 +601,16 @@ export default class TrackPlanPageComponent {
 
   private viewOf(hour: TrackPlanHour, now: number): PlanHourView {
     const titles = new Map(hour.items.map((item) => [item.track_id, item.title]));
+    const frozen = this.isFrozen(hour.hour_start_utc, now);
+    const inserts: PlanInsertView[] = hour.inserts.map((insert) => ({
+      insert,
+      at: this.insertAt(insert),
+      title: titles.get(insert.track_id) ?? `#${insert.track_id}`,
+    }));
     return {
       editable: Date.parse(hour.hour_start_utc) > now,
-      inserts: hour.inserts.map((insert) => ({
-        insert,
-        at: this.insertAt(insert),
-        title: titles.get(insert.track_id) ?? `#${insert.track_id}`,
-      })),
+      frozen,
+      inserts,
       hour,
       endUtc: new Date(Date.parse(hour.hour_start_utc) + HOUR_MS).toISOString(),
       rows: hour.items.map((item) => ({
@@ -432,6 +620,8 @@ export default class TrackPlanPageComponent {
           title: item.title,
           artist: item.artist_name ? { name: item.artist_name } : undefined,
         },
+        move: moveTargetOf(item, hour.inserts, frozen),
+        lock: inserts.find((view) => view.insert.id === item.hour_insert_id) ?? null,
       })),
       warnings: this.warnings
         .forHour(hour.hour_start_utc, hour.built_at)

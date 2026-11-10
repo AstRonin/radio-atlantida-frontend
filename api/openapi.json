@@ -1489,6 +1489,33 @@
         ],
         "type": "object"
       },
+      "HourInsertMoveBody": {
+        "additionalProperties": false,
+        "properties": {
+          "offset_ms": {
+            "description": "New start inside the hour, whole seconds. The insert must have a fixed time.",
+            "format": "int64",
+            "maximum": 3599000,
+            "minimum": 0,
+            "multipleOf": 1000,
+            "type": "integer"
+          },
+          "tolerance_ms": {
+            "description": "Start tolerance in milliseconds. Default: the tolerance the insert has.",
+            "format": "int64",
+            "maximum": 600000,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "offset_ms"
+        ],
+        "type": "object"
+      },
       "IcecastStateData": {
         "additionalProperties": false,
         "properties": {
@@ -3576,6 +3603,8 @@
           "grid_conflict",
           "hour_insert_not_found",
           "hour_started",
+          "plan_item_not_found",
+          "not_movable",
           "track_plan_full_running",
           "liquidsoap_unavailable",
           "missed_item_not_found",
@@ -4648,6 +4677,40 @@
         "required": [
           "items",
           "total"
+        ],
+        "type": "object"
+      },
+      "TrackPinBody": {
+        "additionalProperties": false,
+        "properties": {
+          "offset_ms": {
+            "description": "New start inside the hour, whole seconds (18:30:00 in its hour is 1800000).",
+            "format": "int64",
+            "maximum": 3599000,
+            "minimum": 0,
+            "multipleOf": 1000,
+            "type": "integer"
+          },
+          "plan_item_id": {
+            "description": "ID of a planned fill track of an hour that has not started.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "tolerance_ms": {
+            "description": "Start tolerance in milliseconds. Default: setting rotation.default_fixed_tolerance_ms.",
+            "format": "int64",
+            "maximum": 600000,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "plan_item_id",
+          "offset_ms"
         ],
         "type": "object"
       },
@@ -9172,6 +9235,160 @@
           }
         },
         "summary": "Remove a one-time insert",
+        "tags": [
+          "Track plan"
+        ]
+      },
+      "patch": {
+        "description": "Sets the new start of a one-time insert with a fixed time and rebuilds its hour, as an hour_insert operation (§7.2). The insert keeps its track. Refused once the hour is frozen (hour_started), for an insert without a fixed time (not_movable), and for an unknown ID (hour_insert_not_found). When the builder cannot place the insert at its new place, the operation fails with the reason and the insert keeps its old place.",
+        "operationId": "move-hour-insert",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HourInsertMoveBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Move a one-time insert inside its hour",
+        "tags": [
+          "Track plan"
+        ]
+      }
+    },
+    "/api/track-plan/pins": {
+      "post": {
+        "description": "Fixes a planned fill track of an hour that has not started at a new time with seconds, until the end of the hour, as an hour_insert operation: a one-time insert of the same track is stored and the hour is rebuilt around it in one transaction (§7.2). A later rebuild keeps the track at that place. The rest of the hour is built around it. Refused once the hour is frozen (hour_started), and for an item that is not a planned fill track (not_movable). When the builder cannot place the track at its new place, the operation fails with the reason (insert_does_not_fit or insert_blocked) and nothing changes.",
+        "operationId": "pin-track-plan-item",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackPinBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAccepted"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Pin a planned fill track at a new time",
         "tags": [
           "Track plan"
         ]

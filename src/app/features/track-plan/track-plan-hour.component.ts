@@ -1,5 +1,7 @@
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import type { ApiSchema } from '../../core/api/api-types';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -7,11 +9,22 @@ import type { PreviewTrack } from '../../core/player/player.service';
 import { DurationPipe, PlannedLengthPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { PlayButtonComponent } from '../../shared/ui/play-button.component';
+import type { PlanMoveTarget } from './track-plan-move';
 
 export interface PlanRowView {
   item: ApiSchema<'TrackPlanItem'>;
   /** What the play button needs; built once per load, not on every check. */
   preview: PreviewTrack;
+  /** How the row moves; null when it has no handle and no move buttons. */
+  move: PlanMoveTarget | null;
+  /** The one-time insert that fixes this row; null for a row that is not fixed. */
+  lock: PlanInsertView | null;
+}
+
+/** A row dropped or stepped onto the row at index `to` of its hour. */
+export interface PlanRowMove {
+  row: PlanRowView;
+  to: number;
 }
 
 export interface PlanHourView {
@@ -25,6 +38,8 @@ export interface PlanHourView {
   inserts: readonly PlanInsertView[];
   /** The hour has not started, so inserts may be added or removed (the backend still decides). */
   editable: boolean;
+  /** On air or within the pre-push window: nothing in the hour can move or be unpinned. */
+  frozen: boolean;
 }
 
 export interface PlanInsertView {
@@ -47,7 +62,11 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
 @Component({
   selector: 'app-track-plan-hour',
   imports: [
+    CdkDrag,
+    CdkDragHandle,
+    CdkDropList,
     MatButtonModule,
+    MatProgressBarModule,
     RouterLink,
     TranslatePipe,
     DurationPipe,
@@ -74,6 +93,17 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
           </button>
         }
       </header>
+
+      @if (busy()) {
+        <mat-progress-bar
+          mode="indeterminate"
+          [attr.aria-label]="'trackPlan.moves.running' | translate"
+        />
+        <p class="muted" role="status">{{ 'trackPlan.moves.running' | translate }}</p>
+      }
+      @if (moveError(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
 
       @if (view().warnings.length > 0) {
         <ul class="warnings" [attr.aria-label]="'trackPlan.warningsLabel' | translate">
@@ -126,12 +156,25 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
               <th scope="col">{{ 'trackPlan.columns.source' | translate }}</th>
               <th scope="col">{{ 'trackPlan.columns.type' | translate }}</th>
               <th scope="col">{{ 'trackPlan.columns.status' | translate }}</th>
+              <th scope="col">{{ 'trackPlan.columns.position' | translate }}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            cdkDropList
+            cdkDropListLockAxis="y"
+            [cdkDropListDisabled]="view().frozen || blocked()"
+            (cdkDropListDropped)="dropped($event)"
+          >
             @for (row of view().rows; track row.item.id) {
               @let item = row.item;
-              <tr [class.insert]="isInsert(item.source)">
+              <!-- Every row is a cdkDrag, or the drop indexes would skip the rows that cannot move. -->
+              <tr
+                cdkDrag
+                cdkDragPreviewContainer="parent"
+                [cdkDragData]="row"
+                [cdkDragDisabled]="row.move === null || blocked()"
+                [class.insert]="isInsert(item.source)"
+              >
                 <td class="time">{{ item.planned_start_utc | stationTime: 'time-seconds' }}</td>
                 <td>
                   <app-play-button [track]="row.preview" />
@@ -160,10 +203,67 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
                     {{ 'trackPlan.statuses.' + item.status | translate }}
                   </span>
                 </td>
+                <td>
+                  <div class="position">
+                    @if (row.move !== null) {
+                      <span
+                        class="handle"
+                        cdkDragHandle
+                        aria-hidden="true"
+                        [title]="'trackPlan.moves.handle' | translate"
+                        >⠿</span
+                      >
+                      <button
+                        matIconButton
+                        type="button"
+                        [disabled]="blocked() || $first"
+                        [attr.aria-label]="
+                          'trackPlan.moves.moveUp' | translate: { title: item.title }
+                        "
+                        (click)="move.emit({ row, to: $index - 1 })"
+                      >
+                        <span aria-hidden="true">↑</span>
+                      </button>
+                      <button
+                        matIconButton
+                        type="button"
+                        [disabled]="blocked() || $last"
+                        [attr.aria-label]="
+                          'trackPlan.moves.moveDown' | translate: { title: item.title }
+                        "
+                        (click)="move.emit({ row, to: $index + 1 })"
+                      >
+                        <span aria-hidden="true">↓</span>
+                      </button>
+                    }
+                    @if (row.lock; as lock) {
+                      @if (view().frozen) {
+                        <span class="lock">
+                          <span aria-hidden="true">🔒</span>
+                          {{ 'trackPlan.moves.fixed' | translate }}
+                        </span>
+                      } @else {
+                        <button
+                          matButton
+                          type="button"
+                          class="lock"
+                          [disabled]="blocked()"
+                          [attr.aria-label]="
+                            'trackPlan.moves.unpinLabel' | translate: { title: item.title }
+                          "
+                          (click)="unpin.emit(lock)"
+                        >
+                          <span aria-hidden="true">🔒</span>
+                          {{ 'trackPlan.moves.fixed' | translate }}
+                        </button>
+                      }
+                    }
+                  </div>
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td class="muted" colspan="8">{{ 'trackPlan.noItems' | translate }}</td>
+                <td class="muted" colspan="9">{{ 'trackPlan.noItems' | translate }}</td>
               </tr>
             }
           </tbody>
@@ -233,6 +333,31 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
       text-align: start;
     }
 
+    .position {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .handle {
+      padding-inline: 0.25rem;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .lock {
+      white-space: nowrap;
+    }
+
+    tr.cdk-drag-placeholder {
+      opacity: 0.4;
+    }
+
+    tr.cdk-drag-preview {
+      background: var(--mat-sys-surface-container-high);
+      box-shadow: var(--mat-sys-level3);
+    }
+
     .time {
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
@@ -241,9 +366,23 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
 })
 export class TrackPlanHourComponent {
   readonly view = input.required<PlanHourView>();
+  /** A move or unpin of this hour is being applied. */
+  readonly busy = input(false);
+  /** No move may start: one is running, or the plan is being read again. */
+  readonly blocked = input(false);
+  /** Already translated; why the last move of this hour was refused. */
+  readonly moveError = input<string | null>(null);
 
   readonly addInsert = output();
   readonly removeInsert = output<PlanInsertView>();
+  readonly move = output<PlanRowMove>();
+  readonly unpin = output<PlanInsertView>();
+
+  protected dropped(event: CdkDragDrop<unknown, unknown, PlanRowView>): void {
+    if (event.previousIndex !== event.currentIndex) {
+      this.move.emit({ row: event.item.data, to: event.currentIndex });
+    }
+  }
 
   protected isInsert(source: string): boolean {
     return INSERT_SOURCES.has(source);

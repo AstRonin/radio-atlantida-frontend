@@ -46,6 +46,8 @@ export interface OperationState {
   updatedAt: string | null;
   summary?: string;
   error?: string;
+  /** Stable code of a refused one-time insert; only the failed event carries it. */
+  reason?: string;
   component?: string;
   progress?: OperationProgress;
 }
@@ -187,6 +189,7 @@ export class OperationsService {
         ...next,
         status: 'failed',
         error: event.data.error,
+        reason: event.data.reason,
         component: event.data.component,
       });
     } else {
