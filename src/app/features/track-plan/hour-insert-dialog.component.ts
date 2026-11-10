@@ -110,7 +110,7 @@ export const DEFAULT_INSERT_TYPE = 'news';
         }
       </mat-dialog-content>
       <mat-dialog-actions align="end">
-        <button matButton type="button" mat-dialog-close>
+        <button matButton type="button" [mat-dialog-close]="undefined">
           {{ 'common.cancel' | translate }}
         </button>
         <button matButton="filled" type="submit" [disabled]="busy() || form.invalid">

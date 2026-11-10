@@ -375,7 +375,7 @@ export default class TrackPlanPageComponent {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((operationId) => {
-        if (operationId !== undefined) {
+        if (typeof operationId === 'number') {
           this.follow(operationId);
         }
       });
