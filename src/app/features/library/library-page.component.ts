@@ -2,11 +2,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   OnInit,
   computed,
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -44,6 +46,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { DurationPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
+import { controlVersion } from '../../shared/forms/field-errors';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
@@ -72,6 +75,7 @@ import {
   readWithoutPlaylist,
 } from './library-list-state';
 import { LibraryCursorService } from './library-cursor';
+import { LibraryStatsComponent, LibraryStatsFilter, TrackStats } from './library-stats.component';
 import { MediaRequest, trackMedia } from './track-media';
 import { TrackMediaActionsComponent } from './track-media-actions.component';
 import { TrackQualityComponent } from './track-quality.component';
@@ -125,6 +129,7 @@ interface PageRequest {
     PageHeaderComponent,
     OperationStatusComponent,
     PlayButtonComponent,
+    LibraryStatsComponent,
     TrackDeleteResultComponent,
     TrackMediaActionsComponent,
     TrackQualityComponent,
@@ -136,10 +141,12 @@ interface PageRequest {
       <a matButton="filled" routerLink="/library/new">{{ 'library.add' | translate }}</a>
     </app-page-header>
 
+    <app-library-stats [stats]="stats()" (filterChosen)="applyStatsFilter($event)" />
+
     <form class="list-filters" [formGroup]="filters" role="search">
       <mat-form-field>
         <mat-label>{{ 'library.filters.search' | translate }}</mat-label>
-        <input matInput type="search" formControlName="q" />
+        <input #search matInput type="search" formControlName="q" />
       </mat-form-field>
       <mat-form-field>
         <mat-label>{{ 'library.filters.playlist' | translate }}</mat-label>
@@ -195,6 +202,11 @@ interface PageRequest {
       <mat-checkbox class="filter-check" formControlName="without_playlist">
         {{ 'library.filters.withoutPlaylist' | translate }}
       </mat-checkbox>
+      @if (active() > 0) {
+        <button matButton type="button" class="clear-filters" (click)="clearFilters()">
+          {{ 'library.filters.clear' | translate }}
+        </button>
+      }
     </form>
 
     @if (
@@ -629,7 +641,8 @@ interface PageRequest {
       color: var(--mat-sys-error);
     }
 
-    .filter-check {
+    .filter-check,
+    .clear-filters {
       align-self: center;
     }
 
@@ -693,6 +706,23 @@ export default class LibraryPageComponent implements OnInit {
     in_plan: new FormControl<InPlanFilter | null>(null),
     without_playlist: new FormControl(false, { nonNullable: true }),
   });
+  private readonly filtersVersion = controlVersion(signal(this.filters));
+  private readonly searchInput = viewChild.required<ElementRef<HTMLInputElement>>('search');
+
+  /** Filters in use; a search of only spaces is sent as no search, so it does not count. */
+  protected readonly active = computed(() => {
+    this.filtersVersion();
+    const value = this.filters.getRawValue();
+    return [
+      value.q?.trim() || null,
+      value.playlist_id,
+      value.type_id,
+      value.quality,
+      value.reviewed,
+      value.in_plan,
+      value.without_playlist || null,
+    ].filter((item) => item !== null).length;
+  });
 
   private readonly playlistNamesById = computed(
     () => new Map(this.playlists().items.map((playlist) => [playlist.id, playlist.name])),
@@ -705,6 +735,8 @@ export default class LibraryPageComponent implements OnInit {
   protected readonly pageStatus = signal<TranslationParams | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
+  /** Kept while the next figures load; null before the first answer and after a failed one. */
+  protected readonly stats = signal<TrackStats | null>(null);
 
   /**
    * Selected tracks by ID, on any page: changing the page or the sort keeps them, a reload
@@ -751,6 +783,7 @@ export default class LibraryPageComponent implements OnInit {
   );
 
   private readonly pages = new Subject<PageRequest>();
+  private readonly statsRequests = new Subject<TrackQuery>();
   /** The filters only; the page and the order come from `list`. */
   private filterQuery: TrackQuery = {};
 
@@ -797,6 +830,16 @@ export default class LibraryPageComponent implements OnInit {
         });
         this.refreshSelection();
       });
+
+    this.statsRequests
+      .pipe(
+        switchMap((query) =>
+          // The row is secondary: its failure shows dashes and leaves the table to work as usual.
+          this.api.get('/api/tracks/stats', { query }).pipe(catchError(() => of(null))),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((stats) => this.stats.set(stats));
 
     // Tracks imported, analysed, or fixed, here or elsewhere.
     const realtime = inject(RealtimeService);
@@ -893,13 +936,29 @@ export default class LibraryPageComponent implements OnInit {
       order: sort.direction || 'asc',
       pageIndex: 0,
     });
-    this.reload();
+    this.readPage();
   }
 
   /** A new page size comes with the paginator's page that holds the first row of the old one. */
   protected onPage(event: PageEvent): void {
     this.setList({ ...this.list(), pageIndex: event.pageIndex, pageSize: event.pageSize });
-    this.reload();
+    this.readPage();
+  }
+
+  /** Sets the one control; the filter flow does the rest (page 1, selection, URL). */
+  protected applyStatsFilter(chosen: LibraryStatsFilter): void {
+    if (chosen === 'reviewed') {
+      this.filters.controls.reviewed.setValue('true');
+    } else {
+      this.filters.controls.quality.setValue(chosen);
+    }
+  }
+
+  /** One reset, so the filter flow sends one request and not one per control. */
+  protected clearFilters(): void {
+    this.filters.reset({ q: '' });
+    // The button is about to disappear, and focus would be lost with it.
+    this.searchInput().nativeElement.focus();
   }
 
   protected select(track: Track, checked: boolean): void {
@@ -1026,8 +1085,14 @@ export default class LibraryPageComponent implements OnInit {
       .subscribe(() => this.bulkDelete.start(ids));
   }
 
-  /** Reads the current page in the current order again. */
+  /** The tracks or the filters changed: reads the current page and the figures again. */
   protected reload(): void {
+    this.readPage();
+    this.statsRequests.next(this.filterQuery);
+  }
+
+  /** A new page or order alone: the figures describe the whole filtered list, so they stay. */
+  private readPage(): void {
     this.pages.next({ query: this.pageQuery() });
   }
 

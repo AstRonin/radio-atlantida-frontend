@@ -5441,6 +5441,49 @@
         ],
         "type": "object"
       },
+      "TrackStats": {
+        "additionalProperties": false,
+        "properties": {
+          "air_duration_ms": {
+            "description": "Sum of the on-air lengths of those tracks, in milliseconds; a track without a duration adds nothing.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reviewed": {
+            "description": "Of those, tracks with the reviewed mark.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total": {
+            "description": "Tracks matching the filters.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unanalysed": {
+            "description": "Of those, tracks never analysed.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "with_issues": {
+            "description": "Of those, tracks the quality=issues filter selects: with open quality issues, whatever the manual quality override says.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "reviewed",
+          "with_issues",
+          "unanalysed",
+          "air_duration_ms"
+        ],
+        "type": "object"
+      },
       "TrackWaveform": {
         "additionalProperties": false,
         "properties": {
@@ -10043,6 +10086,154 @@
           }
         },
         "summary": "Mark tracks reviewed",
+        "tags": [
+          "Tracks"
+        ]
+      }
+    },
+    "/api/tracks/stats": {
+      "get": {
+        "description": "Figures of the tracks matching the filters, which are those of GET /api/tracks and combine in the same way; without filters they describe the whole library.",
+        "operationId": "get-track-stats",
+        "parameters": [
+          {
+            "description": "Only tracks of this type.",
+            "explode": false,
+            "in": "query",
+            "name": "type_id",
+            "schema": {
+              "description": "Only tracks of this type.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only tracks of this artist.",
+            "explode": false,
+            "in": "query",
+            "name": "artist_id",
+            "schema": {
+              "description": "Only tracks of this artist.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only tracks in this playlist.",
+            "explode": false,
+            "in": "query",
+            "name": "playlist_id",
+            "schema": {
+              "description": "Only tracks in this playlist.",
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only tracks whose title or artist name contains this text (case-insensitive).",
+            "explode": false,
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "description": "Only tracks whose title or artist name contains this text (case-insensitive).",
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tracks analysed without issues, with issues, or never analysed.",
+            "explode": false,
+            "in": "query",
+            "name": "quality",
+            "schema": {
+              "description": "Only tracks analysed without issues, with issues, or never analysed.",
+              "enum": [
+                "ok",
+                "issues",
+                "unanalysed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tracks with (true) or without (false) the reviewed mark.",
+            "explode": false,
+            "in": "query",
+            "name": "reviewed",
+            "schema": {
+              "description": "Only tracks with (true) or without (false) the reviewed mark.",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tracks with (true) or without (false) a planned or queued item in the track plan.",
+            "explode": false,
+            "in": "query",
+            "name": "in_plan",
+            "schema": {
+              "description": "Only tracks with (true) or without (false) a planned or queued item in the track plan.",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tracks in at least one playlist (true) or in none (false).",
+            "explode": false,
+            "in": "query",
+            "name": "in_playlist",
+            "schema": {
+              "description": "Only tracks in at least one playlist (true) or in none (false).",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackStats"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the track statistics",
         "tags": [
           "Tracks"
         ]

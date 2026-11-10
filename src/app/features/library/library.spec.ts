@@ -8,6 +8,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 import { apiProblemInterceptor } from '../../core/api/api.interceptors';
+import { I18nService } from '../../core/i18n/i18n.service';
 import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testing';
 import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { RealtimeService } from '../../core/realtime/realtime.service';
@@ -183,6 +184,8 @@ describe('library', () => {
     afterEach(() => {
       TestBed.inject(MatDialog).closeAll();
       flushHelp(http);
+      // Tests of the rows leave the figures unanswered; the row's own tests answer them.
+      http.match((req) => req.url === '/api/tracks/stats');
       http.verify();
     });
 
@@ -228,6 +231,306 @@ describe('library', () => {
           ?.click();
         await settlePage();
       }
+
+      describe('statistics row', () => {
+        const figures = {
+          total: 1234,
+          reviewed: 1,
+          with_issues: 2,
+          unanalysed: 0,
+          air_duration_ms: 5_400_000,
+        };
+        const statsRequest = () => http.expectOne((req) => req.url === '/api/tracks/stats');
+        const noStatsRequest = () => http.expectNone((req) => req.url === '/api/tracks/stats');
+        const shown = (page: HTMLElement) =>
+          [...page.querySelectorAll('app-library-stats dd')].map((item) =>
+            item.textContent?.trim(),
+          );
+        const figureButton = (page: HTMLElement, label: string) =>
+          [...page.querySelectorAll<HTMLButtonElement>('app-library-stats button')].find((item) =>
+            item.getAttribute('aria-label')?.includes(label),
+          );
+        const clearButton = (page: HTMLElement) => button(page, 'library.filters.clear');
+        const afterDebounce = async () => {
+          await new Promise((resolve) => setTimeout(resolve, LIBRARY_SEARCH_DEBOUNCE_MS));
+          await settlePage();
+        };
+
+        type FilterControls = LibraryPageComponent['filters']['controls'];
+        const controls = (fixture: ComponentFixture<LibraryPageComponent>) =>
+          (fixture.componentInstance as unknown as { filters: { controls: FilterControls } })
+            .filters.controls;
+
+        async function openLoaded(params: Record<string, string> = {}) {
+          const fixture = await createPage(params);
+          tracksRequest({}).flush({ items: [track(1)], total: 120 });
+          statsRequest().flush(figures);
+          await settlePage();
+          return { fixture, page: fixture.nativeElement as HTMLElement };
+        }
+
+        it('shows the figures of the response as plain and clickable values', async () => {
+          const { page } = await openLoaded();
+          expect(shown(page)).toEqual([
+            '1,234',
+            '1',
+            '2',
+            '0',
+            'forms.interval.short.hoursMinutes',
+          ]);
+          expect(page.querySelector('app-library-stats dl')).not.toBeNull();
+          expect(page.querySelector('app-library-stats [aria-live]')).toBeNull();
+          expect(page.querySelectorAll('app-library-stats button')).toHaveLength(3);
+          expect(figureButton(page, 'library.stats.apply')?.type).toBe('button');
+        });
+
+        it('names a figure button with its label and value, and shows hours and minutes', async () => {
+          const i18n = TestBed.inject(I18nService);
+          const texts = vi.spyOn(i18n, 'translate');
+          const fixture = await createPage();
+          tracksRequest({}).flush({ items: [], total: 0 });
+          statsRequest().flush({ ...figures, air_duration_ms: 5_430_000 });
+          await settlePage();
+
+          expect(texts).toHaveBeenCalledWith('forms.interval.short.hoursMinutes', {
+            hours: 1,
+            minutes: 31,
+          });
+          expect(texts).toHaveBeenCalledWith('library.stats.apply', {
+            label: 'library.stats.withIssues',
+            value: '2',
+          });
+          fixture.destroy();
+        });
+
+        it('shows zero as zero, not as a dash', async () => {
+          const fixture = await createPage();
+          tracksRequest({}).flush({ items: [], total: 0 });
+          statsRequest().flush({
+            total: 0,
+            reviewed: 0,
+            with_issues: 0,
+            unanalysed: 0,
+            air_duration_ms: 0,
+          });
+          await settlePage();
+          const values = shown(fixture.nativeElement as HTMLElement);
+          expect(values.slice(0, 4)).toEqual(['0', '0', '0', '0']);
+          expect(values[4]).toBe('forms.interval.short.minutes');
+        });
+
+        it('asks for the figures of the whole library on the first load', async () => {
+          await createPage();
+          tracksRequest({}).flush({ items: [], total: 0 });
+          const request = statsRequest();
+          expect(request.request.method).toBe('GET');
+          expect(request.request.params.keys()).toEqual([]);
+          request.flush(figures);
+          await settlePage();
+        });
+
+        it('asks with the filters of the list, without its page and order', async () => {
+          const { fixture } = await openLoaded();
+          controls(fixture).type_id.setValue(3);
+          controls(fixture).q.setValue(' night ');
+          await afterDebounce();
+
+          const list = tracksRequest({ type_id: '3', q: 'night', offset: '0' });
+          const stats = statsRequest();
+          expect(stats.request.params.keys().sort()).toEqual(['q', 'type_id']);
+          expect(stats.request.params.get('type_id')).toBe('3');
+          expect(stats.request.params.get('q')).toBe('night');
+          list.flush({ items: [], total: 0 });
+          stats.flush(figures);
+          await settlePage();
+        });
+
+        it('does not ask again on a page or sort change', async () => {
+          const { page } = await openLoaded();
+          pageButton(page, 'next')?.click();
+          await settlePage();
+          tracksRequest({ offset: '50' }).flush({ items: [track(51)], total: 120 });
+          noStatsRequest();
+
+          header(page, 'artist')?.click();
+          await settlePage();
+          tracksRequest({ sort: 'artist', offset: '0' }).flush({ items: [track(1)], total: 120 });
+          noStatsRequest();
+          await settlePage();
+        });
+
+        it('shows dashes when the request fails and leaves the table working', async () => {
+          const fixture = await createPage();
+          const page = fixture.nativeElement as HTMLElement;
+          tracksRequest({}).flush({ items: [track(1)], total: 1 });
+          statsRequest().flush(
+            { title: 'Failed', status: 500, code: 'internal' },
+            { status: 500, statusText: 'Failed' },
+          );
+          await settlePage();
+
+          expect(shown(page)).toEqual(Array(5).fill('library.stats.unknown'));
+          expect(page.querySelectorAll('app-library-stats button')).toHaveLength(0);
+          expect(titles(page)).toEqual(['Song 1']);
+          expect(page.querySelector('.load-error')).toBeNull();
+          expect(overlay.textContent).toBe('');
+        });
+
+        it('keeps the figures while loading and cancels the request in flight', async () => {
+          const { fixture, page } = await openLoaded();
+          controls(fixture).type_id.setValue(3);
+          await afterDebounce();
+          tracksRequest({ type_id: '3' }).flush({ items: [], total: 0 });
+          const first = statsRequest();
+          await settlePage();
+          expect(shown(page)[0]).toBe('1,234');
+
+          controls(fixture).type_id.setValue(4);
+          await afterDebounce();
+          tracksRequest({ type_id: '4' }).flush({ items: [], total: 0 });
+          expect(first.cancelled).toBe(true);
+          statsRequest().flush({ ...figures, total: 7 });
+          await settlePage();
+          expect(shown(page)[0]).toBe('7');
+        });
+
+        for (const [label, control, value, param] of [
+          ['library.stats.reviewed', 'reviewed', 'true', { reviewed: 'true' }],
+          ['library.stats.withIssues', 'quality', 'issues', { quality: 'issues' }],
+          ['library.stats.notAnalysed', 'quality', 'unanalysed', { quality: 'unanalysed' }],
+        ] as const) {
+          it(`${label} sets its filter and goes to the first page`, async () => {
+            const i18n = TestBed.inject(I18nService);
+            vi.spyOn(i18n, 'translate').mockImplementation((key, params) =>
+              params ? `${String(params['label'])}` : key,
+            );
+            const { fixture, page } = await openLoaded();
+            pageButton(page, 'next')?.click();
+            await settlePage();
+            tracksRequest({ offset: '50' }).flush({ items: [track(51)], total: 120 });
+            await settlePage();
+
+            figureButton(page, label)?.click();
+            await afterDebounce();
+
+            expect(controls(fixture)[control].value).toBe(value);
+            tracksRequest({ ...param, offset: '0' }).flush({ items: [], total: 0 });
+            statsRequest().flush(figures);
+            await settlePage();
+          });
+        }
+
+        it('hides Clear filters without a filter and for a search of only spaces', async () => {
+          const { fixture, page } = await openLoaded();
+          expect(clearButton(page)).toBeUndefined();
+
+          controls(fixture).q.setValue('   ');
+          await settlePage();
+          expect(clearButton(page)).toBeUndefined();
+          await afterDebounce();
+        });
+
+        it('shows Clear filters for each filter', async () => {
+          const { fixture, page } = await openLoaded();
+          const filters = controls(fixture);
+          const set: (() => void)[] = [
+            () => filters.q.setValue('night'),
+            () => filters.playlist_id.setValue(4),
+            () => filters.type_id.setValue(1),
+            () => filters.quality.setValue('ok'),
+            () => filters.reviewed.setValue('false'),
+            () => filters.in_plan.setValue('true'),
+            () => filters.without_playlist.setValue(true),
+          ];
+          for (const apply of set) {
+            apply();
+            await settlePage();
+            expect(clearButton(page)).toBeDefined();
+            filters.q.setValue('');
+            filters.playlist_id.setValue(null);
+            filters.type_id.setValue(null);
+            filters.quality.setValue(null);
+            filters.reviewed.setValue(null);
+            filters.in_plan.setValue(null);
+            filters.without_playlist.setValue(false);
+            await settlePage();
+            expect(clearButton(page)).toBeUndefined();
+          }
+          await afterDebounce();
+        });
+
+        it('clears every filter with one read, keeps the page size and sort, and moves focus', async () => {
+          const params = {
+            quality: 'issues',
+            reviewed: 'true',
+            in_plan: 'false',
+            in_playlist: 'false',
+            size: '25',
+            sort: 'artist',
+            order: 'desc',
+            page: '2',
+          };
+          const fixture = await createPage(params);
+          const page = fixture.nativeElement as HTMLElement;
+          tracksRequest({ quality: 'issues', offset: '25' }).flush({
+            items: [track(1)],
+            total: 40,
+          });
+          statsRequest().flush(figures);
+          await settlePage();
+          const filters = controls(fixture);
+          filters.q.setValue('night');
+          filters.playlist_id.setValue(4);
+          filters.type_id.setValue(1);
+          await afterDebounce();
+          tracksRequest({ q: 'night' }).flush({ items: [], total: 40 });
+          statsRequest().flush(figures);
+          await settlePage();
+
+          const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+          clearButton(page)?.click();
+          await settlePage();
+
+          expect(document.activeElement).toBe(page.querySelector('input[type="search"]'));
+          expect(clearButton(page)).toBeUndefined();
+          expect(filters.q.value).toBe('');
+          expect(filters.without_playlist.value).toBe(false);
+          for (const control of [
+            filters.playlist_id,
+            filters.type_id,
+            filters.quality,
+            filters.reviewed,
+            filters.in_plan,
+          ]) {
+            expect(control.value).toBeNull();
+          }
+
+          await afterDebounce();
+          const list = tracksRequest({ sort: 'artist', order: 'desc', offset: '0', limit: '25' });
+          expect(list.request.params.keys().sort()).toEqual(['limit', 'offset', 'order', 'sort']);
+          const stats = statsRequest();
+          expect(stats.request.params.keys()).toEqual([]);
+          list.flush({ items: [], total: 0 });
+          stats.flush(figures);
+          await settlePage();
+
+          expect(navigate).toHaveBeenCalledTimes(1);
+          expect(navigate).toHaveBeenCalledWith(
+            [],
+            expect.objectContaining({
+              queryParams: expect.objectContaining({
+                quality: null,
+                reviewed: null,
+                in_plan: null,
+                in_playlist: null,
+                size: 25,
+                sort: 'artist',
+                order: 'desc',
+              }),
+            }),
+          );
+        });
+      });
 
       it('reads the first page by title with a play button on every row', async () => {
         const fixture = await createPage();

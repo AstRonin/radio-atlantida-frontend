@@ -39,6 +39,14 @@
       "text": "Reviewed marks a track you have checked: title, artist, quality, bitrate, and loudness. After an import, filter Reviewed: Not reviewed, check the tracks, and select them for Mark reviewed (N), or use the Reviewed switch on a track's page. Any change of a track's content clears the mark, so the track comes back into Not reviewed: a new title, artist, or file, and a Fix loudness or Optimize that changes the file. Playlists, type, notes, and play rules do not clear it."
     },
     {
+      "term": "Figures above the list",
+      "text": "The row above the filters shows how many tracks there are, how many of them are reviewed, with issues, and not analysed, and their On-air time. The figures follow the filters; with no filter they describe the whole library. Click Reviewed, With issues, or Not analysed to filter the list by it. On-air time counts only the part of each track between its start and stop points. With issues matches the quality filter Issues, so it can include a track whose Quality badge you set to OK by hand."
+    },
+    {
+      "term": "Clear filters",
+      "text": "Appears at the end of the filters while any filter is in use. It removes all of them at once and returns to the first page of the whole library; the rows per page and the order stay."
+    },
+    {
       "term": "Pages and sort",
       "text": "The list shows one page at a time; choose the rows per page and move with the arrows under the table, which also show how many tracks match. Click a column header to sort the whole library, or the whole filtered list, by that column; click again to reverse the order. Tracks without the value, such as no artist or no length, are always last. The page and the order are kept when you open a track and come back."
     },

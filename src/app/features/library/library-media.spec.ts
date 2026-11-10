@@ -69,6 +69,8 @@ describe('library media actions', () => {
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
     flushHelp(http);
+    // Tests of the rows leave the figures unanswered; the row's own tests answer them.
+    http.match((req) => req.url === '/api/tracks/stats');
     http.verify();
   });
 

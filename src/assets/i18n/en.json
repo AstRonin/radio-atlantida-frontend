@@ -637,7 +637,17 @@
       "quality": "Quality",
       "reviewed": "Reviewed",
       "inPlan": "In plan",
-      "withoutPlaylist": "Without playlist"
+      "withoutPlaylist": "Without playlist",
+      "clear": "Clear filters"
+    },
+    "stats": {
+      "tracks": "Tracks",
+      "reviewed": "Reviewed",
+      "withIssues": "With issues",
+      "notAnalysed": "Not analysed",
+      "airTime": "On-air time",
+      "unknown": "—",
+      "apply": "{label}: {value}. Filter the list"
     },
     "quality": {
       "ok": "OK",

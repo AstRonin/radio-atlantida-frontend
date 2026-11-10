@@ -61,6 +61,8 @@ describe('library usage marks (F20)', () => {
   afterEach(() => {
     vi.useRealTimers();
     flushHelp(http);
+    // Tests of the rows leave the figures unanswered; the row's own tests answer them.
+    http.match((req) => req.url === '/api/tracks/stats');
     http.verify();
   });
 
@@ -239,6 +241,35 @@ describe('library usage marks (F20)', () => {
     vi.useRealTimers();
     await settlePage();
     tracksRequest().flush({ items: [track(1, { playout_state: 'on_air' })], total: 1 });
+    await settlePage();
+  });
+
+  it('reads the figures again on a realtime event that reloads the list', async () => {
+    TestBed.inject(RealtimeService).connect();
+    server.latest.open();
+    await open([track(1)]);
+    const first = http.expectOne((req) => req.url === '/api/tracks/stats');
+    first.flush({ total: 1, reviewed: 0, with_issues: 0, unanalysed: 0, air_duration_ms: 245_300 });
+    await settlePage();
+
+    server.latest.send({
+      type: 'analyse.completed',
+      time: '2026-10-16T10:00:00Z',
+      operation_id: 32,
+      data: { kind: 'analyse', summary: 'analysed 1' },
+    });
+    await settlePage();
+
+    tracksRequest().flush({ items: [track(1)], total: 1 });
+    const second = http.expectOne((req) => req.url === '/api/tracks/stats');
+    expect(second.request.params.keys()).toEqual([]);
+    second.flush({
+      total: 1,
+      reviewed: 1,
+      with_issues: 0,
+      unanalysed: 0,
+      air_duration_ms: 245_300,
+    });
     await settlePage();
   });
 
