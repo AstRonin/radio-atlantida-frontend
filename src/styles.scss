@@ -90,12 +90,39 @@ body {
   align-items: baseline;
 }
 
+// Every table scrolls inside its wrapper, so its header row can stay at the wrapper's top edge.
+// The default height leaves room for the toolbar, the page header with its filter rows (the
+// library table starts about 17.5rem down), the paginator, and the page padding, so on a 1080p
+// screen the library and its paginator fit without scrolling the page; the floor keeps a low
+// window usable. A page overrides `--table-max-height` when the default does not fit.
+:root {
+  --table-max-height: max(calc(100dvh - 23rem), 20rem);
+}
+
 .table-scroll {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: var(--table-max-height);
 }
 
 .table-scroll .mat-mdc-table {
   min-width: 40rem;
+}
+
+// Sticky header of the raw tables (Material tables use `sticky: true` on the header row). The
+// background is opaque so rows scroll under it. `:where()` keeps the specificity low, so a
+// component's own header colour (the grid's today and outside days) still wins. The tables use
+// `border-collapse: separate`, because a sticky cell loses its collapsed border.
+.table-scroll > :where(table:not(.mat-mdc-table)) > thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--table-header-background, var(--mat-sys-surface));
+}
+
+// A row button's touch target reaches past a short last row and would give a table that fits a
+// one-pixel inner scrollbar. (The extra class outweighs Material's own touch-target rule.)
+.table-scroll .mat-mdc-button-base .mat-mdc-button-touch-target {
+  display: none;
 }
 
 .cell-actions {

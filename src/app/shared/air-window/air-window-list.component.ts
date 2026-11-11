@@ -44,7 +44,13 @@ interface ListRow {
         <a routerLink="/track-plan">{{ 'airWindow.trackPlanLink' | translate }}</a>
       </p>
     } @else {
-      <div class="table-scroll">
+      <!-- Most rows have no focusable cell, so the scroll region itself takes focus. -->
+      <div
+        class="table-scroll"
+        role="region"
+        tabindex="0"
+        [attr.aria-label]="'airWindow.listLabel' | translate"
+      >
         <table class="air-window" [attr.aria-label]="'airWindow.listLabel' | translate">
           <thead>
             <tr>
@@ -144,7 +150,8 @@ interface ListRow {
 
     .air-window {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .air-window th,

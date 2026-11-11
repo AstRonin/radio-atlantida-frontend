@@ -143,7 +143,8 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
             @if (files.value().more) {
               <p class="muted">{{ 'import.folder.moreFiles' | translate }}</p>
             }
-            <div class="table-scroll">
+            <!-- Only imported files have a link, so the scroll region itself takes focus. -->
+            <div class="table-scroll" role="region" tabindex="0" aria-labelledby="folder-heading">
               <table mat-table [dataSource]="pageFiles()">
                 <ng-container matColumnDef="path">
                   <th mat-header-cell *matHeaderCellDef>
@@ -182,7 +183,7 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
                     }
                   </td>
                 </ng-container>
-                <tr mat-header-row *matHeaderRowDef="columns"></tr>
+                <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
                 <tr mat-row *matRowDef="let row; columns: columns"></tr>
               </table>
             </div>

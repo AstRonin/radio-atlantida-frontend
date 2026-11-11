@@ -206,7 +206,13 @@ interface LogRow {
           </button>
         </p>
       }
-      <div class="table-scroll">
+      <!-- No focusable cells, so the scroll region itself takes focus for the keyboard. -->
+      <div
+        class="table-scroll"
+        role="region"
+        tabindex="0"
+        [attr.aria-label]="'logs.entries' | translate"
+      >
         <table class="entries">
           <thead>
             <tr>
@@ -268,6 +274,11 @@ interface LogRow {
     </section>
   `,
   styles: `
+    /* Room for "Load more" under the list. */
+    .table-scroll {
+      --table-max-height: max(calc(100dvh - 26rem), 20rem);
+    }
+
     .section-title {
       margin: 0;
       font: var(--mat-sys-title-medium);
@@ -287,7 +298,8 @@ interface LogRow {
 
     .entries {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .entries th,

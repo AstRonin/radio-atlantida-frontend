@@ -274,9 +274,19 @@ export function outageChunks(range: HistoryRange): HistoryRange[] {
       align-items: baseline;
     }
 
+    /* Room for "Load more" under the list; the outage list below is a second, shorter table. */
+    .table-scroll {
+      --table-max-height: max(calc(100dvh - 25rem), 20rem);
+    }
+
+    app-outage-list {
+      --table-max-height: 20rem;
+    }
+
     .history {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .history th,

@@ -288,7 +288,8 @@ interface MissedRow {
   styles: `
     .missed {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .missed th,

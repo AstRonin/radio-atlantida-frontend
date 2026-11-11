@@ -180,23 +180,40 @@ type WeekRow =
     </div>
   `,
   styles: `
+    /* A whole week (24 hours) fits on a 1080p screen, so the page scrolls from week to week. */
+    .table-scroll {
+      --table-max-height: max(calc(100dvh - 8rem), 20rem);
+    }
+
     .week {
       width: 100%;
       min-width: 48rem;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       table-layout: fixed;
       font: var(--mat-sys-body-small);
     }
 
+    /*
+     * Separate borders, because the sticky header loses collapsed ones: each cell draws its end
+     * and bottom edge, the header row the top edge, and the first column the start edge.
+     */
     th,
     td {
       padding: 0.125rem 0.25rem;
-      border: 1px solid var(--mat-sys-outline-variant);
+      border: 0 solid var(--mat-sys-outline-variant);
+      border-inline-end-width: 1px;
+      border-bottom-width: 1px;
       text-align: start;
       vertical-align: middle;
     }
 
+    tr > :first-child {
+      border-inline-start-width: 1px;
+    }
+
     thead th {
+      border-top-width: 1px;
       font: var(--mat-sys-label-medium);
     }
 

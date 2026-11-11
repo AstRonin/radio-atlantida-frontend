@@ -1,4 +1,5 @@
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
+import { CdkScrollable } from '@angular/cdk/scrolling';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -66,6 +67,7 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
     CdkDrag,
     CdkDragHandle,
     CdkDropList,
+    CdkScrollable,
     MatButtonModule,
     MatProgressBarModule,
     RouterLink,
@@ -142,7 +144,8 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
         </ul>
       }
 
-      <div class="table-scroll">
+      <!-- cdkScrollable: a drag keeps its drop positions and auto-scrolls when the rows scroll here. -->
+      <div class="table-scroll" cdkScrollable>
         <table class="items">
           <thead>
             <tr>
@@ -271,6 +274,11 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
     </section>
   `,
   styles: `
+    /* An hour fits whole on a 1080p screen; the page, not the table, scrolls through the hours. */
+    .table-scroll {
+      --table-max-height: max(calc(100dvh - 12rem), 20rem);
+    }
+
     .hour {
       margin-bottom: 1.5rem;
     }
@@ -322,7 +330,8 @@ const INSERT_SOURCES: ReadonlySet<string> = new Set(['insert', 'hour_insert', 'r
 
     .items {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .items th,

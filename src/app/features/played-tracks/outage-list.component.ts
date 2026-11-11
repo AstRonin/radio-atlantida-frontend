@@ -9,7 +9,13 @@ import { StationTimePipe } from '../../core/time/station-time.pipe';
   imports: [TranslatePipe, StationTimePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="table-scroll">
+    <!-- No focusable cells, so the scroll region itself takes focus for the keyboard. -->
+    <div
+      class="table-scroll"
+      role="region"
+      tabindex="0"
+      [attr.aria-label]="'outages.title' | translate"
+    >
       <table class="outages">
         <thead>
           <tr>
@@ -49,7 +55,8 @@ import { StationTimePipe } from '../../core/time/station-time.pipe';
   styles: `
     .outages {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .outages th,

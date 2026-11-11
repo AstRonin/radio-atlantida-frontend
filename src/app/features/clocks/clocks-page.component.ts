@@ -81,7 +81,7 @@ type ClockSummary = ApiSchema<'ClockSummary'>;
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
         <tr class="mat-mdc-row" *matNoDataRow>
           @if (!clocks.isLoading() && !loadError()) {

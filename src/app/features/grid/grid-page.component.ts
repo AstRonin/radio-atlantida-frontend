@@ -305,7 +305,8 @@ const WEEKDAYS_OUTSIDE_RANGE = 'weekdaysOutsideRange';
 
     .slots {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .slots th,

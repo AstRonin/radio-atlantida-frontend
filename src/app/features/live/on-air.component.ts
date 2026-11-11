@@ -168,7 +168,8 @@ export interface QueuedRow {
 
     .queued {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .queued th,
