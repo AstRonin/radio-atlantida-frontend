@@ -16,9 +16,10 @@ streams it, and PostgreSQL stores the data.
 - **Clocks and grid.** A clock is a 60-minute template: a set of playlists and timed inserts. Every
   playlist has a placement rule (`fill`, `spread` N, `start`, `end`, `start_end`, `middle`) that a
   clock may override; fill playlists may have shares. An insert is a track or a playlist at `mm:ss`
-  with a start tolerance (±1 min by default). The grid assigns clocks to hours up to 30 days ahead;
-  the backend lays out each hour and builds a rolling 24–48 h track plan (audio is never
-  stretched; the last track before an insert or 60:00 is the best fit, else cut with a fade).
+  with a start tolerance (±1 min by default). The grid assigns clocks to hours up to 183 days
+  (about six months) ahead; the backend lays out each hour and builds a rolling 24–48 h track
+  plan (audio is never stretched; the last track before an insert or 60:00 is the best fit,
+  else cut with a fade).
 - **No filler.** The fill playlists fill the hour; when every fill track is blocked, the emergency
   steps apply and a warning is sent. One-time inserts (today's news) are added to a planned hour.
 - **Play rules.** Named play rules (time window, track interval, artist interval, plays per hour)

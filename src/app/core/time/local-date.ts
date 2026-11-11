@@ -5,6 +5,7 @@
 
 const LOCAL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 
 /** Today's date in an IANA zone, for example the station zone. */
 export function stationToday(zone: string, now: Date = new Date()): string {
@@ -85,18 +86,49 @@ export function stationMidnightUtc(date: string, zone: string): string {
   return new Date(wall - zoneOffsetMs(guess, zone)).toISOString();
 }
 
+/**
+ * The instant (ms since the epoch) at which hour `hour` (0 to 23) of a station date begins in an
+ * IANA zone. The hour ends where the next one begins, so callers take the end from hour + 1 (or
+ * hour 0 of the next date), which keeps 23- and 25-hour days right. On a DST change a repeated
+ * wall time gives its first occurrence, and a skipped one gives the instant of the change, so the
+ * skipped hour has no length.
+ */
+export function stationHourStartUtc(date: string, hour: number, zone: string): number {
+  const wall = toUtc(date) + hour * HOUR_MS;
+  // A change is months away from the next one, so the offsets a day before and after the wall
+  // time are the only ones the wall time can be read with.
+  const before = zoneOffsetMs(wall - DAY_MS, zone);
+  const after = zoneOffsetMs(wall + DAY_MS, zone);
+  const valid = [before, after]
+    .map((offset) => wall - offset)
+    .filter((instant) => wall - zoneOffsetMs(instant, zone) === instant);
+  return valid.length > 0 ? Math.min(...valid) : wall - before;
+}
+
+const offsetFormats = new Map<string, Intl.DateTimeFormat>();
+
+// Creating a formatter is far slower than using one, and the grid asks for many hours per minute.
+function offsetFormat(zone: string): Intl.DateTimeFormat {
+  let format = offsetFormats.get(zone);
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    offsetFormats.set(zone, format);
+  }
+  return format;
+}
+
 /** The zone's offset from UTC at an instant, in milliseconds (positive east of Greenwich). */
 function zoneOffsetMs(instant: number, zone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: zone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(instant);
+  const parts = offsetFormat(zone).formatToParts(instant);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     Number(parts.find((item) => item.type === type)?.value ?? 0);
   const wall = Date.UTC(

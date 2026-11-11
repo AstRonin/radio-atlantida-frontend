@@ -74,11 +74,11 @@ describe('GridPageComponent', () => {
       (item) => item.textContent?.trim() === label,
     );
 
-  /** The grid request of one month, from its first to its last day. */
+  /** The grid request of one month, from the Monday of its first week to its last Sunday. */
   function flushMonth(
     items: ApiSchema<'GridHour'>[] = [],
-    from = '2026-10-01',
-    to = '2026-10-31',
+    from = '2026-09-28',
+    to = '2026-11-01',
   ): void {
     http
       .expectOne(
@@ -102,26 +102,30 @@ describe('GridPageComponent', () => {
     );
   }
 
-  function flushSlots(items: GridSlot[] = []): void {
+  function flushSlots(items: GridSlot[] = [], from = '2026-10-15'): void {
     http
-      .expectOne((req) => req.url === '/api/grid/slots' && req.params.get('from') === '2026-10-15')
+      .expectOne((req) => req.url === '/api/grid/slots' && req.params.get('from') === from)
       .flush({ items });
   }
 
-  async function open(): Promise<ComponentFixture<GridPageComponent>> {
+  /** A grid hour with the weekday clock; the start instant is not read by the page. */
+  const gridHour = (date: string, weekday: number, hour: number): ApiSchema<'GridHour'> => ({
+    date,
+    weekday,
+    hour,
+    start_utc: `${date}T00:00:00Z`,
+    slot_id: 9,
+    clock: { id: 2, name: 'Weekday morning' },
+  });
+
+  async function open(
+    items = [gridHour('2026-10-15', 4, 10)],
+    today = '2026-10-15',
+  ): Promise<ComponentFixture<GridPageComponent>> {
     const fixture = TestBed.createComponent(GridPageComponent);
     await settlePage();
-    flushMonth([
-      {
-        date: '2026-10-15',
-        weekday: 4,
-        hour: 10,
-        start_utc: '2026-10-15T06:00:00Z',
-        slot_id: 9,
-        clock: weekday,
-      },
-    ]);
-    flushSlots([slot()]);
+    flushMonth(items);
+    flushSlots([slot()], today);
     await settlePage();
     return fixture;
   }
@@ -141,35 +145,36 @@ describe('GridPageComponent', () => {
 
     button(page, 'grid.month.next')?.click();
     await settlePage();
-    flushMonth([], '2026-11-01', '2026-11-30');
+    flushMonth([], '2026-10-26', '2026-12-06');
     await settlePage();
 
     button(page, 'grid.month.previous')?.click();
     await settlePage();
-    flushMonth([], '2026-10-01', '2026-10-31');
+    flushMonth();
     await settlePage();
 
     button(page, 'grid.month.previous')?.click();
     await settlePage();
-    flushMonth([], '2026-09-01', '2026-09-30');
+    flushMonth([], '2026-08-31', '2026-10-04');
     await settlePage();
 
     button(page, 'grid.month.current')?.click();
     await settlePage();
-    flushMonth([], '2026-10-01', '2026-10-31');
+    flushMonth();
     await settlePage();
   });
 
   it('dims the days outside the month and gives them no "+"', async () => {
     const fixture = await open();
     const page = fixture.nativeElement as HTMLElement;
-    // The first block starts on Monday 28 September: its first three days are outside October.
-    const firstRow = page.querySelector('app-grid-week')?.querySelector('tbody tr');
-    const cells = [...(firstRow?.querySelectorAll('td') ?? [])];
-    expect(cells[0].classList.contains('outside')).toBe(true);
-    expect(cells[0].querySelector('button.pick')).toBeNull();
-    // 1 October is in the month but before today (15 October), so it cannot be picked either.
-    expect(cells[3].querySelector('button.pick')).toBeNull();
+    // The last block ends on Sunday 1 November, outside October.
+    const lastRow = page.querySelectorAll('app-grid-week')[4]?.querySelector('tbody tr');
+    const cells = [...(lastRow?.querySelectorAll('td') ?? [])];
+    expect(cells[6].classList.contains('outside')).toBe(true);
+    expect(cells[6].querySelector('button.pick')).toBeNull();
+    expect(cells[5].querySelector('button.pick')).not.toBeNull();
+    // Monday 12 October is in the month but before today (15 October), so it cannot be picked.
+    expect(pickButton(page, 2, 0, 0)).toBeNull();
     // Thursday 15 October is today, the first day that can be picked.
     expect(pickButton(page, 2, 0, 3)).not.toBeNull();
   });
@@ -405,6 +410,145 @@ describe('GridPageComponent', () => {
       const view = viewOf(fixture);
       view.form.controls.valid_from.setValue('2027-04-01');
       expect(view.validToMax()).toBe('2027-04-16');
+    });
+  });
+
+  describe('past hours without clocks', () => {
+    /** The header texts of a block's rows: an hour, or the range of a folded run. */
+    const rowHeads = (page: HTMLElement, week: number) =>
+      [...page.querySelectorAll('app-grid-week')[week].querySelectorAll('tbody tr')].map((row) =>
+        row.classList.contains('collapsed')
+          ? `fold ${row.querySelector('th')?.textContent?.trim()}`
+          : (row.querySelector('th')?.textContent?.trim().slice(0, 5) ?? ''),
+      );
+
+    const expandButton = (page: HTMLElement, week: number, from: number) =>
+      page
+        .querySelectorAll('app-grid-week')
+        [week].querySelector<HTMLButtonElement>(`button.expand[data-run="${from}"]`);
+
+    it('folds the empty hours of a past week into runs and keeps the hours with clocks', async () => {
+      // The week of 5 to 11 October has ended; it has clocks at 03:00, 10:00, and 11:00.
+      const page = (
+        await open([
+          gridHour('2026-10-07', 3, 3),
+          gridHour('2026-10-11', 7, 10),
+          gridHour('2026-10-11', 7, 11),
+        ])
+      ).nativeElement as HTMLElement;
+      expect(rowHeads(page, 1)).toEqual([
+        'fold 00:00–03:00',
+        '03:00',
+        'fold 04:00–10:00',
+        '10:00',
+        '11:00',
+        'fold 12:00–24:00',
+      ]);
+      const run = page.querySelectorAll('app-grid-week')[1].querySelector('tr.collapsed');
+      expect(run?.querySelector('td')?.getAttribute('colspan')).toBe('7');
+      expect(run?.textContent).toContain('grid.week.collapsed');
+      const toggle = expandButton(page, 1, 0);
+      expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+      expect(toggle?.getAttribute('aria-label')).toBe('grid.week.expand');
+    });
+
+    it('folds nothing in the current week while a day of it is ahead', async () => {
+      const page = (await open()).nativeElement as HTMLElement;
+      for (const week of [2, 3, 4]) {
+        const block = page.querySelectorAll('app-grid-week')[week];
+        expect(block.querySelectorAll('tbody tr')).toHaveLength(24);
+        expect(block.querySelector('tr.collapsed')).toBeNull();
+      }
+    });
+
+    it('counts the clocks of the previous month in the first week', async () => {
+      // Wednesday 30 September is shown dimmed in the first block and has a clock at 06:00.
+      const page = (await open([gridHour('2026-09-30', 3, 6)])).nativeElement as HTMLElement;
+      expect(rowHeads(page, 0)).toEqual(['fold 00:00–06:00', '06:00', 'fold 07:00–24:00']);
+      const cell = page
+        .querySelectorAll('app-grid-week')[0]
+        .querySelectorAll('tbody tr')[1]
+        .querySelectorAll('td')[2];
+      expect(cell.classList.contains('outside')).toBe(true);
+      expect(cell.textContent).toContain('Weekday morning');
+    });
+
+    it('opens a run on click, folds it again, and folds every run in a new month', async () => {
+      const fixture = await open([gridHour('2026-10-07', 3, 3)]);
+      const page = fixture.nativeElement as HTMLElement;
+
+      expandButton(page, 1, 4)?.click();
+      await settlePage();
+      expect(rowHeads(page, 1)).toEqual([
+        'fold 00:00–03:00',
+        '03:00',
+        ...Array.from({ length: 20 }, (_, index) => `${String(index + 4).padStart(2, '0')}:00`),
+      ]);
+      const fold = page
+        .querySelectorAll('app-grid-week')[1]
+        .querySelector<HTMLButtonElement>('button.fold[data-run="4"]');
+      expect(fold?.getAttribute('aria-expanded')).toBe('true');
+      expect(fold?.getAttribute('aria-label')).toBe('grid.week.collapse');
+      expect(document.activeElement).toBe(fold);
+
+      fold?.click();
+      await settlePage();
+      expect(rowHeads(page, 1)).toEqual(['fold 00:00–03:00', '03:00', 'fold 04:00–24:00']);
+      expect(document.activeElement).toBe(expandButton(page, 1, 4));
+
+      // The week of 28 September to 4 October is in October and in September; it is the same
+      // block, opened in October and folded again once September is shown.
+      expandButton(page, 0, 0)?.click();
+      await settlePage();
+      expect(page.querySelectorAll('app-grid-week')[0].querySelector('tr.collapsed')).toBeNull();
+      button(page, 'grid.month.previous')?.click();
+      await settlePage();
+      flushMonth([], '2026-08-31', '2026-10-04');
+      await settlePage();
+      expect(rowHeads(page, 4)).toEqual(['fold 00:00–24:00']);
+    });
+
+    it('never folds a chosen hour', async () => {
+      const fixture = await open();
+      const view = fixture.componentInstance as unknown as GridView;
+      view.form.controls.hours.setValue([1]);
+      await settlePage();
+      const page = fixture.nativeElement as HTMLElement;
+      expect(rowHeads(page, 1)).toEqual(['fold 00:00–01:00', '01:00', 'fold 02:00–24:00']);
+      expect(
+        page.querySelectorAll('app-grid-week')[1].querySelector('button.unpick'),
+      ).not.toBeNull();
+    });
+
+    it('folds the hours as they end and follows the date past midnight', async () => {
+      // The page takes the time once a minute, so the interval is faked too.
+      vi.useRealTimers();
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+      // Sunday 18 October 22:59:30 in Yerevan: hours up to 22:00 have ended on every day.
+      vi.setSystemTime(new Date('2026-10-18T18:59:30Z'));
+      const fixture = await open(undefined, '2026-10-18');
+      const page = fixture.nativeElement as HTMLElement;
+      const view = fixture.componentInstance as unknown as { today: () => string };
+      expect(rowHeads(page, 2)).toEqual([
+        'fold 00:00–10:00',
+        '10:00',
+        'fold 11:00–22:00',
+        '22:00',
+        '23:00',
+      ]);
+
+      vi.advanceTimersByTime(60_000);
+      await settlePage();
+      expect(rowHeads(page, 2)).toEqual(['fold 00:00–10:00', '10:00', 'fold 11:00–23:00', '23:00']);
+      expect(view.today()).toBe('2026-10-18');
+
+      // 19 October 00:00:30: the last hour of the week has ended and a new day begins.
+      vi.advanceTimersByTime(60 * 60_000);
+      await settlePage();
+      flushSlots([], '2026-10-19');
+      await settlePage();
+      expect(rowHeads(page, 2)).toEqual(['fold 00:00–10:00', '10:00', 'fold 11:00–24:00']);
+      expect(view.today()).toBe('2026-10-19');
     });
   });
 });

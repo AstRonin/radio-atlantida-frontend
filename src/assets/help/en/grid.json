@@ -15,7 +15,7 @@
       "text": "Assigning a clock to hours that already have one replaces the old slot for those dates. The result names the replaced slot."
     }
   ],
-  "usage": "Choose hours on the monthly view and assign a clock to them for a range of dates. Changes rebuild only planned hours that have not started; aired and missed items stay as they are.",
+  "usage": "Choose hours on the monthly view and assign a clock to them for a range of dates. Hours that have ended on every day of a week without a clock are folded into a thin \"No clocks\" row; click it to show those hours again. Changes rebuild only planned hours that have not started; aired and missed items stay as they are.",
   "steps": [
     "Select the weekdays and hours to fill.",
     "Choose the clock and the date range.",

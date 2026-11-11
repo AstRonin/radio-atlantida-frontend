@@ -984,7 +984,10 @@
       "today": "(today)",
       "pick": "Add {day} {hour} to the change",
       "unpickWeekday": "Take {weekday} out of the change",
-      "unpickHour": "Take {hour} out of the change"
+      "unpickHour": "Take {hour} out of the change",
+      "collapsed": "No clocks",
+      "expand": "Show hours {range}",
+      "collapse": "Collapse hours {range}"
     },
     "change": {
       "title": "Change the grid",

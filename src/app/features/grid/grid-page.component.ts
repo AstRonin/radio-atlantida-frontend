@@ -18,7 +18,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
-import { Observable, finalize, map } from 'rxjs';
+import { Observable, finalize, interval, map } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
@@ -62,6 +62,8 @@ export const GRID_WINDOW_DAYS = 183;
 /** An assignment's range is at most one month: 31 days, both dates included. */
 export const GRID_RANGE_MAX_DAYS = 31;
 const WEEK_DAYS = 7;
+/** How often the page takes the time, to fold the hours that just ended and to follow the date. */
+const NOW_TICK_MS = 60_000;
 /** Validation error on `weekdays` when no chosen weekday falls in the dates (`forms.errors`). */
 const WEEKDAYS_OUTSIDE_RANGE = 'weekdaysOutsideRange';
 
@@ -128,6 +130,8 @@ const WEEKDAYS_OUTSIDE_RANGE = 'weekdaysOutsideRange';
           [pickTo]="pickTo()"
           [entries]="monthEntries()"
           [today]="today()"
+          [now]="now()"
+          [zone]="zone()"
           [selectedWeekdays]="selectedWeekdays()"
           [selectedHours]="selectedHours()"
           (pick)="pick($event)"
@@ -320,7 +324,12 @@ export default class GridPageComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly zone = inject(StationTimeService).zone;
-  protected readonly today = computed(() => stationToday(this.zone()));
+  /** The current instant, taken once a minute, so a page left open follows the hours and dates. */
+  protected readonly now = signal(Date.now());
+  private readonly nowTick = interval(NOW_TICK_MS)
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe(() => this.now.set(Date.now()));
+  protected readonly today = computed(() => stationToday(this.zone(), new Date(this.now())));
   /** The last date an assignment may use: six months ahead of today. */
   protected readonly windowEnd = computed(() => addDays(this.today(), GRID_WINDOW_DAYS));
 
@@ -402,8 +411,13 @@ export default class GridPageComponent {
     );
   });
 
+  // Whole weeks, so a day of the next or previous month shown in a week has its real clocks and
+  // its hours are not folded as empty.
   protected readonly monthGrid = rxResource({
-    params: () => ({ from: this.monthFirst(), to: this.monthLast() }),
+    params: () => {
+      const weeks = this.weeks();
+      return { from: weeks[0][0], to: weeks[weeks.length - 1][WEEK_DAYS - 1] };
+    },
     stream: ({ params }) =>
       this.api.get('/api/grid', { query: params }).pipe(map((schedule) => schedule.items)),
   });

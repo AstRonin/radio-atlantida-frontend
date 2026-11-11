@@ -2,6 +2,7 @@ import {
   addDays,
   daysBetween,
   isLocalDate,
+  stationHourStartUtc,
   stationMidnightUtc,
   stationToday,
   weekdayOf,
@@ -51,5 +52,43 @@ describe('local dates', () => {
     // New York moves from UTC-5 to UTC-4 at 02:00 on 2026-03-08.
     expect(stationMidnightUtc('2026-03-08', 'America/New_York')).toBe('2026-03-08T05:00:00.000Z');
     expect(stationMidnightUtc('2026-03-09', 'America/New_York')).toBe('2026-03-09T04:00:00.000Z');
+  });
+
+  describe('start of a station hour', () => {
+    const iso = (date: string, hour: number, zone: string) =>
+      new Date(stationHourStartUtc(date, hour, zone)).toISOString();
+
+    it('finds the UTC instant of an hour in a zone without DST', () => {
+      expect(iso('2026-10-15', 0, 'Asia/Yerevan')).toBe('2026-10-14T20:00:00.000Z');
+      expect(iso('2026-10-15', 23, 'Asia/Yerevan')).toBe('2026-10-15T19:00:00.000Z');
+      expect(iso('2026-10-15', 5, 'Asia/Kolkata')).toBe('2026-10-14T23:30:00.000Z');
+      expect(iso('2026-10-15', 12, 'UTC')).toBe('2026-10-15T12:00:00.000Z');
+    });
+
+    it('gives the skipped hour of a spring change no length', () => {
+      // Berlin moves from 02:00 UTC+1 to 03:00 UTC+2 on 2026-03-29, at 01:00 UTC.
+      expect(iso('2026-03-29', 1, 'Europe/Berlin')).toBe('2026-03-29T00:00:00.000Z');
+      expect(iso('2026-03-29', 2, 'Europe/Berlin')).toBe('2026-03-29T01:00:00.000Z');
+      expect(iso('2026-03-29', 3, 'Europe/Berlin')).toBe('2026-03-29T01:00:00.000Z');
+      expect(iso('2026-03-29', 4, 'Europe/Berlin')).toBe('2026-03-29T02:00:00.000Z');
+    });
+
+    it('gives the repeated hour of an autumn change both occurrences', () => {
+      // Berlin moves from 03:00 UTC+2 back to 02:00 UTC+1 on 2026-10-25, at 01:00 UTC, so 02:00
+      // to 03:00 lasts two hours.
+      expect(iso('2026-10-25', 1, 'Europe/Berlin')).toBe('2026-10-24T23:00:00.000Z');
+      expect(iso('2026-10-25', 2, 'Europe/Berlin')).toBe('2026-10-25T00:00:00.000Z');
+      expect(iso('2026-10-25', 3, 'Europe/Berlin')).toBe('2026-10-25T02:00:00.000Z');
+    });
+
+    it('makes the day of a change 23 or 25 hours long', () => {
+      const length = (date: string, next: string) =>
+        (stationHourStartUtc(next, 0, 'Europe/Berlin') -
+          stationHourStartUtc(date, 0, 'Europe/Berlin')) /
+        3_600_000;
+      expect(length('2026-03-29', '2026-03-30')).toBe(23);
+      expect(length('2026-10-25', '2026-10-26')).toBe(25);
+      expect(length('2026-10-15', '2026-10-16')).toBe(24);
+    });
   });
 });

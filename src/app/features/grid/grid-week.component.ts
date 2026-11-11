@@ -1,10 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+  output,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { ApiSchema } from '../../core/api/api-types';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { HOURS } from '../../shared/forms/hours-input.component';
-import { hourLabel, localDateAsUtcNoon, weekdayName, weekdayOf } from '../../core/time/local-date';
+import {
+  addDays,
+  hourLabel,
+  localDateAsUtcNoon,
+  stationHourStartUtc,
+  weekdayName,
+  weekdayOf,
+} from '../../core/time/local-date';
 
 type GridHour = ApiSchema<'GridHour'>;
 
@@ -14,11 +32,25 @@ export interface GridCell {
   hour: number;
 }
 
+/** Consecutive folded hours, `from` to `to` both included; `label` is `02:00–05:00`. */
+interface HourRun {
+  from: number;
+  to: number;
+  label: string;
+}
+
+/** What the table shows: an hour row (the first row of an opened run carries it), or a run. */
+type WeekRow =
+  | { kind: 'hour'; key: string; hour: number; run: HourRun | null }
+  | { kind: 'collapsed'; key: string; run: HourRun };
+
 /**
  * One week of the grid: hours down, station local dates across, the clock of each hour as the
  * backend resolved it. A cell button adds its weekday and hour to the change form; a button in a
  * chosen day's or hour's header removes that weekday or hour, since a change always covers every
- * chosen weekday at every chosen hour and one cell alone cannot be taken out. Presentational.
+ * chosen weekday at every chosen hour and one cell alone cannot be taken out. An hour that has
+ * ended on all seven days without a clock on any of them is folded with its neighbours into one
+ * thin row, which a click opens; a chosen hour is never folded. Presentational.
  */
 @Component({
   selector: 'app-grid-week',
@@ -66,51 +98,82 @@ export interface GridCell {
           </tr>
         </thead>
         <tbody>
-          @for (hour of hours; track hour) {
-            <tr>
-              <th scope="row">
-                <span class="heading">
-                  {{ hourText(hour) }}
-                  @if (hourSet().has(hour)) {
-                    <button
-                      type="button"
-                      class="unpick"
-                      [attr.aria-label]="
-                        'grid.week.unpickHour' | translate: { hour: hourText(hour) }
-                      "
-                      (click)="unpickHour.emit(hour)"
-                    >
-                      −
-                    </button>
-                  }
-                </span>
-              </th>
-              @for (day of days(); track day.date) {
-                @let entry = cells().get(day.date + '|' + hour);
-                <td
-                  [class.outside]="!inMonth(day.date)"
-                  [class.selected]="isSelected(day.weekday, hour)"
-                >
-                  @if (entry) {
-                    <a class="clock" [routerLink]="['/clocks', entry.clock.id]">
-                      {{ entry.clock.name }}
-                    </a>
-                  }
-                  @if (canPick(day.date)) {
-                    <button
-                      type="button"
-                      class="pick"
-                      [attr.aria-label]="
-                        'grid.week.pick' | translate: { day: day.label, hour: hourText(hour) }
-                      "
-                      (click)="pick.emit({ date: day.date, weekday: day.weekday, hour })"
-                    >
-                      +
-                    </button>
-                  }
+          @for (row of rows(); track row.key) {
+            @if (row.kind === 'collapsed') {
+              <tr class="collapsed">
+                <th scope="row">{{ row.run.label }}</th>
+                <td colspan="7">
+                  <button
+                    type="button"
+                    class="expand"
+                    aria-expanded="false"
+                    [attr.data-run]="row.run.from"
+                    [attr.aria-label]="'grid.week.expand' | translate: { range: row.run.label }"
+                    (click)="expand(row.run)"
+                  >
+                    {{ 'grid.week.collapsed' | translate }}
+                  </button>
                 </td>
-              }
-            </tr>
+              </tr>
+            } @else {
+              @let hour = row.hour;
+              <tr>
+                <th scope="row">
+                  <span class="heading">
+                    {{ hourText(hour) }}
+                    @if (row.run; as run) {
+                      <button
+                        type="button"
+                        class="fold"
+                        aria-expanded="true"
+                        [attr.data-run]="run.from"
+                        [attr.aria-label]="'grid.week.collapse' | translate: { range: run.label }"
+                        (click)="collapse(run)"
+                      >
+                        ▴
+                      </button>
+                    }
+                    @if (hourSet().has(hour)) {
+                      <button
+                        type="button"
+                        class="unpick"
+                        [attr.aria-label]="
+                          'grid.week.unpickHour' | translate: { hour: hourText(hour) }
+                        "
+                        (click)="unpickHour.emit(hour)"
+                      >
+                        −
+                      </button>
+                    }
+                  </span>
+                </th>
+                @for (day of days(); track day.date) {
+                  @let entry = cells().get(day.date + '|' + hour);
+                  <td
+                    [class.outside]="!inMonth(day.date)"
+                    [class.selected]="isSelected(day.weekday, hour)"
+                  >
+                    @if (entry) {
+                      <a class="clock" [routerLink]="['/clocks', entry.clock.id]">
+                        {{ entry.clock.name }}
+                      </a>
+                    }
+                    @if (canPick(day.date)) {
+                      <button
+                        type="button"
+                        class="pick"
+                        [attr.aria-label]="
+                          'grid.week.pick' | translate: { day: day.label, hour: hourText(hour) }
+                        "
+                        (click)="pick.emit({ date: day.date, weekday: day.weekday, hour })"
+                      >
+                        +
+                      </button>
+                    }
+                  </td>
+                }
+              </tr>
+            }
           }
         </tbody>
       </table>
@@ -204,13 +267,67 @@ export interface GridCell {
     .pick:hover,
     .pick:focus-visible,
     .unpick:hover,
-    .unpick:focus-visible {
+    .unpick:focus-visible,
+    .fold:hover,
+    .fold:focus-visible {
       background: var(--mat-sys-surface-container-high);
+    }
+
+    .fold {
+      flex: none;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-inline-start: auto;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--mat-sys-on-surface-variant);
+      cursor: pointer;
+    }
+
+    /* The button's ::after covers the whole row, so the hour range is clickable too. */
+    tr.collapsed {
+      position: relative;
+    }
+
+    tr.collapsed th,
+    tr.collapsed td {
+      position: static;
+      height: 0.875rem;
+      padding-block: 0;
+      color: var(--mat-sys-on-surface-variant);
+      background: var(--mat-sys-surface-container-low);
+      font: var(--mat-sys-label-small);
+    }
+
+    tr.collapsed:hover th,
+    tr.collapsed:hover td {
+      background: var(--mat-sys-surface-container-high);
+    }
+
+    .expand {
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: start;
+      cursor: pointer;
+    }
+
+    .expand::after {
+      position: absolute;
+      inset: 0;
+      content: '';
     }
   `,
 })
 export class GridWeekComponent {
   private readonly i18n = inject(I18nService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   /** The seven station local dates shown, in order. */
   readonly dates = input.required<readonly string[]>();
@@ -222,6 +339,9 @@ export class GridWeekComponent {
   readonly pickTo = input.required<string>();
   readonly entries = input.required<readonly GridHour[]>();
   readonly today = input.required<string>();
+  /** The current instant (ms since the epoch) and the station zone, to tell which hours ended. */
+  readonly now = input.required<number>();
+  readonly zone = input.required<string>();
   readonly selectedWeekdays = input<readonly number[]>([]);
   readonly selectedHours = input<readonly number[]>([]);
 
@@ -230,8 +350,13 @@ export class GridWeekComponent {
   readonly unpickWeekday = output<number>();
   readonly unpickHour = output<number>();
 
-  protected readonly hours = HOURS;
   protected readonly hourText = hourLabel;
+
+  /** The hours of the opened runs; a new month starts with every run folded. */
+  private readonly expanded = linkedSignal<string, ReadonlySet<number>>({
+    source: this.first,
+    computation: () => new Set(),
+  });
 
   protected readonly days = computed(() => {
     const format = new Intl.DateTimeFormat(this.i18n.locale(), {
@@ -257,6 +382,88 @@ export class GridWeekComponent {
 
   protected readonly weekdaySet = computed(() => new Set(this.selectedWeekdays()));
   protected readonly hourSet = computed(() => new Set(this.selectedHours()));
+
+  /**
+   * The hours that ended on every day of the week with no clock on any day, unless chosen. An
+   * hour ends later on each date of the week than on the one before, so the last date decides.
+   */
+  protected readonly foldedHours = computed(() => {
+    const dates = this.dates();
+    const last = dates.at(-1);
+    const folded = new Set<number>();
+    if (!last) {
+      return folded;
+    }
+    const now = this.now();
+    const zone = this.zone();
+    const cells = this.cells();
+    const chosen = this.hourSet();
+    for (const hour of HOURS) {
+      const end =
+        hour < 23
+          ? stationHourStartUtc(last, hour + 1, zone)
+          : stationHourStartUtc(addDays(last, 1), 0, zone);
+      if (end <= now && !chosen.has(hour) && dates.every((date) => !cells.has(`${date}|${hour}`))) {
+        folded.add(hour);
+      }
+    }
+    return folded;
+  });
+
+  protected readonly rows = computed<WeekRow[]>(() => {
+    const folded = this.foldedHours();
+    const expanded = this.expanded();
+    const rows: WeekRow[] = [];
+    let hour = 0;
+    while (hour < HOURS.length) {
+      if (!folded.has(hour)) {
+        rows.push({ kind: 'hour', key: `h${hour}`, hour, run: null });
+        hour++;
+        continue;
+      }
+      let to = hour;
+      while (folded.has(to + 1)) {
+        to++;
+      }
+      const run = { from: hour, to, label: `${hourLabel(hour)}–${hourLabel(to + 1)}` };
+      // A run stays open when a choice or a new clock splits it, as long as one hour was opened.
+      if (HOURS.slice(hour, to + 1).some((item) => expanded.has(item))) {
+        for (let item = hour; item <= to; item++) {
+          rows.push({ kind: 'hour', key: `h${item}`, hour: item, run: item === hour ? run : null });
+        }
+      } else {
+        rows.push({ kind: 'collapsed', key: `c${hour}`, run });
+      }
+      hour = to + 1;
+    }
+    return rows;
+  });
+
+  protected expand(run: HourRun): void {
+    this.expanded.update((hours) => new Set([...hours, ...this.runHours(run)]));
+    this.focusRun(run, 'button.fold');
+  }
+
+  protected collapse(run: HourRun): void {
+    const hours = new Set(this.runHours(run));
+    this.expanded.update((open) => new Set([...open].filter((hour) => !hours.has(hour))));
+    this.focusRun(run, 'button.expand');
+  }
+
+  private runHours(run: HourRun): number[] {
+    return HOURS.slice(run.from, run.to + 1);
+  }
+
+  // The clicked button leaves the page, so the focus moves to the one that replaces it.
+  private focusRun(run: HourRun, selector: string): void {
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLButtonElement>(`${selector}[data-run="${run.from}"]`)
+          ?.focus(),
+      { injector: this.injector },
+    );
+  }
 
   protected isSelected(weekday: number, hour: number): boolean {
     return this.weekdaySet().has(weekday) && this.hourSet().has(hour);
