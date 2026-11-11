@@ -7,6 +7,7 @@ import {
   inject,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { rxResource, takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -20,16 +21,20 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
-import { merge } from 'rxjs';
+import { Subscription, merge } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
+import { ApiProblem } from '../../core/api/api-problem';
 import type { ApiSchema } from '../../core/api/api-types';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { followOperation } from '../../core/operations/operation-run';
 import { RealtimeService } from '../../core/realtime/realtime.service';
+import { DurationPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { controlVersion } from '../../shared/forms/field-errors';
 import { PlaylistTypeSelectComponent } from '../../shared/forms/playlist-type-select.component';
@@ -44,6 +49,19 @@ import {
   ImportFolderSelectComponent,
   MEDIA_ROOT,
 } from '../../shared/pickers/import-folder-select.component';
+import { ImportFileDetailsComponent } from './import-file-details.component';
+import {
+  CellSource,
+  FileRow,
+  ImportSort,
+  Probe,
+  SORT_COLUMNS,
+  fileKey,
+  isImportSortColumn,
+  sortRows,
+  sourceNote,
+  toRow,
+} from './import-file-row';
 
 type ImportFile = ApiSchema<'ImportFile'>;
 
@@ -68,13 +86,17 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
     MatButtonModule,
     MatPaginatorModule,
     MatProgressBarModule,
+    MatSortModule,
     MatTableModule,
+    MatTooltipModule,
     ReactiveFormsModule,
     RouterLink,
     TranslatePipe,
+    DurationPipe,
     StationTimePipe,
     FileSizePipe,
     ArtistSelectComponent,
+    ImportFileDetailsComponent,
     ImportFolderSelectComponent,
     OperationStatusComponent,
     PageHeaderComponent,
@@ -145,15 +167,115 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
             }
             <!-- Only imported files have a link, so the scroll region itself takes focus. -->
             <div class="table-scroll" role="region" tabindex="0" aria-labelledby="folder-heading">
-              <table mat-table [dataSource]="pageFiles()">
+              <!-- A plain array as the data source: MatSort only reports the click, sortedFiles sorts.
+                   The data are the listing's own objects, so a row keeps its DOM (and the focus of
+                   its toggle) when its details open or its probe arrives. -->
+              <table
+                mat-table
+                [dataSource]="pageFiles()"
+                multiTemplateDataRows
+                matSort
+                [matSortActive]="sort().active"
+                [matSortDirection]="sort().direction"
+                matSortDisableClear
+                matSortStart="asc"
+                (matSortChange)="onSort($event)"
+              >
                 <ng-container matColumnDef="path">
-                  <th mat-header-cell *matHeaderCellDef>
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    mat-sort-header
+                    [sortActionDescription]="
+                      'import.folder.sortBy'
+                        | translate: { column: ('import.folder.columns.path' | translate) }
+                    "
+                  >
                     {{ 'import.folder.columns.path' | translate }}
                   </th>
                   <td mat-cell *matCellDef="let file" class="path">{{ file.path }}</td>
                 </ng-container>
+                <ng-container matColumnDef="artist">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    mat-sort-header
+                    [sortActionDescription]="
+                      'import.folder.sortBy'
+                        | translate: { column: ('import.folder.columns.artist' | translate) }
+                    "
+                  >
+                    {{ 'import.folder.columns.artist' | translate }}
+                  </th>
+                  <td mat-cell *matCellDef="let file" class="text">
+                    @let row = rowOf(file);
+                    @if (row.artist; as value) {
+                      @if (sourceNote(row.artistSource); as note) {
+                        @let hint = note | translate;
+                        <span [class.guess]="isGuess(row.artistSource)" [matTooltip]="hint"
+                          >{{ value }}<span class="cdk-visually-hidden"> ({{ hint }})</span></span
+                        >
+                      } @else {
+                        {{ value }}
+                      }
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="title">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    mat-sort-header
+                    [sortActionDescription]="
+                      'import.folder.sortBy'
+                        | translate: { column: ('import.folder.columns.title' | translate) }
+                    "
+                  >
+                    {{ 'import.folder.columns.title' | translate }}
+                  </th>
+                  <td mat-cell *matCellDef="let file" class="text">
+                    @let row = rowOf(file);
+                    @if (row.title; as value) {
+                      @if (sourceNote(row.titleSource); as note) {
+                        @let hint = note | translate;
+                        <span [class.guess]="isGuess(row.titleSource)" [matTooltip]="hint"
+                          >{{ value }}<span class="cdk-visually-hidden"> ({{ hint }})</span></span
+                        >
+                      } @else {
+                        {{ value }}
+                      }
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="duration">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    mat-sort-header
+                    [sortActionDescription]="
+                      'import.folder.sortBy'
+                        | translate: { column: ('import.folder.columns.duration' | translate) }
+                    "
+                  >
+                    {{ 'import.folder.columns.duration' | translate }}
+                  </th>
+                  <td mat-cell *matCellDef="let file" class="numeric">
+                    @let row = rowOf(file);
+                    @if (row.durationMs !== null) {
+                      {{ row.durationMs | duration }}
+                    }
+                  </td>
+                </ng-container>
                 <ng-container matColumnDef="size">
-                  <th mat-header-cell *matHeaderCellDef>
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    mat-sort-header
+                    [sortActionDescription]="
+                      'import.folder.sortBy'
+                        | translate: { column: ('import.folder.columns.size' | translate) }
+                    "
+                  >
                     {{ 'import.folder.columns.size' | translate }}
                   </th>
                   <td mat-cell *matCellDef="let file" class="numeric">
@@ -161,7 +283,15 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="modified">
-                  <th mat-header-cell *matHeaderCellDef>
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    mat-sort-header
+                    [sortActionDescription]="
+                      'import.folder.sortBy'
+                        | translate: { column: ('import.folder.columns.modified' | translate) }
+                    "
+                  >
                     {{ 'import.folder.columns.modified' | translate }}
                   </th>
                   <td mat-cell *matCellDef="let file">
@@ -171,7 +301,15 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="status">
-                  <th mat-header-cell *matHeaderCellDef>
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    mat-sort-header
+                    [sortActionDescription]="
+                      'import.folder.sortBy'
+                        | translate: { column: ('import.folder.columns.status' | translate) }
+                    "
+                  >
                     {{ 'import.folder.columns.status' | translate }}
                   </th>
                   <td mat-cell *matCellDef="let file">
@@ -183,8 +321,49 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
                     }
                   </td>
                 </ng-container>
+                <ng-container matColumnDef="details">
+                  <th mat-header-cell *matHeaderCellDef>
+                    <span class="cdk-visually-hidden">{{
+                      'import.folder.columns.details' | translate
+                    }}</span>
+                  </th>
+                  <td mat-cell *matCellDef="let file" class="cell-actions">
+                    @let row = rowOf(file);
+                    @if (row.expandable) {
+                      @let open = isOpen(row);
+                      <button
+                        matIconButton
+                        type="button"
+                        class="toggle"
+                        [attr.aria-expanded]="open"
+                        [attr.aria-label]="
+                          (open ? 'import.folder.details.hide' : 'import.folder.details.show')
+                            | translate: { path: file.path }
+                        "
+                        (click)="toggle(row)"
+                      >
+                        <span aria-hidden="true">{{ open ? '▾' : '▸' }}</span>
+                      </button>
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="detail">
+                  <td mat-cell *matCellDef="let file" [attr.colspan]="columns.length">
+                    @let row = rowOf(file);
+                    <app-import-file-details
+                      [row]="row"
+                      [formArtist]="formArtist()"
+                      (retry)="probe(row.file)"
+                    />
+                  </td>
+                </ng-container>
                 <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
-                <tr mat-row *matRowDef="let row; columns: columns"></tr>
+                <tr mat-row *matRowDef="let row; columns: columns" class="file-row"></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let row; columns: ['detail']; when: isOpenRow"
+                  class="detail-row"
+                ></tr>
               </table>
             </div>
             @if (fileList().length > pageSizes[0]) {
@@ -290,8 +469,24 @@ function folderChosen(control: AbstractControl<string | null>): ValidationErrors
       font: var(--mat-sys-title-medium);
     }
 
-    .path {
+    .path,
+    .text {
       overflow-wrap: anywhere;
+    }
+
+    /* A value from the file name only: a tag found at import takes its place. */
+    .guess {
+      color: var(--mat-sys-on-surface-variant);
+      font-style: italic;
+    }
+
+    .toggle {
+      font-size: 0.875rem;
+    }
+
+    /* The file row and its open details read as one. */
+    tr.file-row:has(+ tr.detail-row) td {
+      border-bottom-style: none;
     }
 
     .analysis-status p {
@@ -324,7 +519,8 @@ export default class ImportPageComponent {
   private readonly i18n = inject(I18nService);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly columns = ['path', 'size', 'modified', 'status'];
+  protected readonly columns = [...SORT_COLUMNS, 'details'];
+  protected readonly sourceNote = sourceNote;
 
   // Control names are the ImportBody's JSON names, so per-field refusals land on them.
   protected readonly form = new FormGroup({
@@ -379,6 +575,41 @@ export default class ImportPageComponent {
   protected readonly fileList = computed((): readonly ImportFile[] =>
     this.files.hasValue() ? this.files.value().items : [],
   );
+  /** The artist chosen in the form, by name once the picker knows it: it wins at import. */
+  private readonly artistSelect = viewChild(ArtistSelectComponent);
+  private readonly artistId = toSignal(this.form.controls.artist_id.valueChanges, {
+    initialValue: this.form.controls.artist_id.value,
+  });
+  protected readonly formArtist = computed(() => {
+    const id = this.artistId();
+    const chosen = this.artistSelect()?.chosenArtist();
+    return id !== null && chosen?.id === id ? chosen.name : null;
+  });
+
+  /** Probes of new files by `fileKey`, so a row opened again reads nothing. */
+  private readonly probes = signal<ReadonlyMap<string, Probe>>(new Map());
+  /** Probes in flight by `fileKey`, cancelled when their file leaves the listing. */
+  private readonly probing = new Map<string, Subscription>();
+  /** The open rows by `fileKey`; several may be open. */
+  private readonly expanded = signal<ReadonlySet<string>>(new Set());
+
+  /** What each row shows: the listing, its probe, and the form's artist. */
+  private readonly rows = computed(() => {
+    const probes = this.probes();
+    const formArtist = this.formArtist();
+    return new Map(
+      this.fileList().map((file) => [
+        file.path,
+        toRow(file, probes.get(fileKey(file)), formArtist),
+      ]),
+    );
+  });
+  /** Kept across folders; not in the URL. */
+  protected readonly sort = signal<ImportSort>({ active: 'path', direction: 'asc' });
+  /** The listing's own objects in the order of what the rows show. */
+  protected readonly sortedFiles = computed(() =>
+    sortRows([...this.rows().values()], this.sort()).map((row) => row.file),
+  );
   protected readonly pageSizes = PAGE_SIZES;
   protected readonly pageSize = signal(PAGE_SIZES[0]);
   private readonly requestedPage = signal(0);
@@ -388,9 +619,13 @@ export default class ImportPageComponent {
     return Math.min(this.requestedPage(), last);
   });
   protected readonly pageFiles = computed(() => {
+    // A new array when a row opens or closes: the table checks its detail rows (`when`) only then.
+    this.expanded();
     const start = this.pageIndex() * this.pageSize();
-    return this.fileList().slice(start, start + this.pageSize());
+    return this.sortedFiles().slice(start, start + this.pageSize());
   });
+  protected readonly isOpenRow = (_index: number, file: ImportFile): boolean =>
+    file.status !== 'not_audio' && this.expanded().has(fileKey(file));
   protected readonly filesError = computed(() =>
     this.files.status() === 'error' ? errorMessage(this.files.error(), this.i18n) : null,
   );
@@ -474,6 +709,28 @@ export default class ImportPageComponent {
       }
     });
 
+    // Another folder, or a file changed on disk, drops its probe and its open row; a probe in
+    // flight for it is cancelled.
+    effect(() => {
+      const keys = new Set(this.fileList().map(fileKey));
+      untracked(() => {
+        for (const [key, subscription] of this.probing) {
+          if (!keys.has(key)) {
+            subscription.unsubscribe();
+            this.probing.delete(key);
+          }
+        }
+        const probes = this.probes();
+        if ([...probes.keys()].some((key) => !keys.has(key))) {
+          this.probes.set(new Map([...probes].filter(([key]) => keys.has(key))));
+        }
+        const expanded = this.expanded();
+        if ([...expanded].some((key) => !keys.has(key))) {
+          this.expanded.set(new Set([...expanded].filter((key) => keys.has(key))));
+        }
+      });
+    });
+
     // A folder deleted on disk drops out of the list. With `more` it may only be past the limit,
     // so it is kept and the backend refuses it if it is really gone.
     effect(() => {
@@ -494,9 +751,80 @@ export default class ImportPageComponent {
     });
   }
 
+  protected rowOf(file: ImportFile): FileRow {
+    return this.rows().get(file.path) ?? toRow(file, undefined, null);
+  }
+
+  protected isOpen(row: FileRow): boolean {
+    return this.expanded().has(row.key);
+  }
+
+  /** Values only guessed from the file name are muted: a tag may replace them at import. */
+  protected isGuess(source: CellSource): boolean {
+    return source === 'guess' || source === 'file_name';
+  }
+
+  protected toggle(row: FileRow): void {
+    const expanded = new Set(this.expanded());
+    if (expanded.delete(row.key)) {
+      this.expanded.set(expanded);
+      return;
+    }
+    expanded.add(row.key);
+    this.expanded.set(expanded);
+    if (row.file.status === 'new' && row.probe === null) {
+      this.probe(row.file);
+    }
+  }
+
+  /** Reads a new file's probe; a failure stays in its row, without a popup. */
+  protected probe(file: ImportFile): void {
+    const key = fileKey(file);
+    this.probing.get(key)?.unsubscribe();
+    this.setProbe(key, { status: 'loading' });
+    const subscription = this.api
+      .get('/api/import/file-info', { query: { path: file.path } })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (info) => {
+          this.probing.delete(key);
+          this.setProbe(key, { status: 'ready', info });
+        },
+        error: (error: unknown) => {
+          this.probing.delete(key);
+          this.setProbe(key, { status: 'error', message: this.probeError(error) });
+        },
+      });
+    if (!subscription.closed) {
+      this.probing.set(key, subscription);
+    }
+  }
+
+  private setProbe(key: string, probe: Probe): void {
+    this.probes.update((probes) => new Map(probes).set(key, probe));
+  }
+
+  /** A refused path says why by its field error (not audio, not a valid path), not as a form. */
+  private probeError(error: unknown): string {
+    if (error instanceof ApiProblem && error.errors.length > 0) {
+      const { code, message } = error.errors[0];
+      const key = `forms.serverErrors.${code}`;
+      return this.i18n.has(key) ? this.i18n.translate(key) : message;
+    }
+    return errorMessage(error, this.i18n);
+  }
+
   protected trackOf(file: ImportFile): number | null {
     const linked = file.status === 'in_library' || file.status === 'original';
     return linked ? (file.track_id ?? null) : null;
+  }
+
+  protected onSort(event: Sort): void {
+    if (!isImportSortColumn(event.active) || event.direction === '') {
+      return;
+    }
+    this.sort.set({ active: event.active, direction: event.direction });
+    this.requestedPage.set(0);
   }
 
   protected onPage(event: PageEvent): void {

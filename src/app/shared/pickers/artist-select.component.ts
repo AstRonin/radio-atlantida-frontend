@@ -53,6 +53,8 @@ interface Results {
 interface Chosen {
   id: number;
   label: string;
+  /** False when the label is the note for an ID that was not found. */
+  found: boolean;
 }
 
 /**
@@ -156,6 +158,12 @@ export class ArtistSelectComponent {
   });
   protected readonly loadError = computed(() => this.results().error ?? this.lookupError());
 
+  /** The chosen artist with its name once known; null with none, while it loads, or when unknown. */
+  readonly chosenArtist = computed((): { id: number; name: string } | null => {
+    const chosen = this.chosen();
+    return chosen?.found ? { id: chosen.id, name: chosen.label } : null;
+  });
+
   // The autocomplete writes the chosen option into the input through this, before `select`.
   protected readonly displayName = (id: number | null): string => {
     const chosen = this.chosen();
@@ -195,11 +203,12 @@ export class ArtistSelectComponent {
       .pipe(
         switchMap((id) =>
           this.catalog.artist(id).pipe(
-            map((artist) => ({ id, label: artist.name, error: null })),
+            map((artist) => ({ id, label: artist.name, found: true, error: null })),
             catchError((error: unknown) =>
               of({
                 id,
                 label: this.i18n.translate('artists.unknown', { id }),
+                found: false,
                 // A 404 is said by the label; any other failure also gets the message.
                 error:
                   error instanceof ApiProblem && error.status === 404
@@ -211,13 +220,13 @@ export class ArtistSelectComponent {
         ),
         takeUntilDestroyed(),
       )
-      .subscribe(({ id, label, error }) => {
+      .subscribe(({ id, label, found, error }) => {
         this.lookingUp = null;
         if (this.control().value !== id) {
           return;
         }
         this.lookupError.set(error);
-        this.chosen.set({ id, label });
+        this.chosen.set({ id, label, found });
         this.text.set(label);
       });
 
@@ -273,7 +282,7 @@ export class ArtistSelectComponent {
     const id = event.option.value as number;
     const name = this.results().items.find((artist) => artist.id === id)?.name ?? '';
     // Set first, so the value change below finds the name and reads nothing.
-    this.chosen.set({ id, label: name });
+    this.chosen.set({ id, label: name, found: true });
     this.lookupError.set(null);
     const control = this.control();
     control.setValue(id);

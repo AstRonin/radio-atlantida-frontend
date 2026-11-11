@@ -333,7 +333,8 @@
       "clock_count_not_allowed": "A number of tracks is only set for the spread rule.",
       "fill_weight_not_allowed": "Only a fill playlist has a share.",
       "insert_offset_taken": "Another insert of this clock starts at the same time.",
-      "insert_source_required": "Choose a track or a playlist for the insert."
+      "insert_source_required": "Choose a track or a playlist for the insert.",
+      "not_audio": "This is not an audio file an import takes (mp3, m4a, aac, ogg, oga, flac, wav)."
     },
     "weekdays": {
       "label": "Weekdays",
@@ -513,7 +514,9 @@
     "track_not_analysed": "Analyse the track first: its length is not known.",
     "waveform_unavailable": "The file cannot be read.",
     "logs_unavailable": "Logs are not available right now (the log store does not answer).",
-    "range_too_long": "The time range is too long for the log store. Choose a shorter range."
+    "range_too_long": "The time range is too long for the log store. Choose a shorter range.",
+    "import_file_not_found": "The file is no longer in the media folder. Press Refresh.",
+    "probe_failed": "The file cannot be read as audio. An import would skip it as unreadable."
   },
   "nav": {
     "live": "Live",
@@ -1365,17 +1368,42 @@
       "counts": "{new} new of {total} audio files.",
       "empty": "The folder holds no files. Copy audio files into it on the station computer, then press Refresh.",
       "moreFiles": "The folder holds more files than are listed here.",
+      "sortBy": "Sort by {column}",
       "columns": {
         "path": "File",
+        "artist": "Artist",
+        "title": "Title",
+        "duration": "Length",
         "size": "Size",
         "modified": "Modified",
-        "status": "Status"
+        "status": "Status",
+        "details": "Details"
       },
       "statuses": {
         "new": "New",
         "in_library": "In library",
         "original": "Original of an optimised copy",
         "not_audio": "Not audio"
+      },
+      "fromFileName": "From the file name; tags take priority at import.",
+      "noTag": "From the file name: the file has no tag.",
+      "fromForm": "The artist chosen in the import form.",
+      "details": {
+        "show": "Show details of {path}",
+        "hide": "Hide details of {path}",
+        "loading": "Reading the file…",
+        "issues": "Quality issues",
+        "noIssues": "None",
+        "noProbeIssues": "None found. Loudness and true peak are measured by the analysis after the import.",
+        "notReviewed": "Not reviewed",
+        "openTrack": "Open the track",
+        "originalNote": "These facts describe the optimised copy in the library, not this file.",
+        "fromTagReplaces": "From the tags; at import it replaces «{name}» from the file name.",
+        "fromTagSame": "From the tags; at import it replaces the value from the file name, which is the same.",
+        "fromTagNoName": "From the tags; the file name gives none.",
+        "fromFileName": "The file has no tag; the file name is used.",
+        "noArtist": "Neither the tags nor the file name give an artist.",
+        "formArtist": "At import the artist chosen in the form, {name}, replaces it."
       }
     },
     "form": {

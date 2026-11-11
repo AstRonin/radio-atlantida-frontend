@@ -19,6 +19,10 @@
       "text": "The title is read from the file's title tag, else taken from the file name. The artist is the one chosen in the form; without one it is read from the artist tag, else taken from the file name. An artist read from a tag or a file name is found by name on the Artists page or added there."
     },
     {
+      "term": "File details",
+      "text": "The file list shows the artist, title, and length of each file. For a file in the library they are the track's. For a new file they are first guessed from the file name and shown in grey; open the row with the arrow at its end to read the file: its format, bitrate, sample rate, channels, length, the title and artist the import would give it, and the quality issues seen without the analysis. A title or artist from the file's tags replaces the one from the file name at import, and the row then shows the tag's. Loudness is measured only by the analysis after the import."
+    },
+    {
       "term": "File names",
       "text": "Name files \"Artist - Title.mp3\". With exactly one hyphen, the part before it is the artist and the part after it the title: \"DJ Ann - Morning.mp3\" becomes the track \"Morning\" by \"DJ Ann\". A name without a hyphen, such as \"Morning.mp3\", gives only the title. A name with more than one hyphen, such as \"Jay-Z - Song.mp3\", gives no artist, and the whole name is the title. The folder and the extension are never part of the title."
     },
@@ -35,7 +39,7 @@
       "text": "A track whose file was moved or deleted on disk. The import does not look for it; the next analysis marks it as missing in the library. Edit the track's file path or delete the track there."
     }
   ],
-  "usage": "Choose a folder and check its files: the ones marked New are imported. Choose the type for the whole batch, and optionally playlists and an artist, then start the import. The progress shows how many files are done; when it finishes, the summary counts the imported files, the files already in the library, and the duplicate, unreadable, and skipped files. The files stay in their folder. Then open the tracks with issues in the library and fix them there.",
+  "usage": "Choose a folder and check its files: the ones marked New are imported. Open a row to see what the import would read from the file. Choose the type for the whole batch, and optionally playlists and an artist, then start the import. The progress shows how many files are done; when it finishes, the summary counts the imported files, the files already in the library, and the duplicate, unreadable, and skipped files. The files stay in their folder. Then open the tracks with issues in the library and fix them there.",
   "steps": [
     "Copy the new audio files into a folder of the media folder on the station computer, and wait until the copy has finished.",
     "Press Refresh and choose the folder; check that its new files are listed as New.",

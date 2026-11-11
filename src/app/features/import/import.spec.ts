@@ -426,6 +426,414 @@ describe('import', () => {
       expect(page.querySelector('mat-paginator')).toBeNull();
     });
 
+    describe('sort', () => {
+      const file = (
+        path: string,
+        size: number,
+        minute: number,
+        status: Files['items'][number]['status'],
+      ): Files['items'][number] => ({
+        path,
+        size,
+        modified_at: `2026-10-15T08:${String(minute).padStart(2, '0')}:00Z`,
+        status,
+      });
+      // In the backend's byte order, which is not the natural one.
+      const mixed = (): Files =>
+        files({
+          items: [
+            file('jingles/u1.mp3', 300, 3, 'in_library'),
+            file('jingles/u10.mp3', 100, 1, 'new'),
+            file('jingles/U2.mp3', 300, 2, 'not_audio'),
+            file('jingles/u3.mp3', 200, 4, 'original'),
+            file('jingles/u4.mp3', 100, 0, 'new'),
+          ],
+        });
+
+      const paths = (page: HTMLElement) =>
+        [...page.querySelectorAll('tr.mat-mdc-row td.path')].map((cell) =>
+          cell.textContent?.trim().replace('jingles/', ''),
+        );
+      async function clickHeader(page: HTMLElement, column: string): Promise<void> {
+        const header = [...page.querySelectorAll<HTMLElement>('th.mat-mdc-header-cell')].find(
+          (cell) => cell.textContent?.includes(`import.folder.columns.${column}`),
+        );
+        expect(header).toBeDefined();
+        header?.click();
+        await settlePage();
+      }
+
+      it('lists the files in natural, case-insensitive path order by default', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', mixed());
+        expect(paths(page)).toEqual(['u1.mp3', 'U2.mp3', 'u3.mp3', 'u4.mp3', 'u10.mp3']);
+        const header = page.querySelector('th.mat-mdc-header-cell');
+        expect(header?.getAttribute('aria-sort')).toBe('ascending');
+      });
+
+      it('sorts by size, ascending then descending, with ties by path', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', mixed());
+        await clickHeader(page, 'size');
+        expect(paths(page)).toEqual(['u4.mp3', 'u10.mp3', 'u3.mp3', 'u1.mp3', 'U2.mp3']);
+        await clickHeader(page, 'size');
+        expect(paths(page)).toEqual(['u1.mp3', 'U2.mp3', 'u3.mp3', 'u4.mp3', 'u10.mp3']);
+      });
+
+      it('sorts by modification time, ascending then descending', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', mixed());
+        await clickHeader(page, 'modified');
+        expect(paths(page)).toEqual(['u4.mp3', 'u10.mp3', 'U2.mp3', 'u1.mp3', 'u3.mp3']);
+        await clickHeader(page, 'modified');
+        expect(paths(page)).toEqual(['u3.mp3', 'u1.mp3', 'U2.mp3', 'u10.mp3', 'u4.mp3']);
+      });
+
+      it('sorts by status rank, new first, with ties by path', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', mixed());
+        await clickHeader(page, 'status');
+        expect(paths(page)).toEqual(['u4.mp3', 'u10.mp3', 'u3.mp3', 'u1.mp3', 'U2.mp3']);
+        await clickHeader(page, 'status');
+        expect(paths(page)).toEqual(['U2.mp3', 'u1.mp3', 'u3.mp3', 'u4.mp3', 'u10.mp3']);
+      });
+
+      it('returns to the first page on a new sort and keeps the sort for another folder', async () => {
+        const many = (count: number): Files =>
+          files({
+            items: Array.from({ length: count }, (_, index) =>
+              file(`jingles/song-${index + 1}.mp3`, 1000 + index, 0, 'new'),
+            ),
+          });
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', many(25));
+        expect(paths(page)[0]).toBe('song-1.mp3');
+        page.querySelector<HTMLButtonElement>('.mat-mdc-paginator-navigation-next')?.click();
+        await settlePage();
+        expect(paths(page)[0]).toBe('song-11.mp3');
+
+        await clickHeader(page, 'size');
+        await clickHeader(page, 'size');
+        expect(paths(page)[0]).toBe('song-25.mp3');
+
+        await choose(fixture, 'music', many(12));
+        expect(paths(page)[0]).toBe('song-12.mp3');
+        const size = [...page.querySelectorAll('th.mat-mdc-header-cell')].find((cell) =>
+          cell.textContent?.includes('import.folder.columns.size'),
+        );
+        expect(size?.getAttribute('aria-sort')).toBe('descending');
+      });
+    });
+
+    describe('file details', () => {
+      type Item = Files['items'][number];
+      type Info = ApiSchema<'ImportFileInfo'>;
+      const track = (overrides: Partial<NonNullable<Item['track']>> = {}) => ({
+        id: 17,
+        title: 'Morning',
+        artist: 'DJ Ann',
+        duration_ms: 230_000,
+        air_duration_ms: 225_000,
+        format: 'mp3' as const,
+        codec: 'mp3',
+        bitrate: 192_000,
+        sample_rate: 44_100,
+        channels: 2,
+        quality_issues: [],
+        reviewed_at: null,
+        ...overrides,
+      });
+      const newFile = (path: string, title: string, artist: string | null, size = 1000): Item => ({
+        path,
+        size,
+        modified_at: '2026-10-15T08:00:00Z',
+        status: 'new',
+        name_title: title,
+        name_artist: artist,
+      });
+      const detailed = (): Files =>
+        files({
+          items: [
+            newFile('jingles/DJ Bob - Evening.mp3', 'Evening', 'DJ Bob'),
+            {
+              path: 'jingles/morning.mp3',
+              size: 900,
+              modified_at: '2026-10-15T08:01:00Z',
+              status: 'in_library',
+              track_id: 17,
+              track: track(),
+            },
+            {
+              path: 'jingles/night.flac',
+              size: 900,
+              modified_at: '2026-10-15T08:02:00Z',
+              status: 'original',
+              track_id: 18,
+              track: track({ id: 18, title: 'Night', artist: null, quality_issues: ['loudness'] }),
+            },
+            {
+              path: 'jingles/notes.txt',
+              size: 10,
+              modified_at: '2026-10-15T08:03:00Z',
+              status: 'not_audio',
+            },
+          ],
+        });
+      const info = (overrides: Partial<Info> = {}): Info => ({
+        path: 'jingles/DJ Bob - Evening.mp3',
+        size: 1000,
+        modified_at: '2026-10-15T08:00:00Z',
+        duration_ms: 61_000,
+        format: 'mp3',
+        codec: 'mp3',
+        bitrate: 96_000,
+        sample_rate: 44_100,
+        channels: 2,
+        tags: { title: 'Evening Song', artist: 'Bob' },
+        title: 'Evening Song',
+        title_source: 'tag',
+        artist: 'Bob',
+        artist_source: 'tag',
+        issues: ['low_bitrate'],
+        ...overrides,
+      });
+      const infoUrl = (request: { url: string }) => request.url === '/api/import/file-info';
+
+      const fileRows = (page: HTMLElement) => [
+        ...page.querySelectorAll<HTMLTableRowElement>('tr.file-row'),
+      ];
+      const rowOf = (page: HTMLElement, path: string) =>
+        fileRows(page).find((row) => row.querySelector('td.path')?.textContent?.trim() === path);
+      const cells = (row: HTMLTableRowElement | undefined) =>
+        [...(row?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent?.trim() ?? '');
+      async function toggle(page: HTMLElement, path: string): Promise<void> {
+        rowOf(page, path)?.querySelector<HTMLButtonElement>('button.toggle')?.click();
+        await settlePage();
+      }
+      const details = (page: HTMLElement) =>
+        [...page.querySelectorAll('tr.detail-row')].map((row) => row.textContent ?? '');
+
+      it('shows the artist, title, and length of a library file from its track', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', detailed());
+        const [, artist, title, length] = cells(rowOf(page, 'jingles/morning.mp3'));
+        expect([artist, title, length]).toEqual(['DJ Ann', 'Morning', '3:45']);
+        expect(rowOf(page, 'jingles/morning.mp3')?.querySelector('.guess')).toBeNull();
+
+        await toggle(page, 'jingles/night.flac');
+        http.expectNone(infoUrl);
+        const [detail] = details(page);
+        expect(detail).toContain('import.folder.details.originalNote');
+        expect(detail).toContain('mp3 (mp3)');
+        expect(detail).toContain('library.quality.issueNames.loudness');
+        expect(page.querySelector('tr.detail-row a')?.getAttribute('href')).toBe('/library/18');
+      });
+
+      it('shows the file-name guess of a new file muted, and no toggle for a file not audio', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', detailed());
+        const row = rowOf(page, 'jingles/DJ Bob - Evening.mp3');
+        const guesses = [...(row?.querySelectorAll('.guess') ?? [])];
+        expect(guesses.map((cell) => cell.firstChild?.textContent)).toEqual(['DJ Bob', 'Evening']);
+        expect(guesses[0].textContent).toContain('import.folder.fromFileName');
+        expect(cells(row)[3]).toBe('');
+        const toggleButton = row?.querySelector('button.toggle');
+        expect(toggleButton?.getAttribute('aria-expanded')).toBe('false');
+        expect(toggleButton?.getAttribute('aria-label')).toBe('import.folder.details.show');
+
+        const notAudio = rowOf(page, 'jingles/notes.txt');
+        expect(notAudio?.querySelector('button.toggle')).toBeNull();
+        expect(cells(notAudio).slice(1, 4)).toEqual(['', '', '']);
+      });
+
+      it('reads a new file once when its row opens, and shows the tag values', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        const path = 'jingles/DJ Bob - Evening.mp3';
+        await choose(fixture, 'jingles', detailed());
+
+        await toggle(page, path);
+        const request = http.expectOne(infoUrl);
+        expect(request.request.params.get('path')).toBe(path);
+        expect(details(page)[0]).toContain('import.folder.details.loading');
+        expect(
+          rowOf(page, path)?.querySelector('button.toggle')?.getAttribute('aria-expanded'),
+        ).toBe('true');
+        request.flush(info());
+        await settlePage();
+
+        const [detail] = details(page);
+        expect(detail).toContain('Evening Song');
+        expect(detail).toContain('import.folder.details.fromTagReplaces');
+        expect(detail).toContain('1:01');
+        expect(detail).toContain('library.quality.issueNames.low_bitrate');
+        const [, artist, title, length] = cells(rowOf(page, path));
+        expect([artist, title, length]).toEqual(['Bob', 'Evening Song', '1:01']);
+        expect(rowOf(page, path)?.querySelector('.guess')).toBeNull();
+
+        await toggle(page, path);
+        expect(details(page)).toEqual([]);
+        await toggle(page, path);
+        http.expectNone(infoUrl);
+        expect(details(page)[0]).toContain('Evening Song');
+
+        // Another folder drops the cache: back in this one, the file is read again.
+        await choose(fixture, 'music', files({ folder: 'music', items: [] }));
+        await choose(fixture, 'jingles', detailed());
+        expect(details(page)).toEqual([]);
+        expect(cells(rowOf(page, path))[2]).toContain('Evening');
+        await toggle(page, path);
+        http.expectOne(infoUrl).flush(info({ title_source: 'file_name', title: 'Evening' }));
+        await settlePage();
+        expect(details(page)[0]).toContain('import.folder.details.fromFileName');
+        // No title tag: the title stays muted, now as confirmed by the file.
+        const title2 = rowOf(page, path)?.querySelectorAll('.guess');
+        expect(title2).toHaveLength(1);
+        expect(title2?.[0].textContent).toContain('import.folder.noTag');
+      });
+
+      it('shows a failed read in the row and reads again on Retry', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        const path = 'jingles/DJ Bob - Evening.mp3';
+        await choose(fixture, 'jingles', detailed());
+
+        await toggle(page, path);
+        http
+          .expectOne(infoUrl)
+          .flush(
+            { status: 422, code: 'probe_failed', title: 'Unprocessable', detail: 'Not readable.' },
+            { status: 422, statusText: 'Unprocessable Entity' },
+          );
+        await settlePage();
+        const error = page.querySelector('tr.detail-row .load-error');
+        // No translations are loaded in tests, so the code's text falls back to the detail.
+        expect(error?.textContent).toContain('Not readable.');
+
+        button(page, 'common.retry')?.click();
+        await settlePage();
+        http.expectOne(infoUrl).flush(
+          {
+            status: 422,
+            code: 'validation_failed',
+            title: 'Unprocessable',
+            errors: [{ field: 'path', code: 'not_audio', message: 'not an audio file' }],
+          },
+          { status: 422, statusText: 'Unprocessable Entity' },
+        );
+        await settlePage();
+        expect(page.querySelector('tr.detail-row .load-error')?.textContent).toContain(
+          'not an audio file',
+        );
+
+        button(page, 'common.retry')?.click();
+        await settlePage();
+        http.expectOne(infoUrl).flush(info());
+        await settlePage();
+        expect(page.querySelector('tr.detail-row .load-error')).toBeNull();
+        expect(details(page)[0]).toContain('Evening Song');
+      });
+
+      it('shows the artist chosen in the form for new files', async () => {
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        const path = 'jingles/DJ Bob - Evening.mp3';
+        await choose(fixture, 'jingles', detailed());
+        view(fixture).form.patchValue({ artist_id: 9 });
+        await settlePage();
+        http.expectOne('/api/artists/9').flush({ id: 9, name: 'DJ Ann', track_count: 0 });
+        await settlePage();
+        expect(cells(rowOf(page, path))[1]).toContain('DJ Ann');
+        expect(cells(rowOf(page, path))[1]).toContain('import.folder.fromForm');
+        // A library file keeps its own artist.
+        expect(cells(rowOf(page, 'jingles/night.flac'))[1]).toBe('');
+
+        await toggle(page, path);
+        http.expectOne(infoUrl).flush(info());
+        await settlePage();
+        expect(cells(rowOf(page, path))[1]).toContain('DJ Ann');
+        expect(details(page)[0]).toContain('import.folder.details.formArtist');
+
+        view(fixture).form.patchValue({ artist_id: null });
+        await settlePage();
+        expect(cells(rowOf(page, path))[1]).toBe('Bob');
+      });
+
+      it('sorts by artist, title, and length with empty cells last both ways', async () => {
+        const list = files({
+          items: [
+            newFile('jingles/a.mp3', 'zeta', null),
+            newFile('jingles/b.mp3', 'Alpha', 'Mike'),
+            {
+              path: 'jingles/c.mp3',
+              size: 900,
+              modified_at: '2026-10-15T08:01:00Z',
+              status: 'in_library',
+              track_id: 17,
+              track: track({ title: 'beta', artist: 'anna', air_duration_ms: 90_000 }),
+            },
+            {
+              path: 'jingles/d.mp3',
+              size: 900,
+              modified_at: '2026-10-15T08:02:00Z',
+              status: 'in_library',
+              track_id: 19,
+              track: track({ id: 19, title: 'Gamma', artist: null, air_duration_ms: 30_000 }),
+            },
+            {
+              path: 'jingles/e.txt',
+              size: 1,
+              modified_at: '2026-10-15T08:03:00Z',
+              status: 'not_audio',
+            },
+          ],
+        });
+        const fixture = await open();
+        const page = fixture.nativeElement as HTMLElement;
+        await choose(fixture, 'jingles', list);
+        const paths = () =>
+          fileRows(page).map((row) => row.querySelector('td.path')?.textContent?.trim().slice(8));
+        async function sortBy(column: string): Promise<void> {
+          [...page.querySelectorAll<HTMLElement>('th.mat-mdc-header-cell')]
+            .find((cell) => cell.textContent?.includes(`import.folder.columns.${column}`))
+            ?.click();
+          await settlePage();
+        }
+
+        await sortBy('artist');
+        expect(paths()).toEqual(['c.mp3', 'b.mp3', 'a.mp3', 'd.mp3', 'e.txt']);
+        await sortBy('artist');
+        expect(paths()).toEqual(['b.mp3', 'c.mp3', 'a.mp3', 'd.mp3', 'e.txt']);
+
+        await sortBy('title');
+        expect(paths()).toEqual(['b.mp3', 'c.mp3', 'd.mp3', 'a.mp3', 'e.txt']);
+        await sortBy('title');
+        expect(paths()).toEqual(['a.mp3', 'd.mp3', 'c.mp3', 'b.mp3', 'e.txt']);
+
+        await sortBy('duration');
+        expect(paths()).toEqual(['d.mp3', 'c.mp3', 'a.mp3', 'b.mp3', 'e.txt']);
+        await sortBy('duration');
+        expect(paths()).toEqual(['c.mp3', 'd.mp3', 'a.mp3', 'b.mp3', 'e.txt']);
+
+        // A probed length joins the sort.
+        await toggle(page, 'jingles/b.mp3');
+        http
+          .expectOne(infoUrl)
+          .flush(
+            info({ path: 'jingles/b.mp3', duration_ms: 60_000, artist: 'Mike', title: 'Alpha' }),
+          );
+        await settlePage();
+        expect(paths()).toEqual(['c.mp3', 'b.mp3', 'd.mp3', 'a.mp3', 'e.txt']);
+      });
+    });
+
     it('keeps Import off for a folder without new files', async () => {
       const fixture = await open();
       const page = fixture.nativeElement as HTMLElement;
