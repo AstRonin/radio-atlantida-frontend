@@ -1,3 +1,4 @@
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -6,10 +7,16 @@ import {
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl } from '@angular/forms';
+import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import type { ApiSchema } from '../../core/api/api-types';
 import { apiProblemInterceptor } from '../../core/api/api.interceptors';
 import { FakeAudio, provideFakeAudio } from '../../core/player/fake-audio.testing';
 import { PlayerService } from '../../core/player/player.service';
+import {
+  ARTIST_SELECT_DEBOUNCE_MS,
+  ARTIST_SELECT_LIMIT,
+  ArtistSelectComponent,
+} from './artist-select.component';
 import { PlayRulePickerComponent } from './play-rule-picker.component';
 import { PlaylistPickerComponent } from './playlist-picker.component';
 import type { TrackFilterForm } from './track-filters.component';
@@ -60,6 +67,7 @@ describe('pickers', () => {
         provideHttpClient(withInterceptors([apiProblemInterceptor])),
         provideHttpClientTesting(),
         provideFakeAudio(audio),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -209,7 +217,6 @@ describe('pickers', () => {
           http.expectOne('/api/playlist-types').flush({ items: [] });
         }
         http.expectOne('/api/playlists').flush({ items: [playlist(7, 'Morning', 'music')] });
-        http.expectOne('/api/artists').flush({ items: [] });
         await fixture.whenStable();
       }
 
@@ -240,6 +247,7 @@ describe('pickers', () => {
         filters().controls.artist_id.setValue(3);
         filters().controls.type_id.setValue(2);
         await fixture.whenStable();
+        http.expectOne('/api/artists/3').flush({ id: 3, name: 'Ann', track_count: 2 });
         const requests = http.match((req) => req.url === '/api/tracks');
         const last = requests[requests.length - 1];
         expect(last.request.params.get('playlist_id')).toBe('7');
@@ -292,6 +300,148 @@ describe('pickers', () => {
       expect(element().querySelector('.load-error')?.textContent).toContain(
         'Internal Server Error',
       );
+    });
+  });
+
+  describe('ArtistSelectComponent', () => {
+    let fixture: ComponentFixture<ArtistSelectComponent>;
+    let control: FormControl<number | null>;
+
+    const input = () =>
+      (fixture.nativeElement as HTMLElement).querySelector('input') as HTMLInputElement;
+    const options = () => [
+      ...TestBed.inject(OverlayContainer)
+        .getContainerElement()
+        .querySelectorAll<HTMLElement>('mat-option'),
+    ];
+    const artist = (id: number, name: string): ApiSchema<'Artist'> => ({
+      id,
+      name,
+      track_count: 1,
+    });
+    const search = (q: string | null) =>
+      http.expectOne(
+        (req) =>
+          req.url === '/api/artists' &&
+          req.params.get('q') === q &&
+          req.params.get('limit') === String(ARTIST_SELECT_LIMIT) &&
+          req.params.get('sort') === 'name',
+      );
+
+    async function create(value: number | null = null) {
+      control = new FormControl<number | null>(value);
+      fixture = TestBed.createComponent(ArtistSelectComponent);
+      fixture.componentRef.setInput('control', control);
+      await fixture.whenStable();
+    }
+
+    async function type(text: string) {
+      input().value = text;
+      input().dispatchEvent(new Event('input'));
+      await new Promise((resolve) => setTimeout(resolve, ARTIST_SELECT_DEBOUNCE_MS));
+      await fixture.whenStable();
+    }
+
+    async function focus() {
+      input().dispatchEvent(new Event('focus'));
+      input().dispatchEvent(new Event('focusin'));
+      await fixture.whenStable();
+    }
+
+    it('reads nothing until focused, then searches the typed text on the server', async () => {
+      await create();
+      http.expectNone('/api/artists');
+
+      await focus();
+      search(null).flush({ items: [artist(1, 'Ann'), artist(2, 'Bob')], total: 2 });
+      await fixture.whenStable();
+      expect(options().map((option) => option.textContent?.trim())).toEqual(['Ann', 'Bob']);
+
+      await type(' an ');
+      search('an').flush({ items: [artist(1, 'Ann')], total: 1 });
+      await fixture.whenStable();
+      expect(options().map((option) => option.textContent?.trim())).toEqual(['Ann']);
+
+      options()[0].click();
+      await fixture.whenStable();
+      expect(control.value).toBe(1);
+      expect(input().value).toBe('Ann');
+      // The autocomplete focuses the field again; a chosen name is no search, so page 1 is read.
+      for (const request of http.match((req) => req.url === '/api/artists')) {
+        expect(request.request.params.get('q')).toBeNull();
+        request.flush({ items: [], total: 0 });
+      }
+    });
+
+    it('offers at most the limit and says how many more there are', async () => {
+      await create();
+      await focus();
+      const items = Array.from({ length: ARTIST_SELECT_LIMIT }, (_, index) =>
+        artist(index + 1, `Artist ${index + 1}`),
+      );
+      search(null).flush({ items, total: 120 });
+      await fixture.whenStable();
+      const shown = options();
+      expect(shown).toHaveLength(ARTIST_SELECT_LIMIT + 1);
+      const more = shown[shown.length - 1];
+      expect(more.textContent).toContain('artists.pickerMore');
+      expect(more.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('shows the name of a start value that is on no page of the results', async () => {
+      await create(5);
+      http.expectOne('/api/artists/5').flush(artist(5, 'Zed'));
+      await fixture.whenStable();
+      expect(input().value).toBe('Zed');
+
+      await focus();
+      search(null).flush({ items: [artist(1, 'Ann')], total: 80 });
+      await fixture.whenStable();
+      expect(input().value).toBe('Zed');
+      expect(control.value).toBe(5);
+
+      // Text equal to the kept name keeps the value, though no option matches it.
+      await type('Zed');
+      search('Zed').flush({ items: [], total: 0 });
+      await fixture.whenStable();
+      expect(control.value).toBe(5);
+      expect(options().map((option) => option.textContent?.trim())).toEqual(['pickers.noMatches']);
+
+      await type('Zedd');
+      search('Zedd').flush({ items: [], total: 0 });
+      await fixture.whenStable();
+      expect(control.value).toBeNull();
+      expect(input().value).toBe('Zedd');
+    });
+
+    it('keeps an unknown start value and says it is unknown', async () => {
+      await create(5);
+      http
+        .expectOne('/api/artists/5')
+        .flush(
+          { status: 404, code: 'not_found', title: 'Not Found' },
+          { status: 404, statusText: 'Not Found' },
+        );
+      await fixture.whenStable();
+      expect(control.value).toBe(5);
+      expect(input().value).toBe('artists.unknown');
+      expect((fixture.nativeElement as HTMLElement).querySelector('.load-error')).toBeNull();
+    });
+
+    it('reads the name again when the form resets to another artist', async () => {
+      await create(5);
+      http.expectOne('/api/artists/5').flush(artist(5, 'Zed'));
+      await fixture.whenStable();
+
+      control.reset(7);
+      await fixture.whenStable();
+      http.expectOne('/api/artists/7').flush(artist(7, 'Yara'));
+      await fixture.whenStable();
+      expect(input().value).toBe('Yara');
+
+      control.reset(null);
+      await fixture.whenStable();
+      expect(input().value).toBe('');
     });
   });
 

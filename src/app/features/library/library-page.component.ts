@@ -48,6 +48,7 @@ import { RealtimeService } from '../../core/realtime/realtime.service';
 import { DurationPipe } from '../../core/time/duration.pipe';
 import { StationTimePipe } from '../../core/time/station-time.pipe';
 import { controlVersion } from '../../shared/forms/field-errors';
+import { ArtistSelectComponent } from '../../shared/pickers/artist-select.component';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { OperationStatusComponent } from '../../shared/ui/operation-status.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
@@ -71,6 +72,7 @@ import {
   isTrackSort,
   listStateParams,
   readInPlanFilter,
+  readArtistFilter,
   readListState,
   readReviewedFilter,
   readWithoutPlaylist,
@@ -128,6 +130,7 @@ interface PageRequest {
     DurationPipe,
     StationTimePipe,
     PageHeaderComponent,
+    ArtistSelectComponent,
     OperationStatusComponent,
     PlayButtonComponent,
     LibraryStatsComponent,
@@ -158,6 +161,7 @@ interface PageRequest {
           }
         </mat-select>
       </mat-form-field>
+      <app-artist-select label="library.filters.artist" [control]="filters.controls.artist_id" />
       <mat-form-field>
         <mat-label>{{ 'library.filters.type' | translate }}</mat-label>
         <mat-select formControlName="type_id">
@@ -677,6 +681,8 @@ export default class LibraryPageComponent implements OnInit {
   readonly quality = input<string>();
   /** Query parameter `reviewed`, as the import's "Review the new tracks" link sets it. */
   readonly reviewed = input<string>();
+  /** Query parameter `artist_id`, as the Artists page's track count link sets it. */
+  readonly artist_id = input<string>();
   /** Query parameters of the usage filters (F20), named as the router passes them. */
   readonly in_plan = input<string>();
   readonly in_playlist = input<string>();
@@ -712,6 +718,7 @@ export default class LibraryPageComponent implements OnInit {
   protected readonly filters = new FormGroup({
     q: new FormControl(''),
     playlist_id: new FormControl<number | null>(null),
+    artist_id: new FormControl<number | null>(null),
     type_id: new FormControl<number | null>(null),
     quality: new FormControl<Quality | null>(null),
     reviewed: new FormControl<ReviewedFilter | null>(null),
@@ -728,6 +735,7 @@ export default class LibraryPageComponent implements OnInit {
     return [
       value.q?.trim() || null,
       value.playlist_id,
+      value.artist_id,
       value.type_id,
       value.quality,
       value.reviewed,
@@ -931,6 +939,9 @@ export default class LibraryPageComponent implements OnInit {
     if (QUALITIES.includes(quality as Quality)) {
       this.filters.controls.quality.setValue(quality as Quality, { emitEvent: false });
     }
+    this.filters.controls.artist_id.setValue(readArtistFilter(this.artist_id()), {
+      emitEvent: false,
+    });
     this.filters.controls.reviewed.setValue(readReviewedFilter(this.reviewed()), {
       emitEvent: false,
     });
@@ -956,6 +967,7 @@ export default class LibraryPageComponent implements OnInit {
         map((value): TrackQuery => ({
           q: value.q?.trim() || undefined,
           playlist_id: value.playlist_id ?? undefined,
+          artist_id: value.artist_id ?? undefined,
           type_id: value.type_id ?? undefined,
           quality: value.quality ?? undefined,
           reviewed: value.reviewed ?? undefined,
@@ -1160,6 +1172,7 @@ export default class LibraryPageComponent implements OnInit {
       // Written with the page, so a filter chosen here does not lose to the one in the URL.
       queryParams: {
         ...listStateParams(state),
+        artist_id: this.filters.value.artist_id ?? null,
         quality: this.filters.value.quality ?? null,
         reviewed: this.filters.value.reviewed ?? null,
         in_plan: this.filters.value.in_plan ?? null,

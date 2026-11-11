@@ -389,6 +389,8 @@ describe('track cue editor (F20)', () => {
         request.flush({ items: [] });
       }
       await settlePage();
+      http.expectOne('/api/artists/50').flush({ id: 50, name: 'Artist', track_count: 1 });
+      await settlePage();
 
       const [deferred] = await fixture.getDeferBlocks();
       await deferred.render(DeferBlockState.Complete);

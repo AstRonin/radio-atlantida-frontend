@@ -8,6 +8,7 @@ import { problemMessage } from '../api/problem-message';
 import { I18nService } from '../i18n/i18n.service';
 
 export type TrackQuery = NonNullable<ApiOperation<'/api/tracks', 'get'>['parameters']['query']>;
+export type ArtistQuery = NonNullable<ApiOperation<'/api/artists', 'get'>['parameters']['query']>;
 
 /**
  * Read-only lists that the shared selects and pickers offer: playlist types, playlists, play
@@ -31,10 +32,13 @@ export class CatalogService {
     return this.api.get('/api/play-rules').pipe(map((list) => list.items));
   }
 
-  artists(search?: string): Observable<ApiSchema<'Artist'>[]> {
-    return this.api
-      .get('/api/artists', { query: { q: search || undefined } })
-      .pipe(map((list) => list.items));
+  /** One page of artists; the backend searches and limits, so a long list is never read whole. */
+  artists(query: ArtistQuery): Observable<ApiSchema<'ArtistList'>> {
+    return this.api.get('/api/artists', { query });
+  }
+
+  artist(id: number): Observable<ApiSchema<'Artist'>> {
+    return this.api.get('/api/artists/{id}', { path: { id } });
   }
 
   tracks(query: TrackQuery): Observable<ApiSchema<'TrackPage'>> {
@@ -68,16 +72,16 @@ export function catalogList<T>(source: Observable<readonly T[]>): Signal<Catalog
     source.pipe(
       map((items): CatalogList<T> => ({ status: 'ready', items })),
       catchError((error: unknown) =>
-        of<CatalogList<T>>({
-          status: 'error',
-          items: [],
-          error:
-            error instanceof ApiProblem
-              ? problemMessage(error, i18n)
-              : i18n.translate('alerts.panelError'),
-        }),
+        of<CatalogList<T>>({ status: 'error', items: [], error: catalogError(error, i18n) }),
       ),
     ),
     { initialValue: { status: 'loading', items: [] } },
   );
+}
+
+/** The message of a failed read for a select or picker, already translated. */
+export function catalogError(error: unknown, i18n: I18nService): string {
+  return error instanceof ApiProblem
+    ? problemMessage(error, i18n)
+    : i18n.translate('alerts.panelError');
 }

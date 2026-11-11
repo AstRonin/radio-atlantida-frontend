@@ -558,6 +558,12 @@
     "rename": "Rename",
     "search": "Search artists",
     "tracks": "Tracks",
+    "sortBy": "Sort by {column}",
+    "showTracks": "Show the {count} tracks of {name}",
+    "deleteBlocked": "The artist has {count} tracks. Move them to another artist or delete them first.",
+    "pageStatus": "Page {page} of {pages}, {total} artists",
+    "pickerMore": "Type to narrow down ({count} more)",
+    "unknown": "Unknown artist #{id}",
     "fields": {
       "name": "Name"
     },
@@ -633,6 +639,7 @@
     "filters": {
       "search": "Search by title or artist",
       "playlist": "Playlist",
+      "artist": "Artist",
       "type": "Type",
       "quality": "Quality",
       "reviewed": "Reviewed",

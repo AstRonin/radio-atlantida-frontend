@@ -215,10 +215,17 @@
               "$ref": "#/components/schemas/Artist"
             },
             "type": "array"
+          },
+          "total": {
+            "description": "Artists matching q, on every page.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
-          "items"
+          "items",
+          "total"
         ],
         "type": "object"
       },
@@ -5697,7 +5704,7 @@
     },
     "/api/artists": {
       "get": {
-        "description": "Artists with their track count, in name order.",
+        "description": "Artists with their track count, sorted by `sort` and `order` (ties by name and ID ascending), a page at a time: read the next page with `offset`. `total` counts every artist matching `q`, on every page. No cursor.",
         "operationId": "list-artists",
         "parameters": [
           {
@@ -5709,6 +5716,60 @@
               "description": "Only artists whose name contains this text (case-insensitive).",
               "maxLength": 200,
               "type": "string"
+            }
+          },
+          {
+            "description": "Sort key; ties are ordered by name and ID ascending.",
+            "explode": false,
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "default": "name",
+              "description": "Sort key; ties are ordered by name and ID ascending.",
+              "enum": [
+                "name",
+                "track_count"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "default": "asc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Artists to skip in the sorted list.",
+            "explode": false,
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "description": "Artists to skip in the sorted list.",
+              "format": "int64",
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "format": "int64",
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
             }
           }
         ],

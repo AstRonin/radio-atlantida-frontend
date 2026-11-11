@@ -65,6 +65,12 @@ export function readInPlanFilter(value: string | undefined): InPlanFilter | null
   return value !== undefined && Object.hasOwn(IN_PLAN, value) ? (value as InPlanFilter) : null;
 }
 
+/** The `artist_id` filter from the URL; anything but a positive whole number means all tracks. */
+export function readArtistFilter(value: string | undefined): number | null {
+  const id = Number(value);
+  return /^\d+$/.test(value ?? '') && id >= 1 ? id : null;
+}
+
 /**
  * Whether the URL asks for tracks without a playlist (`in_playlist=false`). The panel offers only
  * that side of the filter: tracks in a playlist are found by the playlist filter.

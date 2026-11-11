@@ -175,7 +175,6 @@ describe('import', () => {
         items: [{ id: 1, code: 'jingle', name: 'Jingle' }],
       });
       http.expectOne('/api/playlists').flush({ items: [] });
-      http.expectOne('/api/artists').flush({ items: [{ id: 9, name: 'DJ Ann' }] });
       await settlePage();
       return fixture;
     }
@@ -252,6 +251,10 @@ describe('import', () => {
       await choose(fixture, 'jingles');
       view(fixture).form.patchValue({ type_id: 1, playlist_ids: [4, 5], artist_id: 9 });
       await settlePage();
+      // The picker reads the name of an artist set by the form.
+      http.expectOne('/api/artists/9').flush({ id: 9, name: 'DJ Ann', track_count: 0 });
+      await settlePage();
+      expect(page.querySelector<HTMLInputElement>('app-artist-select input')?.value).toBe('DJ Ann');
 
       button(page, 'import.form.start')?.click();
       const start = http.expectOne({ method: 'POST', url: '/api/import' });
@@ -301,10 +304,9 @@ describe('import', () => {
       await settlePage();
 
       button(page, 'import.form.start')?.click();
-      http.expectOne({ method: 'POST', url: '/api/import' }).flush(
-        { operation_id: 33 },
-        { status: 202, statusText: 'Accepted' },
-      );
+      http
+        .expectOne({ method: 'POST', url: '/api/import' })
+        .flush({ operation_id: 33 }, { status: 202, statusText: 'Accepted' });
       await settlePage();
       expect(view(fixture).analysing()).toBe(false);
 
@@ -475,6 +477,7 @@ describe('import', () => {
       await choose(fixture, 'jingles');
       view(fixture).form.patchValue({ type_id: 1, artist_id: 9 });
       await settlePage();
+      http.expectOne('/api/artists/9').flush({ id: 9, name: 'DJ Ann', track_count: 0 });
 
       button(page, 'import.form.start')?.click();
       http.expectOne({ method: 'POST', url: '/api/import' }).flush(

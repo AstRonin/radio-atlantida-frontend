@@ -680,6 +680,7 @@ describe('library', () => {
               size: 25,
               sort: 'artist',
               order: 'desc',
+              artist_id: null,
               quality: null,
               reviewed: null,
               in_plan: null,
@@ -700,11 +701,71 @@ describe('library', () => {
               size: 25,
               sort: 'artist',
               order: 'desc',
+              artist_id: null,
               quality: null,
               reviewed: null,
               in_plan: null,
               in_playlist: null,
             },
+          }),
+        );
+      });
+
+      it('opens filtered by the artist of the URL and clears it with the other filters', async () => {
+        const fixture = TestBed.createComponent(LibraryPageComponent);
+        fixture.componentRef.setInput('artist_id', '5');
+        fixture.componentRef.setInput('page', '2');
+        await settlePage();
+        const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+        http.expectOne('/api/playlists').flush({ items: [] });
+        http.expectOne('/api/playlist-types').flush({ items: [] });
+        tracksRequest({ artist_id: '5', offset: '50' }).flush({ items: [track(51)], total: 60 });
+        const stats = http.expectOne((req) => req.url === '/api/tracks/stats');
+        expect(stats.request.params.get('artist_id')).toBe('5');
+        http.expectOne('/api/artists/5').flush({ id: 5, name: 'Ann', track_count: 60 });
+        await settlePage();
+
+        const page = fixture.nativeElement as HTMLElement;
+        const artistField = page.querySelector<HTMLInputElement>('app-artist-select input');
+        expect(artistField?.value).toBe('Ann');
+        expect(button(page, 'library.filters.clear')).toBeDefined();
+
+        button(page, 'library.filters.clear')?.click();
+        await new Promise((resolve) => setTimeout(resolve, LIBRARY_SEARCH_DEBOUNCE_MS));
+        await settlePage();
+        const cleared = tracksRequest({ offset: '0' });
+        expect(cleared.request.params.has('artist_id')).toBe(false);
+        cleared.flush({ items: [track(1)], total: 300 });
+        await settlePage();
+        expect(artistField?.value).toBe('');
+        expect(navigate).toHaveBeenLastCalledWith(
+          [],
+          expect.objectContaining({
+            queryParams: expect.objectContaining({ page: null, artist_id: null }),
+          }),
+        );
+      });
+
+      it('goes to the first page when the artist filter changes', async () => {
+        const fixture = await createPage({ page: '3' });
+        const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+        tracksRequest({ offset: '100' }).flush({ items: [track(101)], total: 200 });
+        await settlePage();
+
+        type FilterControls = LibraryPageComponent['filters']['controls'];
+        const controls = (
+          fixture.componentInstance as unknown as { filters: { controls: FilterControls } }
+        ).filters.controls;
+        controls.artist_id.setValue(9);
+        await new Promise((resolve) => setTimeout(resolve, LIBRARY_SEARCH_DEBOUNCE_MS));
+        await settlePage();
+        http.expectOne('/api/artists/9').flush({ id: 9, name: 'Bob', track_count: 2 });
+        tracksRequest({ artist_id: '9', offset: '0' }).flush({ items: [track(1)], total: 2 });
+        await settlePage();
+        expect(navigate).toHaveBeenLastCalledWith(
+          [],
+          expect.objectContaining({
+            queryParams: expect.objectContaining({ page: null, artist_id: 9 }),
           }),
         );
       });
@@ -891,7 +952,6 @@ describe('library', () => {
         const fixture = TestBed.createComponent(TrackEditComponent);
         const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
         await settlePage();
-        http.expectOne('/api/artists').flush({ items: [] });
         http.expectOne('/api/playlist-types').flush({ items: [] });
         http.expectOne('/api/playlists').flush({ items: [] });
         http.expectOne('/api/play-rules').flush({ items: [] });
