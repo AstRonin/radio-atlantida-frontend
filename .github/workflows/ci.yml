@@ -71,8 +71,7 @@ jobs:
             exit 1
           fi
           want='{"grafana_url":"http://127.0.0.1:3000"}'
-          got=$(curl -fsS http://127.0.0.1:8080/config.json)
-          if [ "$got" != "$want" ]; then
+          if ! got=$(curl -fsS http://127.0.0.1:8080/config.json) || [ "$got" != "$want" ]; then
             echo "/config.json is '$got', expected '$want'."
             docker logs panel
             exit 1

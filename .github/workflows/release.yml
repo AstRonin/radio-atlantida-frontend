@@ -79,19 +79,29 @@ jobs:
             --build-arg VERSION="$VERSION" \
             --build-arg REVISION="$GITHUB_SHA" \
             --build-arg CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" .
-      - name: Serve the shell
+      - name: Serve the shell and the runtime configuration
         run: |
           got=$(docker inspect -f '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$IMAGE:$VERSION")
           if [ "$got" != "$VERSION" ]; then
             echo "::error::image is labelled version $got, want $VERSION"; exit 1
           fi
-          docker run -d --name panel -p 8080:8080 "$IMAGE:$VERSION"
+          docker run -d --name panel -p 8080:8080 -e GRAFANA_URL=http://127.0.0.1:3000 \
+            "$IMAGE:$VERSION"
+          served=false
           for _ in $(seq 1 20); do
-            if curl -fsS -o /dev/null http://127.0.0.1:8080/; then exit 0; fi
+            if curl -fsS -o /dev/null http://127.0.0.1:8080/; then served=true; break; fi
             sleep 1
           done
-          docker logs panel
-          exit 1
+          if [ "$served" != true ]; then
+            docker logs panel
+            exit 1
+          fi
+          want='{"grafana_url":"http://127.0.0.1:3000"}'
+          if ! got=$(curl -fsS http://127.0.0.1:8080/config.json) || [ "$got" != "$want" ]; then
+            echo "/config.json is '$got', expected '$want'."
+            docker logs panel
+            exit 1
+          fi
       - name: Push
         run: docker push "$IMAGE:$VERSION"
 

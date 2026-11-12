@@ -23,7 +23,7 @@ LABEL org.opencontainers.image.source="https://github.com/AstRonin/radio-atlanti
 # container start by the image's envsubst step; nothing else in the template is substituted.
 ENV GRAFANA_URL="" \
     NGINX_ENVSUBST_FILTER="^GRAFANA_URL$"
-COPY --chmod=644 docker/default.conf.template /etc/nginx/templates/default.conf.template
+COPY docker/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist/radio-atlantida-frontend/browser /usr/share/nginx/html
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
