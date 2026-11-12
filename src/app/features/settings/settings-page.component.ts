@@ -14,15 +14,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Observable, catchError, concatMap, from, map, of, toArray } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client.service';
 import { ApiProblem } from '../../core/api/api-problem';
 import { errorMessage } from '../../core/api/problem-message';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { Setting, SettingsService } from '../../core/settings/settings.service';
-import { controlVersion } from '../../shared/forms/field-errors';
-import { setServerError } from '../../shared/forms/server-errors';
+import { controlVersion, fieldErrorMessage } from '../../shared/forms/field-errors';
+import { SERVER_ERROR, setServerError } from '../../shared/forms/server-errors';
 import { PendingChanges, warnBeforeUnload } from '../../shared/forms/unsaved-changes';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
@@ -52,14 +52,12 @@ interface SectionStats {
 
 const NO_STATS: SectionStats = { changed: 0, errors: 0 };
 
-interface SaveResult {
-  setting: Setting;
-  error: unknown;
-}
+/** Field errors of a batch save name the setting as `values.<key>`. */
+const VALUES_PREFIX = 'values.';
 
 /**
- * The station settings (design §6.3), one section per group. Each value is saved by its own
- * request; a value that needs a reconnect is announced before saving. Secrets are only listed as
+ * The station settings (design §6.3), one section per group. Save sends every changed value in
+ * one batch, saved all or nothing; a value that needs a reconnect is announced before saving. Secrets are only listed as
  * set or not set: the panel never shows or edits them.
  */
 @Component({
@@ -446,43 +444,68 @@ export default class SettingsPageComponent implements PendingChanges {
     confirmed.subscribe((ok) => ok && this.saveAll(changed));
   }
 
+  /**
+   * Saves every changed setting in one batch. The backend saves all or nothing, so on a refusal
+   * no control is reset and every edit stays for the manager to correct.
+   */
   private saveAll(changed: readonly Setting[]): void {
     this.busy.set(true);
     this.result.set(null);
     this.saveErrors.set([]);
-    from(changed)
-      .pipe(
-        concatMap((setting) => {
-          const control = this.controls()[setting.key];
-          const value = control ? controlValue(setting, control) : setting.value;
-          return this.settingsService.save(setting.key, value).pipe(
-            map(({ setting: saved }): SaveResult => ({ setting: saved, error: null })),
-            catchError((error: unknown) => of<SaveResult>({ setting, error })),
-          );
-        }),
-        toArray(),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((results) => {
-        this.busy.set(false);
-        const errors: string[] = [];
-        for (const { setting, error } of results) {
-          const control = this.controls()[setting.key];
-          if (!error) {
-            control?.reset(resetValue(setting));
-            continue;
+    const values: Record<string, unknown> = {};
+    for (const setting of changed) {
+      const control = this.controls()[setting.key];
+      values[setting.key] = control ? controlValue(setting, control) : setting.value;
+    }
+    this.settingsService
+      .saveMany(values)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ settings }) => {
+          this.busy.set(false);
+          for (const setting of settings) {
+            this.controls()[setting.key]?.reset(resetValue(setting));
           }
-          if (control && error instanceof ApiProblem) {
-            for (const fieldError of error.errors) {
-              setServerError(control, fieldError);
-            }
-          }
-          errors.push(`${this.label(setting)}: ${errorMessage(error, this.i18n)}`);
-        }
-        this.saveErrors.set(errors);
-        const saved = results.length - errors.length;
-        this.result.set(saved > 0 ? this.i18n.translate('settings.saved', { count: saved }) : null);
+          this.result.set(this.i18n.translate('settings.saved', { count: settings.length }));
+        },
+        error: (error: unknown) => {
+          this.busy.set(false);
+          this.saveErrors.set(this.refusalLines(error));
+        },
       });
+  }
+
+  /**
+   * Puts each field error of a refused batch on its setting's control and returns the lines of
+   * the list above Save: "<label>: <message>" per setting, and the problem's own message for
+   * errors that name no setting (an error on `values` itself, a network failure).
+   */
+  private refusalLines(error: unknown): string[] {
+    const lines: string[] = [];
+    let unmatched = !(error instanceof ApiProblem) || error.errors.length === 0;
+    if (error instanceof ApiProblem) {
+      for (const fieldError of error.errors) {
+        const key = fieldError.field.startsWith(VALUES_PREFIX)
+          ? fieldError.field.slice(VALUES_PREFIX.length)
+          : null;
+        const control = key === null ? undefined : this.controls()[key];
+        const setting = key === null ? undefined : this.settingsService.get(key);
+        if (!control || !setting) {
+          unmatched = true;
+          continue;
+        }
+        setServerError(control, fieldError);
+        const message = fieldErrorMessage(
+          { [SERVER_ERROR]: { code: fieldError.code, message: fieldError.message } },
+          this.i18n,
+        );
+        lines.push(`${this.label(setting)}: ${message}`);
+      }
+    }
+    if (unmatched) {
+      lines.push(errorMessage(error, this.i18n));
+    }
+    return lines;
   }
 
   private addControls(settings: readonly Setting[]): void {

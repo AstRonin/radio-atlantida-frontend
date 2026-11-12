@@ -25,6 +25,13 @@ export interface SettingSaved {
   needsReconnect: boolean;
 }
 
+export interface SettingsSaved {
+  /** The saved settings, in the backend's order; only the keys of the batch. */
+  settings: Setting[];
+  /** At least one of them takes effect when its connection is opened again (design §6.3). */
+  needsReconnect: boolean;
+}
+
 /**
  * Station settings (design §6.3), loaded once from `GET /api/settings`. Until they arrive, the
  * panel uses the code defaults, so the station timezone is `Asia/Yerevan` from the first render.
@@ -115,23 +122,49 @@ export class SettingsService {
    */
   save(key: string, value: unknown): Observable<SettingSaved> {
     return this.api.put('/api/settings/{key}', { path: { key }, body: { value } }).pipe(
-      tap((setting) => {
-        this.byKey.update((settings) => new Map(settings).set(setting.key, setting));
-        if (setting.key === SETTING_KEYS.stationTimezone) {
-          this.applyTimezone();
-        }
-      }),
-      map((setting) => ({ setting, needsReconnect: setting.apply === 'reconnect' })),
-      tap(({ needsReconnect }) => {
-        if (needsReconnect) {
-          this.snackBar.open(
-            this.i18n.translate('settings.reconnectNotice'),
-            this.i18n.translate('common.close'),
-            { duration: RECONNECT_NOTICE_MS },
-          );
-        }
+      map((setting) => {
+        const needsReconnect = this.store([setting]);
+        return { setting, needsReconnect };
       }),
     );
+  }
+
+  /**
+   * Saves several values in one batch, all or nothing (`PATCH /api/settings`), so the backend
+   * checks the cross-key rules such as the encoder limits against the whole batch. A refusal
+   * fails with an `ApiProblem` whose field errors are on `values.<key>`, and nothing changes.
+   * One notice covers every setting of the batch that applies on reconnect.
+   */
+  saveMany(values: Readonly<Record<string, unknown>>): Observable<SettingsSaved> {
+    return this.api.patch('/api/settings', { body: { values: { ...values } } }).pipe(
+      map(({ items }) => {
+        const needsReconnect = this.store(items);
+        return { settings: items, needsReconnect };
+      }),
+    );
+  }
+
+  /** Keeps saved settings, applies a new timezone, and announces a reconnect once. */
+  private store(saved: readonly Setting[]): boolean {
+    this.byKey.update((settings) => {
+      const next = new Map(settings);
+      for (const setting of saved) {
+        next.set(setting.key, setting);
+      }
+      return next;
+    });
+    if (saved.some((setting) => setting.key === SETTING_KEYS.stationTimezone)) {
+      this.applyTimezone();
+    }
+    const needsReconnect = saved.some((setting) => setting.apply === 'reconnect');
+    if (needsReconnect) {
+      this.snackBar.open(
+        this.i18n.translate('settings.reconnectNotice'),
+        this.i18n.translate('common.close'),
+        { duration: RECONNECT_NOTICE_MS },
+      );
+    }
+    return needsReconnect;
   }
 
   private stringValue(key: string): string | undefined {

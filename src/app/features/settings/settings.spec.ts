@@ -8,11 +8,13 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { apiProblemInterceptor } from '../../core/api/api.interceptors';
+import { I18nService } from '../../core/i18n/i18n.service';
 import { FakeSocketServer } from '../../core/realtime/fake-socket.testing';
 import { Setting } from '../../core/settings/settings.service';
 import { flushHelp, settlePage } from '../../core/testing/page.testing';
 import { SecretStatus, isChanged, settingControl, settingKind } from './settings-form';
 import SettingsPageComponent from './settings-page.component';
+import en from '../../../assets/i18n/en.json';
 
 function setting(key: string, overrides: Partial<Setting> = {}): Setting {
   return {
@@ -44,6 +46,31 @@ const icecastHost = setting('stream.icecast_host', {
   default: 'icecast',
   minimum: 1,
   maximum: 253,
+  apply: 'reconnect',
+  affects_air: true,
+});
+const icecastTls = setting('stream.icecast_tls', {
+  type: 'boolean',
+  value: false,
+  default: false,
+  apply: 'reconnect',
+  affects_air: true,
+});
+const bitrate = setting('stream.bitrate_kbps', {
+  value: 128,
+  default: 128,
+  minimum: 32,
+  maximum: 320,
+  unit: 'kbps',
+  apply: 'reconnect',
+  affects_air: true,
+});
+const sampleRate = setting('stream.sample_rate_hz', {
+  value: 44100,
+  default: 44100,
+  minimum: 8000,
+  maximum: 48000,
+  unit: 'Hz',
   apply: 'reconnect',
   affects_air: true,
 });
@@ -200,9 +227,19 @@ describe('settings', () => {
       overlay = TestBed.inject(OverlayContainer).getContainerElement();
       fixture = TestBed.createComponent(SettingsPageComponent);
       await settlePage();
-      http
-        .expectOne('/api/settings')
-        .flush({ items: [stationName, icecastHost, fadeOut, minGap, playedCount, queuedCount] });
+      http.expectOne('/api/settings').flush({
+        items: [
+          stationName,
+          icecastHost,
+          icecastTls,
+          bitrate,
+          sampleRate,
+          fadeOut,
+          minGap,
+          playedCount,
+          queuedCount,
+        ],
+      });
       http.expectOne('/api/settings/secrets').flush({ items: SECRETS });
       await settlePage();
     });
@@ -221,6 +258,21 @@ describe('settings', () => {
         item.textContent?.includes(label),
       );
     const input = (group: string) => section(group)?.querySelector<HTMLInputElement>('input');
+    /** The field of a setting; without loaded translations its label is the setting key. */
+    const field = (key: string) =>
+      [...page().querySelectorAll<HTMLElement>('app-setting-field')].find((item) =>
+        item.textContent?.includes(key),
+      );
+    const fieldInput = (key: string) => field(key)?.querySelector<HTMLInputElement>('input');
+    const saveErrors = () =>
+      [...page().querySelectorAll('.save-bar ul[role="alert"] li')].map((item) =>
+        item.textContent?.trim(),
+      );
+    const patch = () => http.expectOne({ method: 'PATCH', url: '/api/settings' });
+    const refuse = (errors: { field: string; code: string; message: string }[]) => ({
+      body: { status: 422, code: 'validation_failed', title: 'Validation failed', errors },
+      options: { status: 422, statusText: 'Unprocessable Entity' },
+    });
     const type = (element: HTMLInputElement | null | undefined, value: string) => {
       if (!element) {
         throw new Error('No input.');
@@ -274,15 +326,16 @@ describe('settings', () => {
       button(page(), 'common.save')?.click();
       await settlePage();
       expect(overlay.textContent).toContain('settings.reconnect.title');
-      http.expectNone('/api/settings/stream.icecast_host');
+      http.expectNone('/api/settings');
 
       button(overlay, 'common.save')?.click();
       await settlePage();
-      const put = http.expectOne({ method: 'PUT', url: '/api/settings/stream.icecast_host' });
-      expect(put.request.body).toEqual({ value: 'icecast2.local' });
-      put.flush({ ...icecastHost, value: 'icecast2.local', is_default: false });
+      const request = patch();
+      expect(request.request.body).toEqual({ values: { 'stream.icecast_host': 'icecast2.local' } });
+      request.flush({ items: [{ ...icecastHost, value: 'icecast2.local', is_default: false }] });
       await settlePage();
 
+      expect(snackBar.open).toHaveBeenCalledTimes(1);
       expect(snackBar.open).toHaveBeenCalledWith(
         'settings.reconnectNotice',
         'common.close',
@@ -300,7 +353,7 @@ describe('settings', () => {
       button(overlay, 'common.cancel')?.click();
       await settlePage();
 
-      http.expectNone('/api/settings/stream.icecast_host');
+      http.expectNone('/api/settings');
       expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
     });
 
@@ -311,22 +364,22 @@ describe('settings', () => {
       await settlePage();
       expect(overlay.textContent).not.toContain('settings.reconnect.title');
 
-      http.expectOne({ method: 'PUT', url: '/api/settings/liquidsoap.fade_out_ms' }).flush(
+      const request = patch();
+      expect(request.request.body).toEqual({ values: { 'liquidsoap.fade_out_ms': 2600 } });
+      const { body, options } = refuse([
         {
-          status: 422,
-          code: 'validation_failed',
-          title: 'Validation failed',
-          errors: [{ field: 'value', code: 'range', message: 'must be between 2000 and 3000' }],
+          field: 'values.liquidsoap.fade_out_ms',
+          code: 'range',
+          message: 'must be between 2000 and 3000',
         },
-        { status: 422, statusText: 'Unprocessable Entity' },
-      );
+      ]);
+      request.flush(body, options);
       await settlePage();
 
       expect(section('liquidsoap')?.textContent).toContain('must be between 2000 and 3000');
-      // Without loaded translations the label falls back to the key, the message to the title.
-      expect(page().querySelector('.save-bar [role="alert"]')?.textContent).toContain(
-        'liquidsoap.fade_out_ms: Validation failed',
-      );
+      // Without loaded translations the label falls back to the key and the message to the
+      // backend's text.
+      expect(saveErrors()).toEqual(['liquidsoap.fade_out_ms: must be between 2000 and 3000']);
       expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
     });
 
@@ -340,16 +393,128 @@ describe('settings', () => {
       button(page(), 'common.save')?.click();
       await settlePage();
 
-      const playedPut = http.expectOne({ method: 'PUT', url: '/api/settings/air.played_count' });
-      expect(playedPut.request.body).toEqual({ value: 20 });
-      playedPut.flush({ ...playedCount, value: 20, is_default: false });
-      await settlePage();
-      const queuedPut = http.expectOne({ method: 'PUT', url: '/api/settings/air.queued_count' });
-      expect(queuedPut.request.body).toEqual({ value: 0 });
-      queuedPut.flush({ ...queuedCount, value: 0, is_default: false });
+      const request = patch();
+      expect(request.request.body).toEqual({
+        values: { 'air.played_count': 20, 'air.queued_count': 0 },
+      });
+      request.flush({
+        items: [
+          { ...playedCount, value: 20, is_default: false },
+          { ...queuedCount, value: 0, is_default: false },
+        ],
+      });
       await settlePage();
 
       expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+      expect(page().querySelector('.save-bar .status')?.textContent).toContain('settings.saved');
+      expect(snackBar.open).not.toHaveBeenCalled();
+    });
+
+    it('shows the TLS setting as a checkbox with its label and saves it after the reconnect notice', async () => {
+      const i18n = TestBed.inject(I18nService);
+      const init = i18n.init();
+      http.expectOne('assets/i18n/languages.json').flush([{ code: 'en', name: 'English' }]);
+      await settlePage();
+      http.expectOne('assets/i18n/en.json').flush(en);
+      await init;
+      await settlePage();
+
+      const tls = [...(section('stream')?.querySelectorAll('mat-checkbox') ?? [])].find((item) =>
+        item.textContent?.includes('Icecast over TLS'),
+      );
+      expect(tls).toBeDefined();
+      tls?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+      await settlePage();
+
+      button(page(), 'Save')?.click();
+      await settlePage();
+      expect(overlay.textContent).toContain('Icecast over TLS');
+      button(overlay, 'Save')?.click();
+      await settlePage();
+
+      const request = patch();
+      expect(request.request.body).toEqual({ values: { 'stream.icecast_tls': true } });
+      request.flush({ items: [{ ...icecastTls, value: true, is_default: false }] });
+      await settlePage();
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+    });
+
+    /** Changes the bitrate and the sample rate and confirms the reconnect. */
+    async function changeFormat(): Promise<void> {
+      type(fieldInput('stream.bitrate_kbps'), '96');
+      type(fieldInput('stream.sample_rate_hz'), '22050');
+      await settlePage();
+      button(page(), 'common.save')?.click();
+      await settlePage();
+      button(overlay, 'common.save')?.click();
+      await settlePage();
+    }
+
+    it('saves several stream settings in one request with one reconnect notice', async () => {
+      await changeFormat();
+
+      const request = patch();
+      expect(request.request.body).toEqual({
+        values: { 'stream.bitrate_kbps': 96, 'stream.sample_rate_hz': 22050 },
+      });
+      request.flush({
+        items: [
+          { ...bitrate, value: 96, is_default: false },
+          { ...sampleRate, value: 22050, is_default: false },
+        ],
+      });
+      await settlePage();
+
+      expect(snackBar.open).toHaveBeenCalledTimes(1);
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('keeps every edit when the batch is refused and shows the encoder limit on its fields', async () => {
+      type(input('station'), 'Other name');
+      await changeFormat();
+
+      const limit = 'Vorbis mono at 22050 Hz allows at most 64 kbps; the bitrate is 96 kbps.';
+      const { body, options } = refuse([
+        { field: 'values.stream.bitrate_kbps', code: 'encoder_limit', message: limit },
+        { field: 'values.stream.sample_rate_hz', code: 'encoder_limit', message: limit },
+      ]);
+      patch().flush(body, options);
+      await settlePage();
+
+      expect(field('stream.bitrate_kbps')?.textContent).toContain(limit);
+      expect(field('stream.sample_rate_hz')?.textContent).toContain(limit);
+      expect(saveErrors()).toEqual([
+        `stream.bitrate_kbps: ${limit}`,
+        `stream.sample_rate_hz: ${limit}`,
+      ]);
+      expect(fieldInput('stream.bitrate_kbps')?.value).toBe('96');
+      expect(fieldInput('stream.sample_rate_hz')?.value).toBe('22050');
+      expect(input('station')?.value).toBe('Other name');
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
+      expect(page().querySelector('.save-bar .status')?.textContent).not.toContain(
+        'settings.saved',
+      );
+      expect(snackBar.open).not.toHaveBeenCalled();
+      expect(en.forms.serverErrors).not.toHaveProperty('encoder_limit');
+    });
+
+    it('lists an error that names no setting only above Save', async () => {
+      type(input('liquidsoap'), '2600');
+      await settlePage();
+      button(page(), 'common.save')?.click();
+      await settlePage();
+
+      const { body, options } = refuse([
+        { field: 'values.stream.unknown', code: 'unknown_field', message: 'unknown setting' },
+        { field: 'values', code: 'required', message: 'at least one value' },
+        { field: 'value', code: 'required', message: 'no prefix' },
+      ]);
+      patch().flush(body, options);
+      await settlePage();
+
+      expect(saveErrors()).toEqual(['Validation failed']);
+      expect(section('liquidsoap')?.textContent).not.toContain('Validation failed');
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
     });
 
     it('keeps Save disabled while a value is invalid', async () => {
