@@ -133,7 +133,7 @@
     }
   },
   "settings": {
-    "reconnectNotice": "Saved. The new value takes effect when the connection is opened again. Changing the stream server briefly interrupts the stream.",
+    "reconnectNotice": "Saved. A stream setting takes effect at once: the stream reconnects with a gap of a few seconds. Other connection settings take effect when their connection is opened again.",
     "title": "Settings",
     "playlistTypesLink": "Playlist types",
     "discard": "Discard changes",
@@ -165,7 +165,7 @@
     },
     "reconnect": {
       "title": "Save and reconnect?",
-      "message": "These settings take effect when their connection is opened again: {settings}. Changing the stream server briefly interrupts the stream."
+      "message": "These settings take effect when their connection is opened again: {settings}. A stream setting takes effect at once: the stream reconnects with a gap of a few seconds."
     },
     "secrets": {
       "title": "Secrets",
@@ -181,6 +181,7 @@
       "stream": {
         "icecast_host": "Icecast host",
         "icecast_port": "Icecast port",
+        "icecast_tls": "Icecast over TLS",
         "mount": "Mount point",
         "codec": "Codec",
         "bitrate_kbps": "Bitrate",

@@ -8,7 +8,7 @@
     },
     {
       "term": "Apply mode",
-      "text": "Immediate settings take effect at once. Reconnect settings take effect when their connection is opened again; changing the stream server briefly interrupts the stream."
+      "text": "Immediate settings take effect at once. Reconnect settings take effect when their connection is opened again. Stream settings apply at once: the stream reconnects to the server with the new values, with a gap of a few seconds. Playout is not restarted."
     },
     {
       "term": "Secrets",
@@ -33,7 +33,7 @@
   ],
   "example": {
     "title": "Moving to a new stream server",
-    "text": "Enter the new Icecast host and mount and save. The notice says the change applies on reconnect. Right after saving, the stream reconnects to the new server, with a short gap."
+    "text": "Enter the new Icecast host and mount, and turn on Icecast over TLS if the server needs it, then save. Stream settings apply at once: the stream reconnects to the server with the new values, with a gap of a few seconds. Playout is not restarted."
   },
   "operations": {
     "edit": "Each field shows its default and when a change takes effect."
@@ -54,6 +54,10 @@
     "stream.icecast_port": {
       "label": "Icecast port",
       "text": "The port of the stream server."
+    },
+    "stream.icecast_tls": {
+      "label": "Icecast over TLS",
+      "text": "Connect to the stream server over HTTPS. The station's server needs it; a test server usually does not."
     },
     "stream.mount": {
       "label": "Mount point",
@@ -77,7 +81,7 @@
     },
     "stream.loudness_target_lufs": {
       "label": "Loudness target",
-      "text": "The target loudness of the stream in LUFS. The import checks tracks against it."
+      "text": "The target loudness of the tracks. The import checks tracks against it and Fix loudness uses it; the stream itself is not normalised."
     },
     "stream.name": {
       "label": "Stream name",
@@ -93,7 +97,7 @@
     },
     "stream.hls_enabled": {
       "label": "HLS",
-      "text": "Also offer the stream as HLS for browsers and phones."
+      "text": "Reserved: HLS output is not implemented yet; this value has no effect."
     },
     "liquidsoap.music_gain": {
       "label": "Music gain",
