@@ -1160,7 +1160,8 @@
           "fill_weight_not_allowed",
           "insert_offset_taken",
           "insert_source_required",
-          "not_audio"
+          "not_audio",
+          "encoder_limit"
         ],
         "type": "string"
       },
@@ -4336,6 +4337,22 @@
         ],
         "type": "object"
       },
+      "SetSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "values": {
+            "additionalProperties": {},
+            "description": "New values by setting key (the keys of GET /api/settings, as in PUT /api/settings/{key}). Saved all or nothing; keys left out keep their values.",
+            "maxProperties": 200,
+            "minProperties": 1,
+            "type": "object"
+          }
+        },
+        "required": [
+          "values"
+        ],
+        "type": "object"
+      },
       "Setting": {
         "additionalProperties": false,
         "properties": {
@@ -4450,6 +4467,82 @@
         },
         "required": [
           "items"
+        ],
+        "type": "object"
+      },
+      "StreamOutputConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "bitrate_kbps": {
+            "description": "One of 64, 96, 128, 160, 192, 256, 320 (stream.bitrate_kbps).",
+            "format": "int64",
+            "type": "integer"
+          },
+          "channels": {
+            "description": "1 mono, 2 stereo (stream.channels).",
+            "format": "int64",
+            "maximum": 2,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "codec": {
+            "description": "stream.codec.",
+            "enum": [
+              "mp3",
+              "aac",
+              "vorbis"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "description": "stream.description; may be empty.",
+            "type": "string"
+          },
+          "genre": {
+            "description": "stream.genre; may be empty.",
+            "type": "string"
+          },
+          "host": {
+            "description": "Icecast server host (stream.icecast_host).",
+            "type": "string"
+          },
+          "mount": {
+            "description": "Mount point, starting with / (stream.mount).",
+            "type": "string"
+          },
+          "name": {
+            "description": "Stream name sent to Icecast (stream.name).",
+            "type": "string"
+          },
+          "port": {
+            "description": "Icecast server port (stream.icecast_port).",
+            "format": "int64",
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sample_rate_hz": {
+            "description": "One of 22050, 32000, 44100, 48000 (stream.sample_rate_hz).",
+            "format": "int64",
+            "type": "integer"
+          },
+          "tls": {
+            "description": "Connect over TLS (stream.icecast_tls).",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "mount",
+          "tls",
+          "codec",
+          "bitrate_kbps",
+          "sample_rate_hz",
+          "channels",
+          "name",
+          "description",
+          "genre"
         ],
         "type": "object"
       },
@@ -9289,6 +9382,38 @@
         ]
       }
     },
+    "/api/playout/output": {
+      "get": {
+        "description": "Called by Liquidsoap at startup (§8.8): the stream output of the stream.* settings, saved or default, as the script's output.set command takes it. The source password is not included; it stays in Liquidsoap's environment.",
+        "operationId": "get-playout-output",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamOutputConfig"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get the stream output",
+        "tags": [
+          "Playout"
+        ]
+      }
+    },
     "/api/playout/status": {
       "get": {
         "description": "The Liquidsoap control link, the Icecast output, the track on air, whether the safety tone is on air, the items waiting in Liquidsoap's queues, and the music gain.",
@@ -9429,6 +9554,56 @@
         "tags": [
           "Settings"
         ]
+      },
+      "patch": {
+        "description": "Validates a batch of values and saves it all or nothing, with one change notification, so a change of several stream settings gives one reconnect. Each value is checked by the rules of its key, and the cross-key rules (the stream encoder limits, encoder_limit) against the saved values with the batch on top, whatever the order of the keys. Any refusal returns 422 validation_failed with one field error per refused key on values.\u003ckey\u003e and saves nothing; an unknown key or a secret is unknown_field. Returns the saved settings in the order of GET /api/settings.",
+        "operationId": "set-settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Save several settings",
+        "tags": [
+          "Settings"
+        ]
       }
     },
     "/api/settings/secrets": {
@@ -9465,7 +9640,7 @@
     },
     "/api/settings/{key}": {
       "put": {
-        "description": "Validates and saves one value. A refused value returns a field error on value. Secrets cannot be set here (setting_not_editable): they live in the environment.",
+        "description": "Validates and saves one value; the same as PATCH /api/settings with one key, so a stream format key is also checked against the saved values (encoder_limit). A refused value returns a field error on value. Secrets cannot be set here (setting_not_editable): they live in the environment.",
         "operationId": "set-setting",
         "parameters": [
           {
