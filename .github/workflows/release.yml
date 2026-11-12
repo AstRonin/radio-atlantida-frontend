@@ -1,7 +1,8 @@
 name: release
 
 # A tag vX.Y.Z publishes ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z and the GitHub release
-# vX.Y.Z (docs/f12-release-plan.md). The deploy repository refers to X.Y.Z only, for both images.
+# vX.Y.Z (docs/f12-release-plan.md). The deploy repository sets FRONTEND_TAG=X.Y.Z next to a backend
+# X.Y.* (docs/deploy-prereqs-plan.md F1).
 on:
   push:
     tags: ['v*']
@@ -40,14 +41,19 @@ jobs:
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not on main"; exit 1
           fi
-      - name: API snapshot is the backend release of the same version
-        # Both images share one IMAGE_TAG, so the panel must ship the contract of that backend.
+      - name: API snapshot is a backend release of the same MAJOR.MINOR
+        # Frontend and backend have their own tags; a frontend X.Y.Z runs against any backend X.Y.*
+        # (design §1.1, §9.2), so it ships the contract of a backend release of the same MAJOR.MINOR.
         env:
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           got=$(jq -r '.info.version' api/openapi.json)
-          if [ "$got" != "$VERSION" ]; then
-            echo "::error::api/openapi.json is API version $got, want $VERSION; run npm run api:sync with the backend release asset"
+          if ! [[ "$got" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::api/openapi.json is API version $got, not a release X.Y.Z; run npm run api:sync -- <openapi.json of a backend ${VERSION%.*}.* release>"
+            exit 1
+          fi
+          if [ "${got%.*}" != "${VERSION%.*}" ]; then
+            echo "::error::api/openapi.json is API version $got, want ${VERSION%.*}.*; run npm run api:sync -- <openapi.json of a backend ${VERSION%.*}.* release>"
             exit 1
           fi
 
@@ -78,12 +84,18 @@ jobs:
           docker build -f docker/Dockerfile -t "$IMAGE:$VERSION" \
             --build-arg VERSION="$VERSION" \
             --build-arg REVISION="$GITHUB_SHA" \
-            --build-arg CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" .
+            --build-arg CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --build-arg API_VERSION="$(jq -r '.info.version' api/openapi.json)" .
       - name: Serve the shell and the runtime configuration
         run: |
           got=$(docker inspect -f '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$IMAGE:$VERSION")
           if [ "$got" != "$VERSION" ]; then
             echo "::error::image is labelled version $got, want $VERSION"; exit 1
+          fi
+          want=$(jq -r '.info.version' api/openapi.json)
+          got=$(docker inspect -f '{{ index .Config.Labels "io.radio-atlantida.api-version" }}' "$IMAGE:$VERSION")
+          if [ "$got" != "$want" ]; then
+            echo "::error::image is labelled API version $got, want $want"; exit 1
           fi
           docker run -d --name panel -p 8080:8080 -e GRAFANA_URL=http://127.0.0.1:3000 \
             "$IMAGE:$VERSION"
@@ -119,4 +131,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
             --title "$GITHUB_REF_NAME" \
-            --notes "Image: \`$IMAGE:$VERSION\`. Deploy with the backend of the same version: \`update.bat $VERSION\`."
+            --notes "Image: \`$IMAGE:$VERSION\`. Deploy with a backend \`${VERSION%.*}.*\`: set \`FRONTEND_TAG\` in the deploy repository's \`release.env\`."

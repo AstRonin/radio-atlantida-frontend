@@ -56,7 +56,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build image
-        run: docker build -f docker/Dockerfile -t radio-atlantida-frontend:ci .
+        run: |
+          docker build -f docker/Dockerfile -t radio-atlantida-frontend:ci \
+            --build-arg API_VERSION="$(jq -r '.info.version' api/openapi.json)" .
+      - name: API version label
+        run: |
+          want=$(jq -r '.info.version' api/openapi.json)
+          got=$(docker inspect -f '{{ index .Config.Labels "io.radio-atlantida.api-version" }}' radio-atlantida-frontend:ci)
+          if [ "$got" != "$want" ]; then
+            echo "Image is labelled API version '$got', api/openapi.json says '$want'."
+            exit 1
+          fi
       - name: Serve the shell and the runtime configuration
         run: |
           docker run -d --name panel -p 8080:8080 -e GRAFANA_URL=http://127.0.0.1:3000 \

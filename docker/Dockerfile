@@ -14,11 +14,14 @@ FROM nginxinc/nginx-unprivileged:1.29.8-alpine
 ARG VERSION=dev
 ARG REVISION=unknown
 ARG CREATED=unknown
+# The info.version of api/openapi.json: the backend API the panel was built against.
+ARG API_VERSION=unknown
 LABEL org.opencontainers.image.source="https://github.com/AstRonin/radio-atlantida-frontend" \
       org.opencontainers.image.title="radio-atlantida-frontend" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
-      org.opencontainers.image.created="${CREATED}"
+      org.opencontainers.image.created="${CREATED}" \
+      io.radio-atlantida.api-version="${API_VERSION}"
 # Grafana's address for the panel's link (empty: monitoring off), written into /config.json at
 # container start by the image's envsubst step; nothing else in the template is substituted.
 ENV GRAFANA_URL="" \

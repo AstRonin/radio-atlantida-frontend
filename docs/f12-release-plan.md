@@ -2,7 +2,7 @@
 
 Status: Done (the release path itself runs only on a real tag; see §5)
 Based on: `docs/tech-design.md` (§1.1, §6.4, §9.2), `docs/frontend-init-plan.md` §8 item 12 and §9.2, backend `docs/phase-13-plan.md` (release pipeline, done), deploy plan (`IMAGE_TAG` format, no `latest`)
-Last updated: 2026-10-15
+Last updated: 2026-11-12 (release compatibility and API version label: `docs/deploy-prereqs-plan.md` F1, F2)
 
 ## 1. Goal
 
@@ -21,10 +21,12 @@ frontend copies that file into its snapshot (`npm run api:sync -- openapi.json`)
    `^\d+\.\d+\.\d+$`. Any other `v*` tag fails the workflow with a message. No `latest`, no moving
    tags. The tagged commit must be on `main`. An image tag that already exists in the registry is
    never overwritten; a fix gets a new patch version.
-2. **The contract must match the tag.** The workflow fails unless `info.version` of the committed
-   `api/openapi.json` equals `X.Y.Z`. A snapshot taken from a local backend checkout says `dev`,
-   so a release always ships the specification of the backend release with the same number
-   (design §6.4, §9.2: one version number for the whole system).
+2. **The contract must be a backend release of the same MAJOR.MINOR** (changed 2026-11-12, design
+   v7-24 §1.1, §9.2; `docs/deploy-prereqs-plan.md` F1). Frontend and backend have their own tags;
+   a frontend `X.Y.Z` runs against any backend `X.Y.*`. The workflow fails unless `info.version` of
+   the committed `api/openapi.json` is a release version `X.Y.W` with the tag's MAJOR.MINOR. A
+   snapshot taken from a local backend checkout says `dev` and is refused. The frontend tag no
+   longer has to equal the backend tag.
 3. **The release runs the full CI first.** `ci.yml` becomes reusable (`workflow_call`);
    `release.yml` calls it and builds only when lint, format, typecheck, tests, build, audit, and
    the Docker smoke test pass. No duplicated job definitions.
@@ -32,7 +34,9 @@ frontend copies that file into its snapshot (`npm run api:sync -- openapi.json`)
    `dev`), `REVISION`, and `CREATED` and sets `org.opencontainers.image.source` (links the private
    package to this repository, so its access follows the repository), `version`, `revision`,
    `created`, and `title`. `docker inspect` answers which release runs. The panel itself does not
-   show a version in this phase.
+   show a version in this phase. Since 2026-11-12 the build argument `API_VERSION` (the snapshot's
+   `info.version`) also sets `io.radio-atlantida.api-version`, the backend API the panel was built
+   against (`docs/deploy-prereqs-plan.md` F2); CI and the release check the label.
 5. **The released image is smoke tested before the push**, like the CI image: it must serve `/`
    on port 8080.
 6. **Platform: `linux/amd64` only**, plain `docker build` (BuildKit), no build attestations, as in
@@ -58,21 +62,23 @@ frontend copies that file into its snapshot (`npm run api:sync -- openapi.json`)
 
 ## 4. Releasing (runbook)
 
-1. The backend release `vX.Y.Z` exists (its image and its `openapi.json`).
+1. A backend release `vX.Y.W` of the same MAJOR.MINOR exists (its image and its `openapi.json`).
+   If the snapshot already is such a release and the API did not change, skip to step 3.
 2. Download its `openapi.json`, run `npm run api:sync -- openapi.json`, fix what the compiler
-   shows, and merge to `main` with CI green. `api/openapi.json` now says `"version": "X.Y.Z"`.
+   shows, and merge to `main` with CI green. `api/openapi.json` now says `"version": "X.Y.W"`.
 3. `git tag vX.Y.Z && git push origin vX.Y.Z`.
 4. The `release` workflow pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z` and creates the
    release `vX.Y.Z`.
-5. Deploy: `update.bat X.Y.Z` once both images exist.
+5. Deploy: set `FRONTEND_TAG=X.Y.Z` (and its digest) in the deploy repository's `release.env`,
+   next to a backend `X.Y.*`.
 
 A failed release (for example a flaky test) is re-run from the Actions page; the tag is not moved.
 If the image was already pushed and only the release step failed, the re-run stops at the
 immutability check; create the release by hand (`gh release create vX.Y.Z --generate-notes`) or tag
 a new patch.
 
-A frontend-only fix still needs a backend release with the same number, because the two images
-share `IMAGE_TAG` (decision 2). Until then the fix waits on `main`.
+A frontend-only fix is released on its own as a new frontend patch; it needs no backend release
+(decision 2).
 
 ## 5. Known limits
 
@@ -86,5 +92,6 @@ share `IMAGE_TAG` (decision 2). Until then the fix waits on `main`.
 
 The image built with `--build-arg VERSION=1.2.3` carries the OCI labels and serves the panel
 (checked locally); CI passes with the Node version check; `release.yml` passes `actionlint`, refuses
-a non-semver tag, a commit not on `main`, and a snapshot whose `info.version` is not the tag, and on
+a non-semver tag, a commit not on `main`, and a snapshot whose `info.version` is not a release of the
+tag's MAJOR.MINOR (since 2026-11-12), and on
 a valid tag pushes the image and publishes the release.

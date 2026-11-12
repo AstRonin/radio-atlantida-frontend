@@ -55,17 +55,20 @@ Empty or unset means monitoring is off and no link is shown. The image serves th
 
 A tag `vX.Y.Z` on `main` runs the full CI, then pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z`
 and creates the GitHub release `vX.Y.Z` (`.github/workflows/release.yml`, `docs/f12-release-plan.md`).
-Both application images share one version, so the backend release `vX.Y.Z` comes first:
+Frontend and backend have their own tags; a frontend `X.Y.Z` runs against any backend `X.Y.*`, so
+the API snapshot must be a backend release of the same MAJOR.MINOR:
 
 ```sh
-gh release download vX.Y.Z --repo AstRonin/radio-atlantida-backend --pattern openapi.json
-npm run api:sync -- openapi.json   # api/openapi.json now says "version": "X.Y.Z"
+gh release download vX.Y.W --repo AstRonin/radio-atlantida-backend --pattern openapi.json
+npm run api:sync -- openapi.json   # api/openapi.json now says "version": "X.Y.W"
 # fix what the compiler shows, merge to main, then:
 git tag vX.Y.Z && git push origin vX.Y.Z
 ```
 
-The workflow refuses a tag that is not `vX.Y.Z`, a commit not on `main`, a snapshot of another API
-version, and an image tag that already exists.
+The workflow refuses a tag that is not `vX.Y.Z`, a commit not on `main`, a snapshot that is not a
+backend release of the same MAJOR.MINOR (for example `dev`), and an image tag that already exists.
+The image carries the snapshot's version as the label `io.radio-atlantida.api-version`. To deploy,
+set `FRONTEND_TAG` in the deploy repository's `release.env`.
 
 ## Languages
 

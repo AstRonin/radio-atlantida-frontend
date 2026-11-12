@@ -44,7 +44,9 @@ streams it, and PostgreSQL stores the data.
    `docs/f15-air-window-plan.md`, F16: `docs/f16-import-in-place-plan.md`, F17:
    `docs/f17-bulk-delete-plan.md`, F18: `docs/f18-library-pagination-sort-plan.md`, F19:
    `docs/f19-track-titles-review-weekdays-plan.md`, F20: `docs/f20-track-cue-editor-plan.md`, F21:
-   `docs/f21-playlist-rules-clock-plan.md`).
+   `docs/f21-playlist-rules-clock-plan.md`), and `docs/deploy-prereqs-plan.md` (deploy
+   prerequisites: release compatibility, API version label, stream settings texts, multi-arch
+   image).
    Work only on the current phase.
 
 **If the code, the design, and the requirements disagree, stop and ask.**
@@ -60,8 +62,8 @@ page, quality facts and issues, Analyse / Fix loudness / Optimize track for sele
 tracks, `docs/f10-import-plan.md`), F11 (logs: daily file, level and component filters,
 station-time entries, "Open log" from the error popup, `docs/f11-logs-plan.md`), F12 (release
 pipeline: a tag `vX.Y.Z` on `main` pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z` after
-the full CI, only when `api/openapi.json` is the backend release of the same version,
-`docs/f12-release-plan.md`), F13 (Grafana link: "Monitoring" in the navigation and "Search in
+the full CI, only when `api/openapi.json` is a backend release of the same MAJOR.MINOR; the image
+carries the API version label, `docs/f12-release-plan.md`), F13 (Grafana link: "Monitoring" in the navigation and "Search in
 Grafana" on the Logs page, from the container's `GRAFANA_URL` served as `/config.json` and read by
 `RuntimeConfigService` (`core/config`), `docs/f13-grafana-link-plan.md`), F14 (broadcast status
 in the header: state, timer on the server clock, tooltip, from `broadcast.state` and
