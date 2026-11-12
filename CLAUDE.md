@@ -63,7 +63,8 @@ tracks, `docs/f10-import-plan.md`), F11 (logs: daily file, level and component f
 station-time entries, "Open log" from the error popup, `docs/f11-logs-plan.md`), F12 (release
 pipeline: a tag `vX.Y.Z` on `main` pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z` after
 the full CI, only when `api/openapi.json` is a backend release of the same MAJOR.MINOR; the image
-carries the API version label, `docs/f12-release-plan.md`), F13 (Grafana link: "Monitoring" in the navigation and "Search in
+is multi-arch (`linux/amd64`, `linux/arm64`) and carries the API version label,
+`docs/f12-release-plan.md`), F13 (Grafana link: "Monitoring" in the navigation and "Search in
 Grafana" on the Logs page, from the container's `GRAFANA_URL` served as `/config.json` and read by
 `RuntimeConfigService` (`core/config`), `docs/f13-grafana-link-plan.md`), F14 (broadcast status
 in the header: state, timer on the server clock, tooltip, from `broadcast.state` and
@@ -188,7 +189,7 @@ initialization plan ends with F5; later phases have their own plans.
 
 ```
 .github/workflows/ci.yml     lint, format, typecheck, tests, build, audit, Docker smoke test
-.github/workflows/release.yml  tag vX.Y.Z -> CI -> image ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z
+.github/workflows/release.yml  tag vX.Y.Z -> CI -> multi-arch image ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z
 api/openapi.json             backend specification snapshot (committed, never edited by hand)
 docker/Dockerfile            Node build -> unprivileged nginx on port 8080
 docker/default.conf.template nginx: static files, SPA fallback, /api and /api/ws proxy, security

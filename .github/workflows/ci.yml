@@ -32,7 +32,7 @@ jobs:
       - name: Check Node version of the image
         run: |
           want=$(cat .nvmrc)
-          got=$(sed -n 's/^FROM node:\([^-]*\)-.* AS build$/\1/p' docker/Dockerfile)
+          got=$(sed -n 's/^FROM --platform=\$BUILDPLATFORM node:\([^-]*\)-.* AS build$/\1/p' docker/Dockerfile)
           if [ "$got" != "$want" ]; then
             echo "docker/Dockerfile builds with Node '$got', .nvmrc says $want."
             exit 1
@@ -51,16 +51,33 @@ jobs:
       - run: npm run build
       - run: npm audit --audit-level=high
 
+  # Each platform of the release image is built and served natively (docs/deploy-prereqs-plan.md F4).
   docker:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    name: docker (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
       - name: Build image
         run: |
           docker build -f docker/Dockerfile -t radio-atlantida-frontend:ci \
             --build-arg API_VERSION="$(jq -r '.info.version' api/openapi.json)" .
-      - name: API version label
+      - name: Platform and API version label
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
+          got=$(docker inspect -f '{{ .Os }}/{{ .Architecture }}' radio-atlantida-frontend:ci)
+          if [ "$got" != "$PLATFORM" ]; then
+            echo "Image is built for '$got', expected '$PLATFORM'."
+            exit 1
+          fi
           want=$(jq -r '.info.version' api/openapi.json)
           got=$(docker inspect -f '{{ index .Config.Labels "io.radio-atlantida.api-version" }}' radio-atlantida-frontend:ci)
           if [ "$got" != "$want" ]; then

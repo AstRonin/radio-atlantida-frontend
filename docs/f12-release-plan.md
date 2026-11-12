@@ -2,7 +2,7 @@
 
 Status: Done (the release path itself runs only on a real tag; see §5)
 Based on: `docs/tech-design.md` (§1.1, §6.4, §9.2), `docs/frontend-init-plan.md` §8 item 12 and §9.2, backend `docs/phase-13-plan.md` (release pipeline, done), deploy plan (`IMAGE_TAG` format, no `latest`)
-Last updated: 2026-11-12 (release compatibility and API version label: `docs/deploy-prereqs-plan.md` F1, F2)
+Last updated: 2026-11-12 (release compatibility, API version label, multi-arch image: `docs/deploy-prereqs-plan.md` F1, F2, F4)
 
 ## 1. Goal
 
@@ -39,12 +39,21 @@ frontend copies that file into its snapshot (`npm run api:sync -- openapi.json`)
    against (`docs/deploy-prereqs-plan.md` F2); CI and the release check the label.
 5. **The released image is smoke tested before the push**, like the CI image: it must serve `/`
    on port 8080.
-6. **Platform: `linux/amd64` only**, plain `docker build` (BuildKit), no build attestations, as in
-   the backend.
+6. **Platform: multi-arch** (changed 2026-11-12, design v7-24 §1.1, §9.2;
+   `docs/deploy-prereqs-plan.md` F4). The tag is one manifest list for `linux/amd64` and
+   `linux/arm64`; the deploy repository pins the manifest list's digest, which the `manifest` job
+   prints and the release notes carry. Each platform is built and smoke tested natively on its own
+   runner (`ubuntu-24.04`, `ubuntu-24.04-arm`; no QEMU), pushed by digest only, and the `manifest`
+   job joins the digests with `docker buildx imagetools create`. The node stage runs on
+   `$BUILDPLATFORM` (its output is static files). No build attestations
+   (`--provenance=false --sbom=false`), so the list holds only the two platforms.
 7. **No new actions.** Registry login is `docker login` with the workflow's `GITHUB_TOKEN` through
    stdin; the release is created with the runner's `gh` CLI, with generated notes. Permissions are
    per job: `packages: write` to push, `contents: write` for the release, everything else
-   `contents: read`. The action versions already used by `ci.yml` are kept.
+   `contents: read`. The action versions already used by `ci.yml` are kept. Since F4 the platform
+   digests pass between jobs with `actions/upload-artifact@v4` and `actions/download-artifact@v4`
+   (the versions the backend uses), and the builder is a `docker-container` builder created with
+   `docker buildx create`, not a setup action.
 8. **The Node version is checked.** CI fails when the `node:` tag of the Dockerfile's build stage
    differs from `.nvmrc` (it was only a comment so far).
 9. **`api:sync` keeps taking a path.** Downloading the backend release asset is a manual step
@@ -57,7 +66,7 @@ frontend copies that file into its snapshot (`npm run api:sync -- openapi.json`)
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `.github/workflows/release.yml` | New: check tag, branch, and snapshot version → CI (reusable) → build, check image tag is free, smoke test, push → GitHub release |
 | `.github/workflows/ci.yml`      | `workflow_call` trigger; Node version check; the smoke test loop passes shellcheck                                              |
-| `docker/Dockerfile`             | `ARG VERSION`, `REVISION`, `CREATED`; OCI labels; `nginx.conf` copied with mode 644, so a local file mode never breaks the image |
+| `docker/Dockerfile`             | `ARG VERSION`, `REVISION`, `CREATED`; OCI labels (the `--chmod=644` on the template `COPY` was removed on 2026-11-12: newer BuildKit left `/etc/nginx/templates` non-executable) |
 | `README.md`, `CLAUDE.md`        | Releasing runbook; phase status                                                                                                   |
 
 ## 4. Releasing (runbook)

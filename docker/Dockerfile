@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
-# Build stage: the Node version matches .nvmrc.
-FROM node:24.21.0-alpine AS build
+# Build stage: the Node version matches .nvmrc. It runs on the build machine's platform: its output
+# is static files, the same for every target platform (docs/deploy-prereqs-plan.md F4).
+FROM --platform=$BUILDPLATFORM node:24.21.0-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund

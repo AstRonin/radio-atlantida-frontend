@@ -21,8 +21,12 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     outputs:
       version: ${{ steps.tag.outputs.version }}
+      created: ${{ steps.tag.outputs.created }}
     steps:
       - name: Tag is vX.Y.Z
         id: tag
@@ -33,6 +37,8 @@ jobs:
             echo "::error::tag $tag is not vX.Y.Z; nothing is released"; exit 1
           fi
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          # One creation time for the images of both platforms.
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -56,46 +62,75 @@ jobs:
             echo "::error::api/openapi.json is API version $got, want ${VERSION%.*}.*; run npm run api:sync -- <openapi.json of a backend ${VERSION%.*}.* release>"
             exit 1
           fi
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Image tag is not taken
+        # A released tag is never overwritten; a fix gets a new patch version.
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          if docker buildx imagetools inspect "$IMAGE:$VERSION" > /dev/null 2>&1; then
+            echo "::error::$IMAGE:$VERSION already exists"; exit 1
+          fi
 
   ci:
     needs: check
     uses: ./.github/workflows/ci.yml
 
+  # Each platform is built and smoke tested natively, then pushed by digest only; the manifest job
+  # joins the two digests under the tag (docs/deploy-prereqs-plan.md F4).
   image:
     needs: [check, ci]
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    name: image (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
     env:
       VERSION: ${{ needs.check.outputs.version }}
+      CREATED: ${{ needs.check.outputs.created }}
+      PLATFORM: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v5
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-      - name: Image tag is not taken
-        # A released tag is never overwritten; a fix gets a new patch version.
+      - name: Builder
+        # A docker-container builder can push by digest; no build attestations (F12 decision 6).
         run: |
-          if docker manifest inspect "$IMAGE:$VERSION" > /dev/null 2>&1; then
-            echo "::error::$IMAGE:$VERSION already exists"; exit 1
-          fi
+          docker buildx create --name release --driver docker-container --use
+          echo "API_VERSION=$(jq -r '.info.version' api/openapi.json)" >> "$GITHUB_ENV"
       - name: Build
         run: |
-          docker build -f docker/Dockerfile -t "$IMAGE:$VERSION" \
+          docker buildx build -f docker/Dockerfile --platform "$PLATFORM" \
+            --provenance=false --sbom=false \
             --build-arg VERSION="$VERSION" \
             --build-arg REVISION="$GITHUB_SHA" \
-            --build-arg CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --build-arg API_VERSION="$(jq -r '.info.version' api/openapi.json)" .
+            --build-arg CREATED="$CREATED" \
+            --build-arg API_VERSION="$API_VERSION" \
+            --load -t "$IMAGE:$VERSION" .
       - name: Serve the shell and the runtime configuration
         run: |
+          got=$(docker inspect -f '{{ .Os }}/{{ .Architecture }}' "$IMAGE:$VERSION")
+          if [ "$got" != "$PLATFORM" ]; then
+            echo "::error::image is built for $got, want $PLATFORM"; exit 1
+          fi
           got=$(docker inspect -f '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$IMAGE:$VERSION")
           if [ "$got" != "$VERSION" ]; then
             echo "::error::image is labelled version $got, want $VERSION"; exit 1
           fi
-          want=$(jq -r '.info.version' api/openapi.json)
           got=$(docker inspect -f '{{ index .Config.Labels "io.radio-atlantida.api-version" }}' "$IMAGE:$VERSION")
-          if [ "$got" != "$want" ]; then
-            echo "::error::image is labelled API version $got, want $want"; exit 1
+          if [ "$got" != "$API_VERSION" ]; then
+            echo "::error::image is labelled API version $got, want $API_VERSION"; exit 1
           fi
           docker run -d --name panel -p 8080:8080 -e GRAFANA_URL=http://127.0.0.1:3000 \
             "$IMAGE:$VERSION"
@@ -114,11 +149,76 @@ jobs:
             docker logs panel
             exit 1
           fi
-      - name: Push
-        run: docker push "$IMAGE:$VERSION"
+      - name: Push by digest
+        # The same build from the builder's cache, pushed without a tag.
+        run: |
+          docker buildx build -f docker/Dockerfile --platform "$PLATFORM" \
+            --provenance=false --sbom=false \
+            --build-arg VERSION="$VERSION" \
+            --build-arg REVISION="$GITHUB_SHA" \
+            --build-arg CREATED="$CREATED" \
+            --build-arg API_VERSION="$API_VERSION" \
+            --output "type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true" \
+            --metadata-file metadata.json .
+          digest=$(jq -r '."containerimage.digest"' metadata.json)
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::no image digest in the build metadata: $digest"; exit 1
+          fi
+          echo "$PLATFORM: $IMAGE@$digest"
+          mkdir -p digests
+          touch "digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  manifest:
+    needs: [check, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    outputs:
+      digest: ${{ steps.list.outputs.digest }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Image tag is still not taken
+        run: |
+          if docker buildx imagetools inspect "$IMAGE:$VERSION" > /dev/null 2>&1; then
+            echo "::error::$IMAGE:$VERSION already exists"; exit 1
+          fi
+      - name: Manifest list
+        id: list
+        run: |
+          refs=()
+          for f in digests/*; do refs+=("$IMAGE@sha256:$(basename "$f")"); done
+          if [ "${#refs[@]}" -ne 2 ]; then
+            echo "::error::want 2 platform digests, got ${#refs[@]}: ${refs[*]}"; exit 1
+          fi
+          docker buildx imagetools create -t "$IMAGE:$VERSION" "${refs[@]}"
+          docker buildx imagetools inspect "$IMAGE:$VERSION"
+          got=$(docker buildx imagetools inspect --raw "$IMAGE:$VERSION" |
+            jq -r '[.manifests[].platform | "\(.os)/\(.architecture)"] | sort | join(" ")')
+          if [ "$got" != "linux/amd64 linux/arm64" ]; then
+            echo "::error::$IMAGE:$VERSION lists platforms '$got', want 'linux/amd64 linux/arm64'"; exit 1
+          fi
+          digest=$(docker buildx imagetools inspect --format '{{ json .Manifest }}' "$IMAGE:$VERSION" | jq -r .digest)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Manifest list: $IMAGE:$VERSION@$digest"
+          echo "FRONTEND_TAG=$VERSION, digest \`$digest\` (for release.env)" >> "$GITHUB_STEP_SUMMARY"
 
   release:
-    needs: [check, image]
+    needs: [check, manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -127,8 +227,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.check.outputs.version }}
+          DIGEST: ${{ needs.manifest.outputs.digest }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
             --title "$GITHUB_REF_NAME" \
-            --notes "Image: \`$IMAGE:$VERSION\`. Deploy with a backend \`${VERSION%.*}.*\`: set \`FRONTEND_TAG\` in the deploy repository's \`release.env\`."
+            --notes "Image: \`$IMAGE:$VERSION\` (\`linux/amd64\`, \`linux/arm64\`), manifest list digest \`$DIGEST\`. Deploy with a backend \`${VERSION%.*}.*\`: set \`FRONTEND_TAG\` and its digest in the deploy repository's \`release.env\`."

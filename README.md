@@ -54,7 +54,7 @@ Empty or unset means monitoring is off and no link is shown. The image serves th
 ## Releasing
 
 A tag `vX.Y.Z` on `main` runs the full CI, then pushes `ghcr.io/astronin/radio-atlantida-frontend:X.Y.Z`
-and creates the GitHub release `vX.Y.Z` (`.github/workflows/release.yml`, `docs/f12-release-plan.md`).
+(one manifest list for `linux/amd64` and `linux/arm64`, built natively on each) and creates the GitHub release `vX.Y.Z` (`.github/workflows/release.yml`, `docs/f12-release-plan.md`).
 Frontend and backend have their own tags; a frontend `X.Y.Z` runs against any backend `X.Y.*`, so
 the API snapshot must be a backend release of the same MAJOR.MINOR:
 
@@ -68,7 +68,8 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 The workflow refuses a tag that is not `vX.Y.Z`, a commit not on `main`, a snapshot that is not a
 backend release of the same MAJOR.MINOR (for example `dev`), and an image tag that already exists.
 The image carries the snapshot's version as the label `io.radio-atlantida.api-version`. To deploy,
-set `FRONTEND_TAG` in the deploy repository's `release.env`.
+set `FRONTEND_TAG` and the manifest list digest (in the release notes) in the deploy repository's
+`release.env`.
 
 ## Languages
 
