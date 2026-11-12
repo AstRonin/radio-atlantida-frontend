@@ -1,6 +1,6 @@
 # Plan — Deploy Prerequisites: Release Compatibility, Stream Settings Texts, Multi-arch Image (radio-atlantida-frontend)
 
-Status: Approved scope (deploy plan and tech-design v7-24, 2026-11-12). F1, F2, F4, F5 done (commits a458e18, 8de99b5); F3 open, waits for backend A11 (batch save `PATCH /api/settings`, decided 2026-11-12); A1 and A8 are in (commit 6b270a5).
+Status: Approved scope (deploy plan and tech-design v7-24, 2026-11-12). All steps done. F1, F2, F4, F5: commits a458e18, 8de99b5. F3: commits fbd0174 (API snapshot), 0cc822c (texts), 947bcfd (batch save), 2026-11-12. F3 deviation: the reconnect notice and dialog also cover the non-stream reconnect settings (`liquidsoap.harbor_port`, `control_host`, `control_port`), which take effect when their connection is opened again.
 Based on: `docs/tech-design.md` v7-25 (§1.1, §6.3, §6.4, §8.8, §9.2, §11 items 32–33, 37), `radio-atlantida-docs/deploy/docs/deploy-init-plan.md` (§10.1, §10.2, §11.7, §11.18, §12 cross-repo tasks F1–F4, B12), `docs/f12-release-plan.md` (release pipeline), backend `docs/deploy-prereqs-plan.md` (A1 `stream.icecast_tls`, A8 descriptions, A11 batch settings save and encoder limits, Phase C multi-arch)
 Last updated: 2026-11-12
 
@@ -39,7 +39,7 @@ Steps are in dependency order. None blocks the deploy phases D3 or D4 directly; 
 - `.github/workflows/release.yml` build (`:76-81`, the `docker build` at `:78`, or the buildx command of F4): `--build-arg API_VERSION="$(jq -r '.info.version' api/openapi.json)"`; the smoke step checks the label like the version label (`:83-87`).
 - `.github/workflows/ci.yml` image build (`:58`): the same build argument, so the label is tested on every PR.
 
-### F3. Stream settings texts and batch save (with backend A1, A8, A11) — open, waits for A11
+### F3. Stream settings texts and batch save (with backend A1, A8, A11) — done (fbd0174, 0cc822c, 947bcfd)
 
 Texts:
 
