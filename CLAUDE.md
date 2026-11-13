@@ -136,6 +136,11 @@ initialization plan ends with F5; later phases have their own plans.
   Edit pages implement `PendingChanges`, call `warnBeforeUnload()`, and their routes use
   `unsavedChangesGuard`. Text fields use `app-text-input`. Page tests use `flushHelp()` and
   `settlePage()` from `core/testing`; `whenStable()` hangs while a resource request is open.
+- **Settings save in one batch.** The settings page sends every changed setting in one
+  `PATCH /api/settings` through `SettingsService.saveMany()`, all or nothing. Field errors arrive
+  on `values.<key>` and are mapped onto the controls of those keys. The single-key `save()` (`PUT`)
+  stays for other callers such as the playlist edit page (deploy prerequisites F3,
+  `docs/deploy-prereqs-plan.md`).
 - **No secrets in the frontend.** The panel only shows whether a secret is set.
 - **Times.** The API sends ISO 8601 UTC (`...Z`). Display them in the station timezone from settings
   (IANA name, default `Asia/Yerevan`), never in the browser's zone. Station local dates
