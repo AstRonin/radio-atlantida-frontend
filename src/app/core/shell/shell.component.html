@@ -85,7 +85,10 @@
     (closedStart)="help.close()"
   >
     @if (help.panelPage()) {
-      <app-help-panel [content]="help.panelContent()" (closed)="help.close()" />
+      <!-- Deferred: the panel and its progress bar load on first open, not in the initial bundle. -->
+      @defer (on immediate) {
+        <app-help-panel [content]="help.panelContent()" (closed)="help.close()" />
+      }
     }
   </mat-sidenav>
 
